@@ -10,11 +10,8 @@ Against `docs/source/Manual-Project-Scaffolding.md`:
 |---|---|
 | 0 — Frame the app | **complete** — product framed, v1 boundary set, unknowns spiked |
 | 1 — Foundational design | **complete** — domain, boundaries, API style, auth model, Do-Not-Vibe surface all decided |
-| 2 — Repo, environment, tooling | **not started** ← next |
-| 3 — Vertical slice | not started |
-| 4 — Harden | not started |
-| 5 — Quality gates | not started |
-| 6 — Release the foundation | not started |
+| 2 — Repo, environment, tooling | **decided, not executed** ← next. ADR-022 to ADR-026 settle toolchain, environments, CI, contract generation and conventions. Nothing has been created. |
+| 3–6 — slice · harden · quality gates · release | not started |
 
 **No application code exists.** The repository contains documentation only.
 
@@ -55,21 +52,29 @@ Against `docs/source/Manual-Project-Scaffolding.md`:
 | 019 | Booking tokens are opaque stored values with time-gated capabilities |
 | 020 | Public reads only from the `business_public` allowlist projection |
 | 021 | Owner-chosen salon handle; retired handles redirect and are never reassigned |
+| 022 | Docker + Supabase CLI locally; raw SQL migrations; Kysely; Vitest; Node 24.x |
+| 023 | Three environments; two hosted Supabase projects; `.env.example`; no prod creds locally |
+| 024 | GitHub Actions; macOS runner for iOS; Fly.io; staging on merge, production on tag |
+| 025 | Zod → OpenAPI 3.1 → `dart-dio` client; both committed; CI fails on drift |
+| 026 | `main` branch; trunk-based, squash-merge; no feature flags in v1; `seed.sql` |
 
 ## 4. Open work
 
-`docs/analysis/05-triage.md` — **F: 0 · S: 58 · D: 44 · RESOLVED: 46.**
+`docs/analysis/05-triage.md` — **F: 0 · S: 57 · D: 45 · RESOLVED: 47.**
 
 **Rule: an `S` item is resolved during its slice's Phase 0, never during implementation.**
 If a slice hits an unresolved `S` item mid-build, stop and decide it — do not infer an answer.
 
-**Blocking Phase 2 specifically: K53** — which cloud CI provider builds and signs iOS, and how
-signing credentials are managed given no local macOS (ADR-015). Phase 2 stands up CI, so this
-is decided there.
+**Nothing blocks Phase 2.** K53 (iOS CI and signing) was the last one; ADR-024 resolves it.
 
 **First to bite in Phase 3: E1** (email provider, sender identity, domain) and **E2** (its
 deliverability spike) — the first vertical slice is auth, and auth cannot activate an account
 without email.
+
+**Prerequisites before Phase 2 can execute.** ADR-022 requires **Docker Desktop (WSL2 backend)**
+and the **Supabase CLI**; spike 001 recorded both as **absent** from the development machine.
+Outstanding one-time operations: rename `master` → `main` (ADR-026) and delete the
+`bookflow-spike` Supabase project (ADR-023).
 
 ## 5. Screens that must be designed before they can be built
 
@@ -108,6 +113,8 @@ Created by decisions since:
 
 ## 7. Next action
 
-Begin Phase 2: initialise the npm workspace (`apps/api`, `packages/contracts`) and the Flutter
-project in `apps/mobile`, wire lint/format/type-check, stand up CI including the iOS signing
-decision (K53), and get an empty migration applying cleanly to a fresh Supabase database.
+Install Docker Desktop (WSL2 backend) and the Supabase CLI — both prerequisites of ADR-022 and
+both currently absent — then execute Phase 2: rename `master` → `main`, initialise the npm
+workspace (`apps/api`, `packages/contracts`) and the Flutter project in `apps/mobile`, wire
+ESLint/Prettier/`tsc`/Vitest and the Dart equivalents, stand up the GitHub Actions pipeline per
+ADR-024, and get an empty migration applying cleanly to the local Supabase stack.

@@ -12,7 +12,7 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 
 **Screen numbers** are `01-screen-inventory.md`'s. Web pages are named.
 
-**Status: no F items remain.** Twenty-one accepted decisions in `docs/decisions/`, plus **spike 001** (`docs/spikes/001-platform.md`) which supplied the evidence for ADR-013, ADR-016 and ADR-017, have closed every item that blocked the foundation. Items each decision settles move to the Resolved table; items narrowed without being settled stay classified where they were, with an italic note; items created are marked **NEW**.
+**Status: no F items remain, and nothing blocks Phase 2.** Twenty-six accepted decisions in `docs/decisions/`, plus **spike 001** (`docs/spikes/001-platform.md`) which supplied the evidence for ADR-013, ADR-016 and ADR-017, have closed every item that blocked the foundation. ADR-022 to ADR-026 additionally settle toolchain, environments, CI, contract generation and repository conventions — none of which this triage ever tracked, since it records design gaps rather than engineering choices. Items each decision settles move to the Resolved table; items narrowed without being settled stay classified where they were, with an italic note; items created are marked **NEW**.
 
 ---
 
@@ -74,7 +74,6 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 | K49 | K | **NEW (ADR-006).** How does the web "Select services" step become genuinely multi-select, given the design specifies single-select at `Web:832`? | DECISION | S | web Select services, Review and continue |
 | K50 | K | **NEW (ADR-007).** Where does the owner enter each team member's working days and times? No such screen exists in any design. | DECISION | S | #6, #8, #17 — the screen does not exist |
 | K52 | K | **NEW (ADR-008).** What is the exact phone normalisation rule applied before keying, and does phone become a required field on the client booking form? | DECISION | S | #15; web Confirmation / Deposit Instructions |
-| K53 | K | **NEW (ADR-015).** Which cloud CI provider builds and signs iOS, and how are signing credentials managed given no local macOS? | DECISION | S | all native screens — release path only |
 | K54 | K | **NEW (ADR-021).** The handle field on the Business Branding onboarding step, its live availability check, and the contents of the reserved-word list. | DECISION | S | #5 — the field does not exist in any design |
 | K55 | K | **NEW (ADR-020).** What is the actual field allowlist in `business_public`, including whether the owner's contact email belongs in it given the web feedback mailto? | DECISION | S | #5, #6, #7, #8, #20; web salon profile, Team, Portfolio, Other |
 | K56 | K | **NEW (ADR-018).** What is the owner shown when a social link is refused because the provider does not assert a verified email? | DECISION | S | #3, #9 |
@@ -122,6 +121,7 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 | K45 | K | Does the Settings screen gain the notification, currency, timezone and 2FA controls that Screen 10 claims it loads? *Narrowed by ADR-005.* | DECISION | D | #17, #23 |
 | K46 | K | Is a single wide input the right control for an 8-digit code, and is it validated to exactly 8 numeric characters? | DECISION | D | #4, #10 |
 | K57 | K | **NEW (ADR-017).** What is the refresh token's absolute lifetime, and does it rotate on use? | DECISION | D | #3, #9, #19 |
+| K58 | K | **NEW (ADR-026).** Is a feature-flag system needed? Deliberately deferred, with a named trigger: answer before the first production release. | DECISION | D | none — process only |
 
 ## Resolved by accepted decisions
 
@@ -165,6 +165,7 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 | G8 | G | Review attribution under "Any professional" | S | ADR-006 — the booking always names a specific person. |
 | H4 | H | Cancellation window or notice period | S | ADR-019 — the client may cancel at any point up to the appointment start, with no notice period. Owner-side cancellation remains unconstrained, as the designs have it. |
 | J6 | J | Validation locale | S | ADR-005 — Kenyan phone format, Latin name charset. |
+| K53 | K | iOS CI provider and signing credential management | S | ADR-024 — GitHub Actions with a macOS runner; signing credentials as encrypted secrets imported at build time. CI is the only mechanism by which an iOS artifact can exist. This was the last item blocking Phase 2. |
 | C4 | C | Multi-currency | D | ADR-005 — no, in v1. |
 | J4 | J | RTL in the owner app | D | ADR-005 — Latin script only. |
 | G1 | G | Who may leave a review | — | ADR-002 — the per-booking token authenticates the reviewer. |

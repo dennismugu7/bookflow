@@ -1,5 +1,17 @@
 # Bookflow
 
+> **This file is not self-sufficient.** It states rules; it does not carry state, reasoning,
+> or the open-questions list. Read it together with:
+>
+> | File | Supplies |
+> |---|---|
+> | `docs/BUILD_LOG.md` | Where the project stands — phases complete, what exists, what is next, how work proceeds |
+> | `docs/decisions/` | Why every rule below is the rule — 26 ADRs, cited here by number only |
+> | `docs/analysis/05-triage.md` | What is still undecided — the `S` and `D` items, and which slice each blocks |
+>
+> A session holding only this file knows the rules but not the situation, and will not know
+> what it is forbidden from inventing.
+
 ## 1. What this is
 
 Bookflow is one backend serving two clients: a Flutter app where a salon or barber **owner
@@ -18,20 +30,26 @@ the native app against the real backend.
 | Worker | Node process in the API repo, shares the service layer. Outbox + booking expiry. | ADR-013 |
 | Owner app | Flutter (Dart). iOS builds require cloud CI — the dev machine is Windows. | ADR-015 |
 
-## 3. Repository layout
+## 3. Repository layout — **target state**
+
+**Most of this does not exist yet.** Only `CLAUDE.md`, `DEFINITION_OF_DONE.md` and `docs/`
+are present; Phase 2 creates the rest. `✗` marks what has not been created. Update these
+marks as Phase 2 creates each directory.
 
 ```
 bookflow/
-├─ CLAUDE.md
-├─ docs/            source · analysis · decisions · spikes  (read-only history)
-├─ apps/
-│  ├─ api/          Fastify service and the outbox/expiry worker
-│  └─ mobile/       Flutter owner app
-├─ packages/
-│  └─ contracts/    OpenAPI spec and generated TypeScript types
-├─ supabase/
-│  └─ migrations/
-└─ apps/web/        client booking site — does not exist yet, built last
+├─ CLAUDE.md                      ✓
+├─ DEFINITION_OF_DONE.md          ✓
+├─ docs/            source · analysis · decisions · spikes  (read-only history)   ✓
+├─ apps/                          ✗
+│  ├─ api/          Fastify service and the outbox/expiry worker                  ✗
+│  └─ mobile/       Flutter owner app                                             ✗
+├─ packages/                      ✗
+│  └─ contracts/    OpenAPI spec and generated Dart/TypeScript clients            ✗
+├─ supabase/                      ✗
+│  ├─ migrations/   plain SQL, Supabase CLI (ADR-022)                             ✗
+│  └─ seed.sql      one demo salon, bookings in every status (ADR-026)            ✗
+└─ apps/web/        client booking site — built last                              ✗
 ```
 
 - `docs/` — history. Never edited to reflect new decisions; new decisions get a new ADR.
@@ -144,7 +162,8 @@ is the process; it is not restated here. Project-specific deviations and additio
 
 | Question | Location |
 |---|---|
-| Why is it this way? | `docs/decisions/` — 21 ADRs, numbered, each stating what it resolves |
+| Why is it this way? | `docs/decisions/` — 26 ADRs, numbered, each stating what it resolves |
+| What tools do I actually run? | ADR-022 (toolchain) · ADR-024 (CI) · ADR-025 (contract generation) · ADR-026 (conventions) |
 | What do the design docs actually say? | `docs/source/` — read-only, authoritative on intent |
 | What did they fail to say? | `docs/analysis/` — 01 screens, 02 backend capabilities, 03 flagged ambiguities, 04 unstated assumptions |
 | What is still undecided? | `docs/analysis/05-triage.md` |
