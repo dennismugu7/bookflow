@@ -17,8 +17,27 @@
 -- and observed an overlapping insert rejected with SQLSTATE 23P01.
 --
 -- Installed into `extensions` rather than `public`: Supabase's convention,
--- and it keeps generated types free of extension objects. `extensions` is
--- already on the search path (config.toml `extra_search_path`).
+-- and it keeps generated types free of extension objects.
+--
+-- SEARCH PATH — UNVERIFIED BEYOND LOCAL. `extra_search_path` in
+-- supabase/config.toml puts `extensions` on the path, but that is a LOCAL
+-- setting for the local stack only. Whether `extensions` is on the search path
+-- of the role that runs migrations against a hosted project is not something
+-- this repository has checked, and spike 001/C1 does not settle it: that spike
+-- built its constraint on a hosted project without recording the search path
+-- in force at the time.
+--
+-- It matters. If `extensions` is not on the path when the Phase 3 exclusion
+-- constraint is created, the failure is:
+--
+--   data type uuid has no default operator class for access method "gist"
+--
+-- which reads as a mistake in the column types rather than as a missing
+-- operator class that is installed but unreachable — an hour lost looking at
+-- the wrong thing. Tracked as A13 in docs/analysis/05-triage.md, classified S:
+-- it is answered in the booking slice's Phase 0, which is where that migration
+-- gets written, and the answer decides whether that migration must set
+-- search_path explicitly or schema-qualify the operator class.
 create extension if not exists btree_gist with schema extensions;
 
 -- ---------------------------------------------------------------------------
@@ -39,8 +58,16 @@ create extension if not exists btree_gist with schema extensions;
 -- core pg_catalog function, and the assertion below checks for exactly that
 -- one — not for whichever extension happens to be installed alongside it.
 --
--- Recorded as an assertion rather than a comment, so that a future server
--- downgrade fails the migration instead of failing a later table definition:
+-- Recorded as an assertion rather than a comment, so the assumption is checked
+-- rather than merely written down. Be precise about what it catches: a FRESH
+-- migration run against a server that does not supply the function — a new
+-- environment built on an unsupported version. It cannot catch a server
+-- downgraded underneath a database that has already recorded this migration,
+-- because a recorded migration does not run again.
+--
+-- That is still the case worth guarding. Staging and production are not yet
+-- provisioned (docs/ENVIRONMENT.md §3), so every environment that will ever
+-- matter is a fresh run of this file that has not happened yet:
 do $$
 begin
   if to_regprocedure('pg_catalog.gen_random_uuid()') is null then
