@@ -92,8 +92,8 @@ given here, deliberately, so this table cannot drift from the lockfile.
 | git remote `origin` | pushes to GitHub | ADR-026 | **exists** — `https://github.com/dennismugu7/bookflow.git` | `git remote -v` |
 | GitHub repository `dennismugu7/bookflow` | code host; runs Actions | ADR-024, ADR-026 | **exists, private, populated.** History pushed 2026-08-10; the remote is no longer empty. | `gh repo view dennismugu7/bookflow --json visibility,defaultBranchRef` · `git ls-remote --heads origin` |
 | Default branch `main` | trunk; ADR-024 deploys staging on merge to it | ADR-026 | **exists — renamed from `master` and set as the GitHub default, 2026-08-10.** Local `main` tracks `origin/main`. | `git branch --show-current` · `gh repo view dennismugu7/bookflow --json defaultBranchRef --jq '.defaultBranchRef.name'` |
-| Branch protection on `main` | — | not required by any ADR | **not yet.** ADR-026 chose trunk-based squash-merge; nothing enforces it mechanically. | `gh api repos/dennismugu7/bookflow/branches/main/protection` |
-| GitHub Actions workflows | lint · type-check · tests · drift check · build · iOS | ADR-024 | **not yet** — no `.github/` directory | `ls .github/workflows` |
+| Branch protection on `main` | enforce ADR-026's PR-then-squash-merge, and require CI green | ADR-026, ADR-024 | **BLOCKED BY PLAN — not configured, and not configurable.** Attempted 2026-08-10 via both mechanisms; both return `403 Upgrade to GitHub Pro or make this repository public to enable this feature`. This account is a free personal plan and the repository is private. **ADR-026's trunk-based, squash-merge, PR-first convention is therefore enforced by discipline alone — nothing mechanical stops a direct push to `main`, including a red one.** | `gh api repos/dennismugu7/bookflow/branches/main/protection` · `gh api repos/dennismugu7/bookflow/rulesets` |
+| GitHub Actions workflows | ADR-024's CI | ADR-024 | **exists — 2026-08-10.** `.github/workflows/ci.yml`, job `verify`, on push to `main` and on PRs targeting it. Runs `npm run verify` against a real Supabase stack (database + gotrue only). ~2m40s. Observed failing and passing, deliberately. **Not yet covered:** the Flutter job, the iOS macOS-runner job, the contract drift check and the Fly.io deploy — all of ADR-024, none of them possible yet. | `gh run list --branch main` · `gh workflow view CI` |
 | GitHub Actions secrets | staging/production credentials, Apple signing | ADR-023, ADR-024 | **not yet** | `gh secret list` |
 | Local Supabase stack | development database; integration tests | ADR-022, ADR-023 | **exists — 2026-08-10.** `supabase/config.toml` committed, Postgres **17.6** (the line spike 001 ran against), one migration applied. Endpoints: API `54321`, DB `54322`, Studio `54323`, Mailpit `54324`. | `npm run db:start` then `supabase status`; `docker ps` shows `supabase_db_bookflow` |
 | Local stack credentials | — | ADR-023 | **not secrets.** The anon, service-role, publishable, secret and S3 keys the CLI prints are fixed, well-known development values, identical on every machine. They are not in `.env.example` and must never be reused for a hosted project. | `supabase status` reprints them at any time |
@@ -125,17 +125,20 @@ change ADR-023; it is the kind of plan change ADR-023's last consequence anticip
 
 | Missing | Why it blocks |
 |---|---|
-| GitHub Actions workflows | ADR-024. `DEFINITION_OF_DONE.md` makes "CI is green end to end" a hard gate. The gates exist and run locally; nothing runs them on push. |
-| Flutter project in `apps/mobile` | ADR-015, ADR-022. `dart format`, `flutter analyze` and `flutter test` are Definition-of-Done gates with nothing to run against. |
+| Flutter project in `apps/mobile` | ADR-015, ADR-022. `dart format`, `flutter analyze` and `flutter test` are Definition-of-Done gates with nothing to run against, and ADR-024's Flutter and iOS jobs have nothing to build. |
 | `supabase/seed.sql` | ADR-026. `db reset` warns `no files matched pattern: supabase/seed.sql` on every run. Not writable yet — ADR-026 wants one demo salon with bookings in every status, which needs tables, which are Phase 3. |
 
 **Done since this file was written:** the `master` → `main` rename and the first push
 (ADR-026); `.env.example` (ADR-023); the npm workspace, the `apps/api` Fastify skeleton and
 the lint / format / type-check / test gates (ADR-022); the local Supabase stack, the
-extensions migration and Kysely with generated types (ADR-022). See `docs/BUILD_LOG.md` §1.
+extensions migration and Kysely with generated types (ADR-022); the config module and the
+unit/integration test layering; and GitHub Actions running `npm run verify` on every push and
+PR (ADR-024). See `docs/BUILD_LOG.md` §1.
 
-All three remaining items are repository work plus the already-installed toolchain. **No
-purchase, no signup and no external provisioning is required to finish Phase 2.**
+Both remaining items are repository work plus the already-installed toolchain. **No purchase,
+no signup and no external provisioning is required to finish Phase 2** — with the one
+exception recorded in §3: branch protection cannot be configured on this plan at all, and no
+amount of repository work changes that.
 
 ### Does not block Phase 2 — Phase 3 and later
 

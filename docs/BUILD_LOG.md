@@ -25,11 +25,19 @@ of `CLAUDE.md` §4 · strict `tsconfig` · ESLint 9 flat config, Prettier, `tsc 
 and a root `check` script running all four in sequence · `.env.example` (ADR-023).
 
 Then: the local Supabase stack on Postgres 17.6 · one migration, extensions only · Kysely with
-types generated from the live schema · root `db:*` scripts.
+types generated from the live schema · root `db:*` scripts · fail-fast environment config ·
+unit and integration test layers with a rollback-per-test harness · GitHub Actions running
+`npm run verify` on every push and PR, observed both red and green.
 
-**Phase 2, outstanding:** GitHub Actions per ADR-024 · the Flutter project in `apps/mobile`
-(ADR-015) · `supabase/seed.sql`, which ADR-026 wants carrying a demo salon and therefore
-cannot be written before there are tables. `docs/ENVIRONMENT.md` §4 is the live list.
+**Phase 2, outstanding:** the Flutter project in `apps/mobile` (ADR-015), which also unblocks
+ADR-024's Flutter and iOS jobs · `supabase/seed.sql`, which ADR-026 wants carrying a demo
+salon and therefore cannot be written before there are tables. `docs/ENVIRONMENT.md` §4 is the
+live list.
+
+**One thing cannot be done at all:** branch protection on `main` is unavailable on this
+GitHub plan for a private repository — both the classic API and rulesets return 403. ADR-026's
+PR-first, squash-merge convention is enforced by discipline, not by the platform. Recorded in
+`docs/ENVIRONMENT.md` §3 rather than quietly left looking configured.
 
 **The API does nothing product-specific.** One static health route, no tables, no auth, no
 tests. The database has extensions and nothing else — the domain schema belongs to the first
@@ -49,6 +57,7 @@ vertical slice, not to the foundation. `apps/mobile` and `apps/web` do not exist
 | `apps/api/` | Fastify skeleton. `app.ts` builds the instance, `server.ts` listens, one `GET /health`. `src/modules/` and `src/platform/` exist empty, each with a README stating what belongs there. |
 | `packages/contracts/` | Placeholder. Empty `src/`; exists so the workspace resolves. Content is generated in a later step (ADR-025). |
 | `supabase/` | `config.toml` (generated, unmodified) and one migration: extensions only, no tables. Migrations are Do-Not-Vibe. |
+| `.github/workflows/ci.yml` | ADR-024's gate. Runs `npm run verify` — the same command `DEFINITION_OF_DONE.md` names — against a real Supabase stack. No deploy, no Flutter, no iOS yet. |
 | root tooling | `package.json` workspaces and `db:*` scripts · `.nvmrc` · `.editorconfig` · `.gitattributes` · `eslint.config.js` · `.prettierrc.json` · `vitest.config.ts` · `.env.example`. |
 | `docs/ENVIRONMENT.md` | **Mutable.** What exists outside the repository — installed tools, remotes, hosted projects, deploy targets — each with the command that verifies it. |
 
