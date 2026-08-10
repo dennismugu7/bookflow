@@ -1,0 +1,113 @@
+name: CI
+
+# ADR-024: GitHub Actions, one CI system for everything. This workflow is the
+# TypeScript half. The Flutter and iOS jobs that ADR-024 also specifies are not
+# here yet — apps/mobile does not exist. Nor is the Fly.io deploy: it belongs
+# after there is something worth deploying.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# One run per ref. Pushing twice in quick succession cancels the first, so the
+# queue never fills with runs whose result nobody will read.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # node-version-file, not a literal. The Node line is pinned in .nvmrc and
+      # in package.json engines (ADR-022); a third copy here would be the one
+      # that silently goes stale.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      # ci, not install: the lockfile is authoritative and a CI run must never
+      # quietly resolve a different tree than the one that was reviewed.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.113.0
+
+      # A real Supabase Postgres, not a stock postgres service container.
+      # The schema will shortly reference Supabase's own `auth` schema, which
+      # stock Postgres does not have — so the integration suite has to run
+      # against the same stack it runs against locally, or it stops being
+      # evidence about anything.
+      #
+      # Excluded services, and why: every one of these is unused by the test
+      # suite, which speaks SQL to Postgres through Kysely and nothing else.
+      #   kong          API gateway — nothing calls the REST surface
+      #   postgrest     ADR-013: clients never talk to PostgREST
+      #   storage-api   ADR-011's buckets are not exercised yet
+      #   imgproxy      image transforms, only meaningful with storage
+      #   realtime      no subscription is under test
+      #   mailpit       ADR-012 sends via the outbox worker, not in these tests
+      #   postgres-meta \
+      #   studio         > the dashboard; there is nobody to look at it
+      #   edge-runtime  no edge functions in this project
+      #   logflare      \
+      #   vector         > log shipping, pointless for a 20-second run
+      #   supavisor     connection pooler; tests connect directly on 54322
+      #
+      # `gotrue` is deliberately NOT excluded. It owns the `auth` schema, and
+      # dropping it would remove the one thing that makes this stack worth
+      # starting instead of a plain Postgres container. Verified: with the
+      # exclusions below, `auth` still has its full set of tables.
+      #
+      # `supabase start` applies everything in supabase/migrations as part of
+      # bringing the database up, so the schema is in place before the suite
+      # runs. The step after this one asserts that rather than assuming it.
+      - name: Start Supabase (database and auth only)
+        run: |
+          supabase start \
+            -x kong \
+            -x postgrest \
+            -x storage-api \
+            -x imgproxy \
+            -x realtime \
+            -x mailpit \
+            -x postgres-meta \
+            -x studio \
+            -x edge-runtime \
+            -x logflare \
+            -x vector \
+            -x supavisor
+
+      - name: Confirm migrations applied
+        run: supabase migration list --local
+
+      # One command, the same one DEFINITION_OF_DONE.md names. Not a re-listing
+      # of lint/format/typecheck/test steps: separate steps here would be a
+      # second definition of "done" that drifts from the checklist the moment
+      # either changes.
+      #
+      # Neither value below is a secret. They are the fixed, well-known local
+      # development values the Supabase CLI prints on every machine — see
+      # docs/ENVIRONMENT.md §3. No repository secret is used by this workflow.
+      - name: Verify
+        run: npm run verify
+        env:
+          APP_ENV: local
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
