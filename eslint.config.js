@@ -25,7 +25,7 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {
-    files: ['apps/api/src/**/*.ts'],
+    files: ['apps/api/src/**/*.ts', 'apps/api/test/**/*.ts'],
     languageOptions: {
       parserOptions: {
         projectService: true,

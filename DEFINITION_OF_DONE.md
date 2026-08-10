@@ -7,11 +7,17 @@ an opinion, it is written wrong.
 
 ## Automated gates
 
-- [ ] Linter exits zero with **zero warnings** (`eslint`, `dart analyze`).
-- [ ] Formatter reports **no diff** (`prettier --check`, `dart format --set-exit-if-changed`).
-- [ ] Type-check exits zero (`tsc --noEmit`).
-- [ ] Unit tests pass; every acceptance criterion from Phase 0 maps to a **named** test.
-- [ ] Integration tests pass against a **real** test database, not a mock.
+- [ ] **`npm run verify` exits zero.** One command, and the only one that counts. It is
+      `npm run check` — lint with zero warnings, formatter reports no diff, `tsc --noEmit`,
+      unit tests — followed by the integration suite against a **real** database, not a mock.
+      A green `check` alone is **not** this box: `check` deliberately runs without a database
+      so it is usable before pushing, which means it cannot see anything integration covers.
+- [ ] The integration suite **ran**. It fails rather than skipping when the database is
+      unreachable, by design, so "0 integration tests" in the output is a failure to
+      investigate, never a pass. See `apps/api/test/README.md`.
+- [ ] Every acceptance criterion from Phase 0 maps to a **named** test.
+- [ ] Dart side: `flutter analyze` clean, `dart format --set-exit-if-changed` reports no diff,
+      `flutter test` passes. Not covered by `verify`, which is TypeScript only.
 - [ ] If the slice touches a critical journey, an e2e test covers it and passes.
 - [ ] Migration applies cleanly on a **fresh** database.
 - [ ] Migration applies cleanly on a **copy of the current** schema.

@@ -119,6 +119,10 @@ about HTTP.
 - Every protected read and write is scoped `user → membership → business`, applied in the
   **repository layer**. RLS is defence-in-depth only — the API's credential bypasses it.
   (ADR-003, ADR-013, spike 001/C7)
+- Every repository and service function **takes its database executor as an argument** — a
+  Kysely instance or a transaction. Nothing opens its own connection or reaches for a
+  module-level pool. A function that opens its own connection escapes the test transaction,
+  writes for real, and leaves rows behind. (ADR-022, `apps/api/test/integration/harness.ts`)
 - Public unauthenticated reads come only from the `business_public` allowlist projection.
   Public endpoints never read owner-scoped tables. Allowlist, never denylist. (ADR-020)
 - Email is written to the transactional outbox inside the same transaction as the state
