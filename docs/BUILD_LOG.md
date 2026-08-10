@@ -15,10 +15,21 @@ Against `docs/source/Manual-Project-Scaffolding.md`:
 |---|---|
 | 0 — Frame the app | **complete** — product framed, v1 boundary set, unknowns spiked |
 | 1 — Foundational design | **complete** — domain, boundaries, API style, auth model, Do-Not-Vibe surface all decided |
-| 2 — Repo, environment, tooling | **decided, not executed** ← next. ADR-022 to ADR-026 settle toolchain, environments, CI, contract generation and conventions. Nothing has been created. |
+| 2 — Repo, environment, tooling | **in progress** ← current. Branch, workspace, API skeleton and the four quality gates exist. Three items outstanding, listed below. |
 | 3–6 — slice · harden · quality gates · release | not started |
 
-**No application code exists.** The repository contains documentation only.
+**Phase 2, done:** `main` renamed and pushed, GitHub default set (ADR-026) · `.gitattributes`
+normalising to LF · npm workspace over `apps/api` and `packages/contracts`, Node pinned to the
+24 line · `apps/api` Fastify skeleton with `GET /health` and the `modules/` + `platform/` shape
+of `CLAUDE.md` §4 · strict `tsconfig` · ESLint 9 flat config, Prettier, `tsc --noEmit`, Vitest,
+and a root `check` script running all four in sequence · `.env.example` (ADR-023).
+
+**Phase 2, outstanding:** GitHub Actions per ADR-024 · the local Supabase stack and an empty
+migration applying cleanly (ADR-022) · the Flutter project in `apps/mobile` (ADR-015).
+`docs/ENVIRONMENT.md` §4 is the live list.
+
+**The API does nothing product-specific.** One static health route, no database, no auth, no
+tests. `apps/mobile`, `apps/web` and `supabase/` do not exist yet.
 
 ## 2. What has been produced
 
@@ -31,6 +42,9 @@ Against `docs/source/Manual-Project-Scaffolding.md`:
 | `docs/analysis/` | Derived. 01 screen inventory · 02 backend capabilities · 03 flagged ambiguities · 04 unstated assumptions · 05 triage. |
 | `docs/decisions/` | The only place a decision is recorded. One file per ADR; the directory listing is the count. |
 | `docs/spikes/` | Executed spike write-ups. Code deleted, verdicts kept. Observations at a moment, never revised. |
+| `apps/api/` | Fastify skeleton. `app.ts` builds the instance, `server.ts` listens, one `GET /health`. `src/modules/` and `src/platform/` exist empty, each with a README stating what belongs there. |
+| `packages/contracts/` | Placeholder. Empty `src/`; exists so the workspace resolves. Content is generated in a later step (ADR-025). |
+| root tooling | `package.json` workspaces · `.nvmrc` · `.editorconfig` · `.gitattributes` · `eslint.config.js` · `.prettierrc.json` · `vitest.config.ts` · `.env.example`. |
 | `docs/ENVIRONMENT.md` | **Mutable.** What exists outside the repository — installed tools, remotes, hosted projects, deploy targets — each with the command that verifies it. |
 
 ## 3. Decisions so far
@@ -123,14 +137,17 @@ Created by decisions since:
 
 ## 7. Next action
 
-Execute Phase 2. **Check `docs/ENVIRONMENT.md` §4 first** — it states what is already
+Finish Phase 2. **Check `docs/ENVIRONMENT.md` §4 first** — it states what is already
 provisioned and what is not, so no step here is assumed to be pending or assumed to be done.
 
-- Rename the default branch `master` → `main`, and push (ADR-026).
-- Initialise the npm workspace — `apps/api`, `packages/contracts` — and the Flutter project in
-  `apps/mobile`.
-- Wire ESLint 9 flat config, Prettier, `tsc --noEmit` and Vitest; `dart format`,
-  `flutter analyze` and `flutter test` on the Dart side (ADR-022).
-- Stand up the GitHub Actions pipeline per ADR-024.
-- Commit `.env.example` — every variable name and shape, never a value (ADR-023).
+- Initialise the Flutter project in `apps/mobile`, and wire `dart format`, `flutter analyze`
+  and `flutter test` (ADR-015, ADR-022).
+- `supabase init`, and get an empty migration applying cleanly to the local stack — on a fresh
+  database and on a copy of the current schema (ADR-022, `DEFINITION_OF_DONE.md`).
+- Stand up the GitHub Actions pipeline per ADR-024, running the gates that already exist
+  locally: `npm run check`, then the Flutter job, then the build.
+
+Then Phase 3 — the first vertical slice is auth, which is blocked on **E1** and **E2**
+(email provider, sender identity, domain, and the deliverability spike). Both are `S`, so both
+are answered in that slice's Phase 0, not during implementation.
 - Get an empty migration applying cleanly to the local Supabase stack (ADR-022).

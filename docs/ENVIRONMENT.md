@@ -54,6 +54,11 @@ Required-version column cites the ADR that imposes it. "—" means no ADR pins a
 | Flutter | required (ADR-015) | **3.44.8** stable ✓ | `flutter --version` |
 | Dart | ships with Flutter (ADR-015) | **3.12.2** ✓ | `dart --version` |
 | Java runtime | needed by `openapi-generator` (ADR-025) | **openjdk 17.0.20** ✓ | `java --version` |
+| TypeScript | `tsc --noEmit` is a hard gate (ADR-022) | **5.9.x** ✓ — root devDependency | `npx tsc --version` |
+| ESLint | 9, flat config (ADR-022) | **9.x** ✓ — root devDependency, `eslint.config.js` | `npx eslint --version` |
+| Prettier | formatting gate (ADR-022) | **3.x** ✓ — root devDependency | `npx prettier --version` |
+| Vitest | API unit and integration tests (ADR-022) | **3.x** ✓ — root devDependency, no tests yet | `npx vitest --version` |
+| Fastify | the API framework (ADR-013) | **5.x** ✓ — `apps/api` dependency | `npm ls fastify` |
 | git | — | **2.55.0.windows.3** ✓ | `git --version` |
 | GitHub CLI | not required by any ADR; used to administer ADR-024's Actions and secrets | **2.97.0**, authenticated as `dennismugu7` ✓ | `gh --version`, `gh auth status` |
 | `flyctl` | needed to operate ADR-024's deploy target | **absent** ✗ | `command -v flyctl` |
@@ -71,6 +76,11 @@ table remains the only place a version is stated.
 
 `flyctl` is missing and does not block Phase 2 — see §4.
 
+**The last five rows are repository-declared, not machine state.** They are listed because
+"is the toolchain present" is the question this section answers, but their versions are pinned
+in `package.json` and `package-lock.json`, which are the authority. Only the major line is
+given here, deliberately, so this table cannot drift from the lockfile.
+
 ---
 
 ## 3. Provisioned infrastructure
@@ -78,8 +88,9 @@ table remains the only place a version is stated.
 | Resource | Purpose | ADR | Status | Verify |
 |---|---|---|---|---|
 | git remote `origin` | pushes to GitHub | ADR-026 | **exists** — `https://github.com/dennismugu7/bookflow.git` | `git remote -v` |
-| GitHub repository `dennismugu7/bookflow` | code host; runs Actions | ADR-024, ADR-026 | **exists, private — but empty.** Zero refs on the remote; no default branch. The 9 local commits have never been pushed. | `gh repo view dennismugu7/bookflow --json visibility,defaultBranchRef` · `git ls-remote --heads origin` (returns 0 lines) |
-| Default branch `main` | trunk; ADR-024 deploys staging on merge to it | ADR-026 | **not yet.** Local branch is `master`; the remote has no branches at all, so the rename is local-then-push, not a remote rename. | `git branch --show-current` |
+| GitHub repository `dennismugu7/bookflow` | code host; runs Actions | ADR-024, ADR-026 | **exists, private, populated.** History pushed 2026-08-10; the remote is no longer empty. | `gh repo view dennismugu7/bookflow --json visibility,defaultBranchRef` · `git ls-remote --heads origin` |
+| Default branch `main` | trunk; ADR-024 deploys staging on merge to it | ADR-026 | **exists — renamed from `master` and set as the GitHub default, 2026-08-10.** Local `main` tracks `origin/main`. | `git branch --show-current` · `gh repo view dennismugu7/bookflow --json defaultBranchRef --jq '.defaultBranchRef.name'` |
+| Branch protection on `main` | — | not required by any ADR | **not yet.** ADR-026 chose trunk-based squash-merge; nothing enforces it mechanically. | `gh api repos/dennismugu7/bookflow/branches/main/protection` |
 | GitHub Actions workflows | lint · type-check · tests · drift check · build · iOS | ADR-024 | **not yet** — no `.github/` directory | `ls .github/workflows` |
 | GitHub Actions secrets | staging/production credentials, Apple signing | ADR-023, ADR-024 | **not yet** | `gh secret list` |
 | Local Supabase stack | development database; integration tests | ADR-022, ADR-023 | **not yet** — no `supabase/` directory, no containers | `supabase status` — currently errors `No such container: supabase_db_bookflow` |
@@ -111,14 +122,16 @@ change ADR-023; it is the kind of plan change ADR-023's last consequence anticip
 
 | Missing | Why it blocks |
 |---|---|
-| Default branch `main` | ADR-026's rename, and ADR-024's deploy-on-merge trigger names `main`. |
-| First push to the remote | The repository exists but is empty; nothing can run in CI until refs exist. |
-| GitHub Actions workflows | ADR-024. `DEFINITION_OF_DONE.md` makes "CI is green end to end" a hard gate. |
-| Local Supabase stack (`supabase/` + `supabase init`) | ADR-022. Phase 2 ends with an empty migration applying cleanly. |
-| `.env.example` | ADR-023 requires it committed, listing every variable name and shape, never a value. |
+| GitHub Actions workflows | ADR-024. `DEFINITION_OF_DONE.md` makes "CI is green end to end" a hard gate. The gates exist and run locally; nothing runs them on push. |
+| Local Supabase stack (`supabase/` + `supabase init`) | ADR-022. Phase 2 ends with an empty migration applying cleanly on a fresh database. |
+| Flutter project in `apps/mobile` | ADR-015, ADR-022. `dart format`, `flutter analyze` and `flutter test` are Definition-of-Done gates with nothing to run against. |
 
-All of these are repository work plus the already-installed toolchain. **No purchase, no
-signup and no external provisioning is required to finish Phase 2.**
+**Done since this file was written:** the `master` → `main` rename and the first push
+(ADR-026); `.env.example` (ADR-023); the npm workspace, the `apps/api` Fastify skeleton and
+the lint / format / type-check / test gates (ADR-022). See `docs/BUILD_LOG.md` §1.
+
+All three remaining items are repository work plus the already-installed toolchain. **No
+purchase, no signup and no external provisioning is required to finish Phase 2.**
 
 ### Does not block Phase 2 — Phase 3 and later
 

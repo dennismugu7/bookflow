@@ -1,0 +1,32 @@
+# Normalise every text file to LF in the repository, check out native.
+# Without this, Windows checkouts round-trip CRLF into the index and git warns
+# on every `add`. The repository is the canonical form; the working copy is not.
+* text=auto
+
+# Files that must be LF even on a Windows checkout — they are read by tools or
+# shells that do not tolerate CR.
+*.sh        text eol=lf
+*.ts        text eol=lf
+*.js        text eol=lf
+*.mjs       text eol=lf
+*.cjs       text eol=lf
+*.json      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.md        text eol=lf
+*.sql       text eol=lf
+*.dart      text eol=lf
+.nvmrc      text eol=lf
+.gitignore  text eol=lf
+.gitattributes text eol=lf
+.editorconfig  text eol=lf
+.env.example   text eol=lf
+
+# Binary — never touched, never diffed as text.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.pdf  binary
+*.ico  binary
+*.woff  binary
+*.woff2 binary

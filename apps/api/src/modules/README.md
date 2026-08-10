@@ -1,0 +1,1 @@
+One folder per domain, each holding `<name>.repository.ts`, `<name>.service.ts`, `<name>.routes.ts` and `<name>.schema.ts` — a feature adds a folder here, never a file to four top-level directories (`CLAUDE.md` §4).

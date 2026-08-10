@@ -1,0 +1,35 @@
+{
+  "name": "bookflow",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Bookflow — one backend serving a Flutter owner app and a client booking web app.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=24.0.0 <25.0.0"
+  },
+  "workspaces": [
+    "apps/api",
+    "packages/contracts"
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit --project apps/api/tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm run test",
+    "dev": "npm run dev --workspace apps/api",
+    "start": "npm run start --workspace apps/api"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^24.10.1",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.47.2",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,1 @@
+Cross-cutting infrastructure the modules depend on — `db`, `auth`, `storage`, `mailer`, `outbox` — and nothing domain-specific: no business rules, no module may be imported from here (`CLAUDE.md` §4).

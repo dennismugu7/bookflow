@@ -33,9 +33,9 @@ the native app against the real backend.
 
 ## 3. Repository layout — **target state**
 
-**Most of this does not exist yet.** Only `CLAUDE.md`, `DEFINITION_OF_DONE.md` and `docs/`
-are present; Phase 2 creates the rest. `✗` marks what has not been created. Update these
-marks as Phase 2 creates each directory.
+**Phase 2 is partway through creating this.** `✗` marks what has not been created. Update
+these marks as Phase 2 creates each directory. What exists carries a skeleton, not a feature:
+`apps/api` serves one static health route and nothing else.
 
 ```
 bookflow/
@@ -43,11 +43,11 @@ bookflow/
 ├─ DEFINITION_OF_DONE.md          ✓
 ├─ docs/            source · analysis · decisions · spikes  (read-only history)   ✓
 │  └─ ENVIRONMENT.md  the one mutable doc — state of the world outside the repo    ✓
-├─ apps/                          ✗
-│  ├─ api/          Fastify service and the outbox/expiry worker                  ✗
+├─ apps/                          ✓
+│  ├─ api/          Fastify service and the outbox/expiry worker                  ✓ skeleton
 │  └─ mobile/       Flutter owner app                                             ✗
-├─ packages/                      ✗
-│  └─ contracts/    OpenAPI spec and generated Dart/TypeScript clients            ✗
+├─ packages/                      ✓
+│  └─ contracts/    OpenAPI spec and generated Dart/TypeScript clients            ✓ empty
 ├─ supabase/                      ✗
 │  ├─ migrations/   plain SQL, Supabase CLI (ADR-022)                             ✗
 │  └─ seed.sql      one demo salon, bookings in every status (ADR-026)            ✗

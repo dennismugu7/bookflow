@@ -6,3 +6,28 @@
 .env
 .env.*
 !.env.example
+
+# git-filter-repo replacement maps. These hold the literal secret on the
+# left-hand side of every `==>` — committing one would re-commit the thing it
+# exists to remove. CLAUDE.md §5.
+/replace.txt
+/*.replace.txt
+/replacements.txt
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Tool caches
+.eslintcache
+coverage/
+.vitest/
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+*.swp

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+coverage/
+package-lock.json
+
+# Generated output (ADR-025). Regenerated, never hand-edited, and excluded from
+# format rules for the reason ADR-025 gives.
+packages/contracts/
+
+# Prose. Every markdown file in this repository is hand-authored with
+# deliberate line breaks and hand-aligned tables; Prettier reflows both.
+# `docs/source/` is immutable besides, so formatting it is not an option.
+*.md
