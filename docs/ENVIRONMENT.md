@@ -59,6 +59,8 @@ Required-version column cites the ADR that imposes it. "—" means no ADR pins a
 | Prettier | formatting gate (ADR-022) | **3.x** ✓ — root devDependency | `npx prettier --version` |
 | Vitest | API unit and integration tests (ADR-022) | **3.x** ✓ — root devDependency, no tests yet | `npx vitest --version` |
 | Fastify | the API framework (ADR-013) | **5.x** ✓ — `apps/api` dependency | `npm ls fastify` |
+| Kysely + `pg` | typed queries, no ORM (ADR-022) | **0.29.x / 8.x** ✓ — `apps/api` dependencies | `npm ls kysely pg` |
+| kysely-codegen | generates types *from* the live schema (ADR-022) | **0.20.x** ✓ — `apps/api` devDependency | `npm ls kysely-codegen` |
 | git | — | **2.55.0.windows.3** ✓ | `git --version` |
 | GitHub CLI | not required by any ADR; used to administer ADR-024's Actions and secrets | **2.97.0**, authenticated as `dennismugu7` ✓ | `gh --version`, `gh auth status` |
 | `flyctl` | needed to operate ADR-024's deploy target | **absent** ✗ | `command -v flyctl` |
@@ -93,7 +95,8 @@ given here, deliberately, so this table cannot drift from the lockfile.
 | Branch protection on `main` | — | not required by any ADR | **not yet.** ADR-026 chose trunk-based squash-merge; nothing enforces it mechanically. | `gh api repos/dennismugu7/bookflow/branches/main/protection` |
 | GitHub Actions workflows | lint · type-check · tests · drift check · build · iOS | ADR-024 | **not yet** — no `.github/` directory | `ls .github/workflows` |
 | GitHub Actions secrets | staging/production credentials, Apple signing | ADR-023, ADR-024 | **not yet** | `gh secret list` |
-| Local Supabase stack | development database; integration tests | ADR-022, ADR-023 | **not yet** — no `supabase/` directory, no containers | `supabase status` — currently errors `No such container: supabase_db_bookflow` |
+| Local Supabase stack | development database; integration tests | ADR-022, ADR-023 | **exists — 2026-08-10.** `supabase/config.toml` committed, Postgres **17.6** (the line spike 001 ran against), one migration applied. Endpoints: API `54321`, DB `54322`, Studio `54323`, Mailpit `54324`. | `npm run db:start` then `supabase status`; `docker ps` shows `supabase_db_bookflow` |
+| Local stack credentials | — | ADR-023 | **not secrets.** The anon, service-role, publishable, secret and S3 keys the CLI prints are fixed, well-known development values, identical on every machine. They are not in `.env.example` and must never be reused for a hosted project. | `supabase status` reprints them at any time |
 | Supabase organisation | owns the hosted projects | ADR-023 | **exists** — `mugu-labs` (`ggvjgvsymgczpyopnljp`), the only org on the account | `supabase orgs list` |
 | Staging Supabase project | hosted staging (ADR-023) | ADR-023 | **not yet.** Confirmed: no bookflow project of any kind exists. | `supabase projects list` |
 | Production Supabase project | hosted production (ADR-023) | ADR-023 | **not yet.** Same. | `supabase projects list` |
@@ -123,12 +126,13 @@ change ADR-023; it is the kind of plan change ADR-023's last consequence anticip
 | Missing | Why it blocks |
 |---|---|
 | GitHub Actions workflows | ADR-024. `DEFINITION_OF_DONE.md` makes "CI is green end to end" a hard gate. The gates exist and run locally; nothing runs them on push. |
-| Local Supabase stack (`supabase/` + `supabase init`) | ADR-022. Phase 2 ends with an empty migration applying cleanly on a fresh database. |
 | Flutter project in `apps/mobile` | ADR-015, ADR-022. `dart format`, `flutter analyze` and `flutter test` are Definition-of-Done gates with nothing to run against. |
+| `supabase/seed.sql` | ADR-026. `db reset` warns `no files matched pattern: supabase/seed.sql` on every run. Not writable yet — ADR-026 wants one demo salon with bookings in every status, which needs tables, which are Phase 3. |
 
 **Done since this file was written:** the `master` → `main` rename and the first push
 (ADR-026); `.env.example` (ADR-023); the npm workspace, the `apps/api` Fastify skeleton and
-the lint / format / type-check / test gates (ADR-022). See `docs/BUILD_LOG.md` §1.
+the lint / format / type-check / test gates (ADR-022); the local Supabase stack, the
+extensions migration and Kysely with generated types (ADR-022). See `docs/BUILD_LOG.md` §1.
 
 All three remaining items are repository work plus the already-installed toolchain. **No
 purchase, no signup and no external provisioning is required to finish Phase 2.**

@@ -48,8 +48,8 @@ bookflow/
 │  └─ mobile/       Flutter owner app                                             ✗
 ├─ packages/                      ✓
 │  └─ contracts/    OpenAPI spec and generated Dart/TypeScript clients            ✓ empty
-├─ supabase/                      ✗
-│  ├─ migrations/   plain SQL, Supabase CLI (ADR-022)                             ✗
+├─ supabase/                      ✓
+│  ├─ migrations/   plain SQL, Supabase CLI (ADR-022)                             ✓ extensions only
 │  └─ seed.sql      one demo salon, bookings in every status (ADR-026)            ✗
 └─ apps/web/        client booking site — built last                              ✗
 ```

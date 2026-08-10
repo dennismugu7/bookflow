@@ -13,6 +13,13 @@ export default tseslint.config(
       '**/dist/**',
       '**/build/**',
       'packages/contracts/**',
+      // Generated from the live schema by `npm run db:types` (ADR-022).
+      'apps/api/src/platform/db.types.ts',
+      // Scratch space the Supabase CLI writes on `start` — it contains the
+      // edge-runtime's own TypeScript, which is neither ours nor in any
+      // tsconfig. Already gitignored by supabase/.gitignore; ESLint does not
+      // read that.
+      'supabase/.temp/**',
     ],
   },
   js.configs.recommended,

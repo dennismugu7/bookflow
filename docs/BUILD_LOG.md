@@ -24,12 +24,16 @@ normalising to LF · npm workspace over `apps/api` and `packages/contracts`, Nod
 of `CLAUDE.md` §4 · strict `tsconfig` · ESLint 9 flat config, Prettier, `tsc --noEmit`, Vitest,
 and a root `check` script running all four in sequence · `.env.example` (ADR-023).
 
-**Phase 2, outstanding:** GitHub Actions per ADR-024 · the local Supabase stack and an empty
-migration applying cleanly (ADR-022) · the Flutter project in `apps/mobile` (ADR-015).
-`docs/ENVIRONMENT.md` §4 is the live list.
+Then: the local Supabase stack on Postgres 17.6 · one migration, extensions only · Kysely with
+types generated from the live schema · root `db:*` scripts.
 
-**The API does nothing product-specific.** One static health route, no database, no auth, no
-tests. `apps/mobile`, `apps/web` and `supabase/` do not exist yet.
+**Phase 2, outstanding:** GitHub Actions per ADR-024 · the Flutter project in `apps/mobile`
+(ADR-015) · `supabase/seed.sql`, which ADR-026 wants carrying a demo salon and therefore
+cannot be written before there are tables. `docs/ENVIRONMENT.md` §4 is the live list.
+
+**The API does nothing product-specific.** One static health route, no tables, no auth, no
+tests. The database has extensions and nothing else — the domain schema belongs to the first
+vertical slice, not to the foundation. `apps/mobile` and `apps/web` do not exist yet.
 
 ## 2. What has been produced
 
@@ -44,7 +48,8 @@ tests. `apps/mobile`, `apps/web` and `supabase/` do not exist yet.
 | `docs/spikes/` | Executed spike write-ups. Code deleted, verdicts kept. Observations at a moment, never revised. |
 | `apps/api/` | Fastify skeleton. `app.ts` builds the instance, `server.ts` listens, one `GET /health`. `src/modules/` and `src/platform/` exist empty, each with a README stating what belongs there. |
 | `packages/contracts/` | Placeholder. Empty `src/`; exists so the workspace resolves. Content is generated in a later step (ADR-025). |
-| root tooling | `package.json` workspaces · `.nvmrc` · `.editorconfig` · `.gitattributes` · `eslint.config.js` · `.prettierrc.json` · `vitest.config.ts` · `.env.example`. |
+| `supabase/` | `config.toml` (generated, unmodified) and one migration: extensions only, no tables. Migrations are Do-Not-Vibe. |
+| root tooling | `package.json` workspaces and `db:*` scripts · `.nvmrc` · `.editorconfig` · `.gitattributes` · `eslint.config.js` · `.prettierrc.json` · `vitest.config.ts` · `.env.example`. |
 | `docs/ENVIRONMENT.md` | **Mutable.** What exists outside the repository — installed tools, remotes, hosted projects, deploy targets — each with the command that verifies it. |
 
 ## 3. Decisions so far

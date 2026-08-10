@@ -7,6 +7,11 @@ package-lock.json
 # Generated output (ADR-025). Regenerated, never hand-edited, and excluded from
 # format rules for the reason ADR-025 gives.
 packages/contracts/
+apps/api/src/platform/db.types.ts
+
+# Scratch space written by `supabase start`. Gitignored by supabase/.gitignore;
+# Prettier does not read that.
+supabase/.temp/
 
 # Prose. Every markdown file in this repository is hand-authored with
 # deliberate line breaks and hand-aligned tables; Prettier reflows both.
