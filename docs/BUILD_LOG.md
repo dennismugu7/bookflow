@@ -2,6 +2,11 @@
 
 State and process. No rationale — that lives in `docs/decisions/`, linked below.
 
+**This file holds nothing that can go stale without a decision changing.** Facts that change
+on their own live elsewhere and are pointed at, never copied: toolchain and provisioning in
+`docs/ENVIRONMENT.md`, open-item counts in `docs/analysis/05-triage.md`, the decision list in
+`docs/decisions/` itself.
+
 ## 1. Where we are
 
 Against `docs/source/Manual-Project-Scaffolding.md`:
@@ -24,8 +29,9 @@ Against `docs/source/Manual-Project-Scaffolding.md`:
 | `docs/source/` | **Read-only and authoritative.** The original manuals, style reference and design docs. Never edited. |
 | `docs/designs/` | 28 native + 16 web screenshots, document order. Filenames are hints; the doc is authoritative. |
 | `docs/analysis/` | Derived. 01 screen inventory · 02 backend capabilities · 03 flagged ambiguities · 04 unstated assumptions · 05 triage. |
-| `docs/decisions/` | 21 ADRs. The only place a decision is recorded. |
-| `docs/spikes/` | Executed spike write-ups. Code deleted, verdicts kept. |
+| `docs/decisions/` | The only place a decision is recorded. One file per ADR; the directory listing is the count. |
+| `docs/spikes/` | Executed spike write-ups. Code deleted, verdicts kept. Observations at a moment, never revised. |
+| `docs/ENVIRONMENT.md` | **Mutable.** What exists outside the repository — installed tools, remotes, hosted projects, deploy targets — each with the command that verifies it. |
 
 ## 3. Decisions so far
 
@@ -60,7 +66,11 @@ Against `docs/source/Manual-Project-Scaffolding.md`:
 
 ## 4. Open work
 
-`docs/analysis/05-triage.md` — **F: 0 · S: 57 · D: 45 · RESOLVED: 47.**
+Open items live in `docs/analysis/05-triage.md`, classified `F` (blocks the foundation), `S`
+(blocks a slice) or `D` (deferrable). **That file owns the counts. They are not copied here** —
+a duplicated count is a fact that can go stale silently.
+
+**No `F` items remain.**
 
 **Rule: an `S` item is resolved during its slice's Phase 0, never during implementation.**
 If a slice hits an unresolved `S` item mid-build, stop and decide it — do not infer an answer.
@@ -71,10 +81,10 @@ If a slice hits an unresolved `S` item mid-build, stop and decide it — do not 
 deliverability spike) — the first vertical slice is auth, and auth cannot activate an account
 without email.
 
-**Prerequisites before Phase 2 can execute.** ADR-022 requires **Docker Desktop (WSL2 backend)**
-and the **Supabase CLI**; spike 001 recorded both as **absent** from the development machine.
-Outstanding one-time operations: rename `master` → `main` (ADR-026) and delete the
-`bookflow-spike` Supabase project (ADR-023).
+**Prerequisites before Phase 2 can execute.** Toolchain installation and infrastructure
+provisioning are recorded in `docs/ENVIRONMENT.md` — §2 for tools, §3 for what is provisioned,
+§4 for what is missing and which phase each missing item blocks. Read it rather than this file;
+any claim here about the machine or the hosted accounts would be stale by construction.
 
 ## 5. Screens that must be designed before they can be built
 
@@ -108,13 +118,19 @@ Created by decisions since:
   the human gate.
 - **Do-Not-Vibe surfaces are named explicitly in the completion report**, or "none" is stated.
 - **Context is cleared between slices.** The repository artifacts carry state, not the
-  conversation. If something matters, it is in a file — an ADR, the triage, or this log.
-  Nothing is remembered.
+  conversation. If something matters, it is in a file — an ADR, the triage, `ENVIRONMENT.md`,
+  or this log. Nothing is remembered.
 
 ## 7. Next action
 
-Install Docker Desktop (WSL2 backend) and the Supabase CLI — both prerequisites of ADR-022 and
-both currently absent — then execute Phase 2: rename `master` → `main`, initialise the npm
-workspace (`apps/api`, `packages/contracts`) and the Flutter project in `apps/mobile`, wire
-ESLint/Prettier/`tsc`/Vitest and the Dart equivalents, stand up the GitHub Actions pipeline per
-ADR-024, and get an empty migration applying cleanly to the local Supabase stack.
+Execute Phase 2. **Check `docs/ENVIRONMENT.md` §4 first** — it states what is already
+provisioned and what is not, so no step here is assumed to be pending or assumed to be done.
+
+- Rename the default branch `master` → `main`, and push (ADR-026).
+- Initialise the npm workspace — `apps/api`, `packages/contracts` — and the Flutter project in
+  `apps/mobile`.
+- Wire ESLint 9 flat config, Prettier, `tsc --noEmit` and Vitest; `dart format`,
+  `flutter analyze` and `flutter test` on the Dart side (ADR-022).
+- Stand up the GitHub Actions pipeline per ADR-024.
+- Commit `.env.example` — every variable name and shape, never a value (ADR-023).
+- Get an empty migration applying cleanly to the local Supabase stack (ADR-022).

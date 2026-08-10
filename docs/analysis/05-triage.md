@@ -181,8 +181,22 @@ ADR-001 resolves nothing; it sequences the work. ADR-016 resolves no tracked ite
 
 ## F items
 
-**None.** All twenty-eight items that were classified F across the life of this triage are
-settled, in `docs/decisions/ADR-001` through `ADR-021` and `docs/spikes/001-platform.md`.
+**None.**
+
+Two numbers appear for this, and both are right. **Twenty-eight** items were classified `F` in
+the original triage. **Three more were classified `F` afterwards**, as ADR-013's consequences
+surfaced questions the first pass had not asked:
+
+- **I3b** — where the membership scoping rule is enforced. Forced by spike 001/C7: the service
+  credential bypasses RLS entirely, so the layer had to be named.
+- **E11** — what process runs the outbox worker.
+- **K51** — what process expires an unverified booking.
+
+**Thirty-one in total**, which is the row count in the Resolved table above. **The table is
+authoritative; this section summarises it.** Where they disagree, the table is correct.
+
+All thirty-one are settled, in `docs/decisions/ADR-001` through `ADR-021` and
+`docs/spikes/001-platform.md`.
 
 Two carry accepted, named risks rather than clean closure, and both are recorded in their
 ADRs rather than buried here:
