@@ -26,9 +26,13 @@ closer to how the API layer will actually connect. No Docker, no Supabase CLI; n
 needed against a hosted project.
 
 **Credential note.** The supplied `SUPABASE_DB_URL` was not a valid URI: it contained two
-spaces in the userinfo section. Probing three candidates established the password is
-`Dynamics7*Supabase` with no spaces — both were paste artifacts. Recorded because the
-working connection string is a real output of this spike.
+spaces in the userinfo section. Probing three candidates established that the password
+contained no spaces — both were paste artifacts. Recorded because the working connection
+string is a real output of this spike.
+
+> The password value stood here in plaintext until 2026-08-10. It is
+> **`[REDACTED — see Amendments]`**. See the Amendments section for what was committed, and
+> what that does and does not mean now.
 
 ---
 
@@ -276,13 +280,33 @@ merely reported. ADR-023 required this.
 
 Two consequences follow:
 
-1. **The credential in the "Credential note" above is retired, not merely rotated.** That note
-   contains a working password in plaintext, and it is preserved because it is a real output
-   of the spike and because rewriting history to hide a dead credential teaches the wrong
-   lesson. It authenticates to nothing. **It must not be reused anywhere.**
-2. **The verdicts are no longer re-runnable as written.** Every command above targeted that
+1. **The verdicts are no longer re-runnable as written.** Every command above targeted that
    project. Re-verifying any of them means pointing at the local stack or a new hosted
    project. The verdicts stand; the environment that produced them does not.
+2. **The credential is retired, not merely rotated** — ADR-023 calls that the stronger
+   outcome. See the entry below.
+
+**2026-08-10 — the plaintext credential in the Credential note is redacted.**
+
+Three facts, recorded rather than quietly erased:
+
+1. **A credential was committed.** The Credential note above carried a working database
+   password in plaintext, in a tracked file, from this spike's first commit until now. That
+   is a defect regardless of what the credential opened. `CLAUDE.md` §5 now states the rule it
+   broke.
+2. **It authenticated to a project that no longer exists.** `iohxfurykkocqfagdkzy` is deleted,
+   so the value grants no access to anything and never will again. It must not be reused
+   anywhere regardless.
+3. **It remains in git history before this commit.** Redacting the file changes the current
+   tree, not the past. Anyone with a clone can still recover the value from an earlier
+   revision. It is left there deliberately: the credential is dead, and rewriting published
+   history to hide a dead secret costs more than it buys. **A live credential would not be
+   handled this way** — that would require rotation first and history rewriting second, in
+   that order.
+
+The observation the note actually records — that the supplied `SUPABASE_DB_URL` was
+unparseable because of paste-artifact spaces in the userinfo section — is a real finding and
+is unchanged. Only the value is gone.
 
 **Carried-forward item 4** ("these results are from one project on its current plan") is
 therefore sharper than when written: the next environments are a local Docker stack and two

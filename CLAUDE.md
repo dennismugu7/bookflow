@@ -140,6 +140,9 @@ about HTTP.
   git remote, a hosted project, a deploy target, a secret — is recorded in
   `docs/ENVIRONMENT.md` **in the same commit as the change**. A stale entry there is a defect,
   not untidiness.
+- No credential, key, token or connection string is ever committed — including in analysis,
+  spike reports and examples, where "it is only a throwaway" is exactly how it happens.
+  `.env.example` carries variable names and shapes only, never a value. (ADR-023)
 
 ## 6. Do-Not-Vibe
 
