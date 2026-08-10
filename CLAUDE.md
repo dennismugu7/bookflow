@@ -57,6 +57,17 @@ bookflow/
 - `docs/` — history. Never edited to reflect new decisions; new decisions get a new ADR.
   The sole exception is `docs/ENVIRONMENT.md`, which records current state and is revised in
   place, in the same commit as the change it records.
+- `docs/decisions/` — **append-only, not frozen.** The protection is on the *decision*, not on
+  the file:
+  - **Context, Decision and Consequences are never rewritten.** That is where the reasoning
+    lives, and a reader must be able to see what was known and believed at the time.
+  - An ADR **may** carry an **`## Amendments`** section at the end — dated entries recording
+    what has changed since. Appending one is not a violation of immutability; it is how an ADR
+    stays honest without losing its history.
+  - An amendment records a fact that has moved on. It does **not** reverse a decision. A
+    reversal is a new ADR that supersedes the old one.
+  - The same convention applies to `docs/spikes/` — the verdicts stand as written, and an
+    amendment may note what has changed beneath them.
 - `apps/api/` — all business logic and both processes. No client-facing rendering.
 - `apps/mobile/` — Flutter only. No hand-written API models; they are generated.
 - `packages/contracts/` — generated output plus the spec. Nothing hand-authored is committed here.

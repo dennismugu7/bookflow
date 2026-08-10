@@ -254,3 +254,37 @@ All spike objects removed from the project and verified: 0 `spike*` tables in `p
 `spike` schema dropped, the cron job unscheduled, both buckets emptied and deleted (0
 remaining). `spikes/` and `.env*` are gitignored; the spike code is deleted with the
 directory and only this file survives.
+
+---
+
+## Amendments
+
+**2026-08-10 — the toolchain gaps recorded above are closed, and the spike project is gone.**
+
+Per the amendment convention in `CLAUDE.md` §3, everything above this line stands as executed
+and is not revised. This section records only what has changed since.
+
+**Toolchain.** The Toolchain table above records "No Docker, no Supabase CLI", correctly: this
+spike ran against a hosted project and needed neither. Both are now installed, Docker on the
+WSL2 backend ADR-022 requires. `psql` is still absent, and still not a blocker, for the reason
+given above. Current versions are in `docs/ENVIRONMENT.md` §2 — not repeated here, so that
+this entry cannot go stale.
+
+**The spike project has been deleted.** `iohxfurykkocqfagdkzy`, the hosted project every
+verdict above was executed against, no longer exists — confirmed against the account, not
+merely reported. ADR-023 required this.
+
+Two consequences follow:
+
+1. **The credential in the "Credential note" above is retired, not merely rotated.** That note
+   contains a working password in plaintext, and it is preserved because it is a real output
+   of the spike and because rewriting history to hide a dead credential teaches the wrong
+   lesson. It authenticates to nothing. **It must not be reused anywhere.**
+2. **The verdicts are no longer re-runnable as written.** Every command above targeted that
+   project. Re-verifying any of them means pointing at the local stack or a new hosted
+   project. The verdicts stand; the environment that produced them does not.
+
+**Carried-forward item 4** ("these results are from one project on its current plan") is
+therefore sharper than when written: the next environments are a local Docker stack and two
+hosted projects that do not exist yet. `pg_cron` availability was verified on the deleted
+project and should be re-checked on staging before anything depends on it.

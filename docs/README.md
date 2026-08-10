@@ -1,61 +1,69 @@
-# Bookflow — Source Materials
+# Bookflow — docs
 
-This folder is the **read-only source of truth** for the Bookflow build. Nothing in here
-gets edited. Everything we generate (specs, tokens, CLAUDE.md, ADRs) is derived from it
-and lives elsewhere in the repo.
+Entry point to `docs/`. Rules for the code live in `/CLAUDE.md`; this file says what is in
+here and how much each part is allowed to change.
+
+## What changes, and what does not
+
+| Path | Nature |
+|---|---|
+| `source/` | **Immutable.** The original manuals, style reference and design docs. Never edited, never corrected — a mistake in here is a fact about the brief. |
+| `spikes/` | **Immutable verdicts.** Observations at a moment, written once. Amendable only by appending a dated `## Amendments` section; nothing above it is touched. |
+| `decisions/` | **Append-only.** One ADR per decision. Context, Decision and Consequences are never rewritten; a dated `## Amendments` section may be appended to record what has moved on. A *reversal* is a new ADR superseding the old one, never an edit. |
+| `analysis/` | **Derived, and updated as decisions land.** Read off `source/`, then revised when an ADR resolves or narrows an item. Never edited to *make* a decision — only to record that one was made elsewhere. |
+| `BUILD_LOG.md` | **Mutable.** Phase status, process and the decision index. Holds nothing that can go stale without a decision changing. |
+| `ENVIRONMENT.md` | **Mutable by design.** State of the world outside the repository — tools, remotes, hosted projects, deploy targets — each claim with the command that verifies it. Updated in the same commit as the change it records. |
+
+The amendment convention for `decisions/` and `spikes/` is stated in `CLAUDE.md` §3.
+
+## Reading order for a newcomer
+
+1. **`/CLAUDE.md`** — the rules. Not self-sufficient; it states them without the situation.
+2. **`BUILD_LOG.md`** — where the project stands, and what happens next.
+3. **`ENVIRONMENT.md`** — what actually exists outside the repo right now.
+4. **`decisions/`** — why every rule is the rule. Numbered; each states what it resolves.
+5. **`analysis/05-triage.md`** — what is still open, and which slice each item blocks.
+6. **`source/`** — the brief itself, when you need what was actually asked for.
+
+Steps 1–3 are enough to know the situation. Step 4 is what stops you re-deciding something.
 
 ## Layout
 
 ```
 docs/
-├── README.md                    ← you are here
-├── source/                      ← the original documents, do not edit
-│   ├── Manual-Project-Scaffolding.pdf/.md   Phases 0–6: building the foundation
-│   ├── Manual-Feature-Scaffolding.pdf/.md   Phases 0–10: the per-feature loop
-│   ├── Styles-Reference.pdf/.md             visual language: colour, type, shape
-│   ├── DD-Bookflow-Native.pdf/.md           owner-facing mobile app, ~24 screens
-│   └── DD-Bookflow-Web.pdf/.md              client-facing booking web app, ~11 pages
-└── designs/
-    ├── native/                  28 screenshots, in document order
-    └── web/                     16 screenshots, in document order
+├── README.md          ← you are here
+├── BUILD_LOG.md       phase status, process, decision index
+├── ENVIRONMENT.md     tools, remotes, hosted projects — the one mutable record
+├── source/            Manual-Project-Scaffolding (Phases 0–6, the foundation) ·
+│                      Manual-Feature-Scaffolding (Phases 0–10, per feature) ·
+│                      Styles-Reference · DD-Bookflow-Native · DD-Bookflow-Web
+├── analysis/          01 screens · 02 backend capabilities · 03 ambiguities
+│                      04 unstated assumptions · 05 triage
+├── decisions/         one file per ADR
+├── spikes/            executed write-ups; code deleted, verdicts kept
+└── designs/           native/ 28 screenshots · web/ 16, both in document order
 ```
 
-The `.md` files are plain-text extractions of the PDFs — use them for reading, grepping
-and quoting. The `.pdf` files are authoritative if the two ever disagree (bullet nesting
-and tables survive better in the PDF).
+## Precedence
+
+**`source/` wins over anything derived from it**, including all of `analysis/`.
+
+Within `source/`, each document exists as both `.pdf` and `.md`. **The PDF wins.** The `.md`
+files are plain-text extractions — use them for reading, grepping and quoting — but bullet
+nesting and tables survive better in the PDF, so where the two disagree the PDF is
+authoritative.
+
+**Screenshot filenames are hints only** — auto-derived from the nearest heading, so a few are
+`untitled` or carry a stray sentence. The document names the screen, not the file.
 
 ## Reading the design docs
 
-Both design documents follow the same per-screen structure:
+Both follow one per-screen structure: **UI Elements** · **Layout Notes** · **User Interactions
+& Action Flows** (split into Frontend Action and Backend / System Action) · **Open Questions**.
+`DD-Bookflow-Native` is the **owner** producing the data, `DD-Bookflow-Web` the **client**
+consuming it — `CLAUDE.md` §1.
 
-1. **UI Elements** — what the user sees
-2. **Layout Notes** — spacing, alignment, structure
-3. **User Interactions & Action Flows** — for each interaction: **Frontend Action** and
-   **Backend / System Action**
-4. **Open Questions** — the author's own unresolved items, flagged inline
-
-Point 3 is the most valuable part: the backend actions are effectively a first draft of
-the API surface. Point 4 must be resolved by a human before the affected screen is built
-— these are not to be guessed at.
-
-## Image filenames
-
-Screenshot filenames are derived automatically from the nearest heading in the PDF and
-are approximate. A few are `untitled` or carry a stray sentence. **The document is
-authoritative for what a screen is called** — treat the filename as a hint only. They are
-in document order, so `native-00` is the first screenshot in the native doc, and so on.
-
-## The two products
-
-| | Native (`DD-Bookflow-Native`) | Web (`DD-Bookflow-Web`) |
-|---|---|---|
-| User | the salon/barber **owner** | the **client** booking an appointment |
-| Role | **produces** the data | **consumes** the data |
-
-One backend, one database, two clients. The web app's opening hours, services, team and
-portfolio all originate in the owner's mobile app — the web doc states this explicitly in
-its "Data Source Summary" sections.
-
-## Build order
-
-Shared backend → native owner app → client web app.
+The Action Flows are the most valuable part: the backend actions are effectively a first draft
+of the API surface. The Open Questions are the author's own unresolved items — decided by a
+human before the affected screen is built, never guessed at, and tracked in
+`analysis/05-triage.md`.

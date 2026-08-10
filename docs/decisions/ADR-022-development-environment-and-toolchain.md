@@ -57,3 +57,22 @@ gaps, not engineering choices. Recorded here so the gap is closed explicitly.
 ## Items created
 
 None.
+
+## Amendments
+
+**2026-08-10 — Docker Desktop and the Supabase CLI are installed.**
+
+The Context section above records spike 001's finding of "no Docker, no Supabase CLI, no
+psql", and the Consequences section states both are prerequisites that "must be installed
+before [Phase 2] can execute". Both statements were true when written and are retained
+unchanged.
+
+Both are now installed. Docker Desktop is running on the WSL2 backend this ADR requires, and
+the Supabase CLI is present and authenticated. `psql` remains absent and is not required —
+the Supabase CLI is the migration runner.
+
+**No toolchain prerequisite of this ADR is outstanding.** Current versions and the command
+that verifies each are in `docs/ENVIRONMENT.md` §2, which is the authority on installed state;
+this amendment deliberately names no version numbers, so that it cannot go stale.
+
+The decision itself is unchanged.
