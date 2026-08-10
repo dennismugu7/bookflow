@@ -1,0 +1,8 @@
+# Spike working directories at the repo root — throwaway by construction.
+# Root-anchored: docs/spikes/ holds the surviving write-ups and must stay tracked.
+/spikes/
+
+# Secrets
+.env
+.env.*
+!.env.example
