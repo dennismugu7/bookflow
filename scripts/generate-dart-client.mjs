@@ -58,10 +58,21 @@ function run(command, args, options = {}) {
 rmSync(STAGING, { recursive: true, force: true });
 mkdirSync(STAGING, { recursive: true });
 
+// On Linux the container's root would own everything it writes into the bind
+// mount, and the subsequent cleanup fails with EACCES — which is how this was
+// found, in CI rather than here, because Docker Desktop on Windows maps
+// ownership for you and hides the problem entirely. Run as the invoking user
+// where that concept exists.
+const dockerUser =
+  process.platform === 'win32'
+    ? []
+    : ['--user', `${process.getuid()}:${process.getgid()}`];
+
 console.log(`dart-client: generating with ${GENERATOR_IMAGE}`);
 run('docker', [
   'run',
   '--rm',
+  ...dockerUser,
   '-v',
   `${process.cwd()}:/local`,
   GENERATOR_IMAGE,
