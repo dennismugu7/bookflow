@@ -24,6 +24,10 @@ import type { Config } from './platform/config.ts';
 export const healthResponseSchema = z
   .object({
     status: z.literal('ok'),
+    // DELIBERATE DRIFT: added to the contract without regenerating the spec
+    // or the Dart client. CI's `contracts` job must catch this. Reverted in
+    // the next commit.
+    uptimeSeconds: z.number().int().nonnegative(),
   })
   .describe('Liveness response.')
   // `id` promotes this into components/schemas, so the generated Dart type is
@@ -94,7 +98,10 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
       },
     },
     () => {
-      return { status: 'ok' as const };
+      return {
+        status: 'ok' as const,
+        uptimeSeconds: Math.floor(process.uptime()),
+      };
     },
   );
 
