@@ -31,6 +31,15 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Runtime dependencies of the generated API client (ADR-025, dart-dio).
+  # Mirrored from the pubspec openapi-generator emits, which is discarded —
+  # the client lives inside this package rather than beside it.
+  dio: ^5.7.0
+  built_value: ^8.9.5
+  built_collection: ^5.1.1
+  one_of: '>=1.5.0 <2.0.0'
+  one_of_serializer: '>=1.5.0 <2.0.0'
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -38,6 +47,11 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  # built_value emits the .g.dart half of every generated model. Without
+  # build_runner the generated client does not compile.
+  build_runner: ^2.4.13
+  built_value_generator: ^8.9.5
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

@@ -29,6 +29,8 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:migrate:new": "supabase migration new",
+    "contracts:generate": "node scripts/generate-openapi.mjs && node scripts/generate-dart-client.mjs",
+    "contracts:check": "node scripts/check-contracts.mjs",
     "db:types": "kysely-codegen --dialect postgres --include-pattern \"public.*\" --out-file apps/api/src/platform/db.types.ts"
   },
   "devDependencies": {
