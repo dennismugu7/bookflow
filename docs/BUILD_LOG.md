@@ -64,7 +64,9 @@ trigger conditions, neither a TODO:
 
 **The API does nothing product-specific.** One static health route, no tables, no auth, no
 tests. The database has extensions and nothing else — the domain schema belongs to the first
-vertical slice, not to the foundation. `apps/mobile` and `apps/web` do not exist yet.
+vertical slice, not to the foundation. `apps/mobile` holds a Flutter skeleton with no screens;
+`apps/web` does not exist and must not, until the owner app can configure a real salon
+(ADR-001).
 
 ## 2. What has been produced
 
@@ -78,9 +80,11 @@ vertical slice, not to the foundation. `apps/mobile` and `apps/web` do not exist
 | `docs/decisions/` | The only place a decision is recorded. One file per ADR; the directory listing is the count. |
 | `docs/spikes/` | Executed spike write-ups. Code deleted, verdicts kept. Observations at a moment, never revised. |
 | `apps/api/` | Fastify skeleton. `app.ts` builds the instance, `server.ts` listens, one `GET /health`. `src/modules/` and `src/platform/` exist empty, each with a README stating what belongs there. |
-| `packages/contracts/` | Placeholder. Empty `src/`; exists so the workspace resolves. Content is generated in a later step (ADR-025). |
+| `packages/contracts/` | `openapi.json`, generated from the Zod route schemas in `apps/api`. Committed, never hand-edited. |
+| `packages/bookflow_api/` | The generated Dart client package. `apps/mobile` depends on it by path. Regenerated wholesale (ADR-025). |
+| `apps/mobile/` | Flutter skeleton, package `com.mugulabs.bookflow`. Placeholder screen, no design system, no API calls yet. |
 | `supabase/` | `config.toml` (generated, unmodified) and one migration: extensions only, no tables. Migrations are Do-Not-Vibe. |
-| `.github/workflows/ci.yml` | ADR-024's gate. Runs `npm run verify` — the same command `DEFINITION_OF_DONE.md` names — against a real Supabase stack. No deploy, no Flutter, no iOS yet. |
+| `.github/workflows/ci.yml` | ADR-024's gate: four jobs — `verify` (TypeScript), `mobile` (Dart on Linux), `ios-build` (unsigned, macOS, label-gated), `contracts` (drift check). **No deploy job yet** — that is Phase 3. |
 | root tooling | `package.json` workspaces and `db:*` scripts · `.nvmrc` · `.editorconfig` · `.gitattributes` · `eslint.config.js` · `.prettierrc.json` · `vitest.config.ts` · `.env.example`. |
 | `docs/ENVIRONMENT.md` | **Mutable.** What exists outside the repository — installed tools, remotes, hosted projects, deploy targets — each with the command that verifies it. |
 

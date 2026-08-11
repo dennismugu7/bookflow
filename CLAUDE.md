@@ -33,7 +33,7 @@ the native app against the real backend.
 
 ## 3. Repository layout — **target state**
 
-**Phase 2 is partway through creating this.** `✗` marks what has not been created. Update
+**Phase 2 is complete; Phase 3 creates the rest.** `✗` marks what has not been created. Update
 these marks as Phase 2 creates each directory. What exists carries a skeleton, not a feature:
 `apps/api` serves one static health route and nothing else.
 
