@@ -248,44 +248,32 @@ asked. **Both are now settled and neither blocks Phase 3.**
   `apps/mobile` layout alongside the API's, and §5 carries the two rules a reviewer must be able
   to check without reading the ADR.
 
-### Resolve before starting — the `S` items this slice touches
+### Phase 0 is complete — every blocking item is decided
 
-An `S` item is answered in its slice's Phase 0, never during implementation. These are the ones
-the foundation slice touches; the rest of the `S` list belongs to later slices. Thirteen remain
-after ADR-027 and ADR-029 — the triage owns the list, this is the subset that blocks here.
+**No `F` and no `S` item blocks Phase 3.** Six ADRs on 2026-08-11 closed the last of them, on
+top of ADR-027 and ADR-029 earlier the same day.
 
-| ID | Why it blocks Phase 3 |
-|---|---|
-| **K6** | Password policy. Sign-up validates a password on the first day; retrofitting a policy invalidates stored credentials. |
-| **K7** | *Narrowed by ADR-027.* The mechanism is now GoTrue configuration, not code. What remains: which values to set for expiry, attempt limit, resend cooldown and lockout — and whether GoTrue can issue the 8-digit code the design specifies at all. |
-| **K10** | Whether Terms and Privacy are versioned and acceptance recorded at sign-up. If yes it is a column in the auth schema this phase creates — cheap now, a migration and a backfill later. |
-| **I10** | What the app shows an authenticated user with zero memberships. This is literally the first state the "one true page" renders for a user who just signed up, so the shell cannot be built without it. |
-| **J3** | English-only, or English and Swahili. The frontend shell is built here; retrofitting internationalisation through a shell and its routing is far more expensive than deciding it once. |
-| **K5** *(partial)* | Only the auth-screen slots (#3). The other eleven "Backend / System Action" slots belong to the slices that own their screens. |
-| **K62** | Which journeys are "critical" in the sense `DEFINITION_OF_DONE.md` requires an e2e test for, and what tooling runs those tests. Neither the term nor the tooling exists anywhere; sign-up and login are almost certainly critical. |
-| **K63** | What the "one placeholder domain table" actually is. Migrations are Do-Not-Vibe and cannot be improvised at implementation time. |
-| **K64** | Which screen is the "one true page". The obvious candidate — the zero-membership state, I10 — has no design at all (§5), so deciding I10 still leaves nothing to render. |
-| **K65** | Whether Phase 3 is one `DEFINITION_OF_DONE.md` pass and one PR, or several. Determines branching and sequencing before the first branch is cut. |
-| **K66** | Whether the sole owner self-reviewing on a PR satisfies the human gate. Phase 3 touches four Do-Not-Vibe surfaces and there is one contributor. |
-| **K67** | How migrations reach staging and production, and under which credential. Both migrations and production secrets are Do-Not-Vibe. |
-| **K68** | The budget position. *Narrowed by ADR-027*, which removed the email provider and sending domain from this phase — what remains is Fly.io, the only Phase 3 item that certainly costs money, plus confirming the Supabase free-tier allowance. No document records whether a spend will be made. |
+| Decided | By | Was |
+|---|---|---|
+| Password minimum eight characters, no composition rules, leaked-password protection on. Verification code six digits, ten-minute expiry, sixty-second resend cooldown, GoTrue rate limiting. | **ADR-030** | K6, K7 |
+| Three tables, not a placeholder: `user_profiles`, `businesses`, `memberships` — the tenancy spine, so the membership scoping rule is proved rather than asserted. Terms acceptance versioned and timestamped at sign-up. | **ADR-031** | K63, K10, I10 (data) |
+| One true page is **My Profile Details (#20)**. Four sequential PRs, each runnable; full `DEFINITION_OF_DONE.md` pass when the slice is whole. Sole-contributor human gate under three named constraints. Zero-membership users see a stub. | **ADR-032** | K64, K65, K66, I10 (UI) |
+| A critical journey is one whose failure prevents a booking being taken or made. Flutter `integration_test` against staging, and nothing else satisfies the gate. | **ADR-033** | K62 |
+| Migrations applied by CI on merge to `main`, before deploy, with a scoped Actions credential. Never from a development machine. Production gets a manual gate. Phase 3 is free-tier only. | **ADR-034** | K67, K68 (for this phase) |
+| English only for v1. No i18n wiring. Revisit on demand from real owners, not speculation. | **ADR-035** | J3 |
 
-**No longer blocking, and why:** **K56** (ADR-029 — social login is out of scope). **K60**
-(ADR-027 — the outbox does not ship here). **E1 and E2** (ADR-027 — staging uses Supabase's
-built-in SMTP; the provider, the sending domain and the deliverability spike belong to the
-custom-SMTP cutover, before any real owner signs up).
+**K5 is not a prerequisite and never was.** The twelve empty "Backend / System Action" slots are
+the *output* of building those screens, not an input to them — each is settled as its endpoint is
+written and reviewed with it. Recorded so nobody waits on it.
 
-**Not blocking, and deliberately excluded:**
+**One deviation from the design is now on record.** The verification screen shows six digits, not
+the eight `DD-Bookflow-Native.md` specifies — see `docs/analysis/08-design-deviations.md`, a list
+ADR-030 starts because none existed.
 
-- **A13, A14** are booking-slice items. A13 concerns the `btree_gist` operator class for the
-  exclusion constraint and A14 the test contention it causes; Phase 3's data layer has auth
-  tables and one placeholder, no exclusion constraint, and no booking fixtures. Neither belongs
-  here. **But A13 becomes cheaply answerable during Phase 3** — the first migration against a
-  hosted project runs in this phase, which is the moment to check the search path in force,
-  rather than discovering it in the booking slice's migration.
-- **K57** is `D`, not `S`, but Phase 3 will bump into it: it asks the refresh token's absolute
-  lifetime and whether it rotates on use, and this phase issues refresh tokens. Answer it here
-  or accept the default deliberately; do not let implementation answer it by accident.
+**Still open but not blocking:** K57 (`D` — refresh token absolute lifetime and rotation) will be
+met during implementation; answer it deliberately rather than by default. K69 (`D`) is branding
+consistency across the two email template systems. K70 (`D`) is that the Terms and Privacy
+documents do not yet exist, so the version string recorded at sign-up currently points at nothing.
 
 ### Provision before starting — infrastructure that does not exist
 
@@ -309,7 +297,14 @@ holds one unrelated project (`Dashboard X`). Confirm the current per-organisatio
 Production Supabase is **not** required for Phase 3 — this phase deploys to staging only, and
 ADR-024 deploys production on a tag.
 
+**Budget: free tiers only** (ADR-034). Fly.io's free allowance, staging Supabase on the free
+tier. The first real cost is the custom-SMTP cutover, triggered before any real owner signs up.
+
 ### Then
 
-Phase 3's own Phase 0 resolves the table above and records each answer. `DEFINITION_OF_DONE.md`
-governs completion, including the human gate.
+**Phase 0 is done. Phase 3 may begin**, with PR 1 of ADR-032's four: the data layer and its
+migrations. What remains before the first commit is provisioning, not deciding — the staging
+Supabase project, the Fly.io app, and the deployable image, all listed above.
+
+`DEFINITION_OF_DONE.md` governs completion of the whole slice at PR 4, including the human gate
+under ADR-032's constraints.
