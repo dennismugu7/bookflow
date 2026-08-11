@@ -76,11 +76,17 @@ describe('migration 20260810163827_enable_extensions', () => {
     // in `public` until Phase 3 arrived; the foundation migration now creates
     // three, so the claim narrowed to what this migration is actually
     // responsible for. `schema.integration.test.ts` owns the tables.
-    const result = await sql<{ count: string }>`
-      select count(*)::text as count
-      from supabase_migrations.schema_migrations
-      where version = '20260810163827'
-    `.execute(ctx.db);
+    // asAdmin: `supabase_migrations` is the CLI's bookkeeping schema and the
+    // application role has no privilege on it — correctly, since nothing the
+    // API does should read the migration ledger.
+    const result = await ctx.asAdmin(
+      async () =>
+        await sql<{ count: string }>`
+          select count(*)::text as count
+          from supabase_migrations.schema_migrations
+          where version = '20260810163827'
+        `.execute(ctx.db),
+    );
 
     expect(result.rows[0]?.count).toBe('1');
   });

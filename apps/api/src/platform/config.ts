@@ -31,9 +31,19 @@ export const configSchema = z.object({
   HOST: nonEmpty.default('0.0.0.0'),
 
   // ─── Database ──────────────────────────────────────────────────────────────
-  // Required: the API cannot do anything useful without it, so failing at
-  // startup beats failing on the first request.
+  // The APPLICATION's connection, as the `bookflow_api` role (ADR-038) — CRUD,
+  // no DDL, no ownership. Nothing in the application connects as `postgres`, in
+  // any environment. Required: the API cannot do anything useful without it, so
+  // failing at startup beats failing on the first request.
   DATABASE_URL: nonEmpty.startsWith('postgres'),
+
+  // A PRIVILEGED connection, as `postgres`. Used by tooling only — the
+  // integration test harness, which creates `auth.users` rows and switches
+  // roles, and `npm run db:types`, which introspects. **The API never reads
+  // this.** Optional, because a deployed API has no business holding it: it is
+  // absent in staging and production by design, and its absence there is the
+  // point rather than an oversight.
+  ADMIN_DATABASE_URL: nonEmpty.startsWith('postgres').optional(),
 
   // ─── Supabase ──────────────────────────────────────────────────────────────
   // Optional *for now*, and deliberately so. No Supabase client library is

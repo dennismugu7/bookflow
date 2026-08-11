@@ -20,36 +20,17 @@ const OTHER = '22222222-2222-4222-8222-222222222222';
 
 /** Creates an auth user directly. Local only, inside a rolled-back transaction. */
 async function makeUser(id: string, email: string): Promise<void> {
-  await sql`
-    insert into auth.users (instance_id, id, aud, role, email, created_at, updated_at)
-    values ('00000000-0000-0000-0000-000000000000', ${id}::uuid,
-            'authenticated', 'authenticated', ${email}, now(), now())
-  `.execute(ctx.db);
-}
-
-/**
- * Runs a statement expected to fail, inside a savepoint.
- *
- * A failed statement aborts the enclosing transaction, so every later statement
- * — including the harness's rollback — errors with "current transaction is
- * aborted". The savepoint contains the damage to the one statement.
- */
-async function expectFailure(
-  run: () => Promise<unknown>,
-  pattern: RegExp,
-  message: string,
-): Promise<void> {
-  await sql.raw('savepoint probe').execute(ctx.db);
-  let caught: unknown;
-  try {
-    await run();
-  } catch (error) {
-    caught = error;
-  }
-  await sql.raw('rollback to savepoint probe').execute(ctx.db);
-
-  expect(caught, message).toBeInstanceOf(Error);
-  expect((caught as Error).message, message).toMatch(pattern);
+  // asAdmin, deliberately: the migration grants the application role nothing on
+  // `auth`, and ADR-037 has the API create users through GoTrue's admin API
+  // over HTTP rather than by writing this table. A fixture may do it; the
+  // application may not.
+  await ctx.asAdmin(async () => {
+    await sql`
+      insert into auth.users (instance_id, id, aud, role, email, created_at, updated_at)
+      values ('00000000-0000-0000-0000-000000000000', ${id}::uuid,
+              'authenticated', 'authenticated', ${email}, now(), now())
+    `.execute(ctx.db);
+  });
 }
 
 async function makeBusiness(name: string): Promise<string> {
@@ -142,7 +123,7 @@ describe('memberships uniqueness', () => {
       values (${OWNER}::uuid, ${businessId}::uuid)
     `.execute(ctx.db);
 
-    await expectFailure(
+    await ctx.expectDenied(
       () =>
         sql`
           insert into public.memberships (user_id, business_id)
@@ -178,7 +159,7 @@ describe('memberships uniqueness', () => {
     await makeUser(OWNER, 'role-probe@bookflow.test');
     const businessId = await makeBusiness('Role Probe');
 
-    await expectFailure(
+    await ctx.expectDenied(
       () =>
         sql`
           insert into public.memberships (user_id, business_id, role)
@@ -204,7 +185,11 @@ describe('cascades', () => {
       values (${OWNER}::uuid, ${businessId}::uuid)
     `.execute(ctx.db);
 
-    await sql`delete from auth.users where id = ${OWNER}::uuid`.execute(ctx.db);
+    await ctx.asAdmin(async () => {
+      await sql`delete from auth.users where id = ${OWNER}::uuid`.execute(
+        ctx.db,
+      );
+    });
 
     const profiles = await sql<{ count: string }>`
       select count(*)::text as count from public.user_profiles where id = ${OWNER}::uuid
@@ -233,9 +218,12 @@ describe('cascades', () => {
     const memberships = await sql<{ count: string }>`
       select count(*)::text as count from public.memberships where business_id = ${businessId}::uuid
     `.execute(ctx.db);
-    const users = await sql<{ count: string }>`
-      select count(*)::text as count from auth.users where id = ${OTHER}::uuid
-    `.execute(ctx.db);
+    const users = await ctx.asAdmin(
+      async () =>
+        await sql<{ count: string }>`
+          select count(*)::text as count from auth.users where id = ${OTHER}::uuid
+        `.execute(ctx.db),
+    );
 
     expect(memberships.rows[0]?.count).toBe('0');
     expect(users.rows[0]?.count).toBe('1');
@@ -249,21 +237,21 @@ describe('anon and authenticated read nothing', () => {
   //   1. REVOKE — anon and authenticated hold no table privileges at all.
   //   2. RLS with no policies — even with privileges, zero rows are visible.
   //
-  // `set local role` applies inside the test's transaction and is undone by the
-  // rollback, so the harness's isolation still holds.
+  // `ctx.asRole` restores the application role afterwards, which matters here
+  // more than anywhere: see the savepoint warning in the harness.
 
   for (const role of ['anon', 'authenticated'] as const) {
     it(`denies ${role} outright — no privilege on any of the three tables`, async () => {
       await makeBusiness(`Privilege Probe ${role}`);
 
       for (const table of ['businesses', 'memberships', 'user_profiles']) {
-        await sql.raw(`set local role ${role}`).execute(ctx.db);
-        await expectFailure(
-          () => sql.raw(`select * from public.${table}`).execute(ctx.db),
-          /permission denied/i,
-          `${role} cannot read ${table}`,
+        await ctx.asRole(role, () =>
+          ctx.expectDenied(
+            () => sql.raw(`select * from public.${table}`).execute(ctx.db),
+            /permission denied/i,
+            `${role} cannot read ${table}`,
+          ),
         );
-        await sql.raw('set local role postgres').execute(ctx.db);
       }
     });
 
@@ -273,30 +261,45 @@ describe('anon and authenticated read nothing', () => {
       // later migration, this test keeps passing and the system stays safe.
       await makeBusiness(`RLS Probe ${role}`);
 
-      await sql
-        .raw(`grant select on public.businesses to ${role}`)
-        .execute(ctx.db);
-      await sql.raw(`set local role ${role}`).execute(ctx.db);
+      // The grant itself needs ownership, so it is admin work.
+      await ctx.asAdmin(async () => {
+        await sql
+          .raw(`grant select on public.businesses to ${role}`)
+          .execute(ctx.db);
+      });
 
-      const result = await sql<{ count: string }>`
-        select count(*)::text as count from public.businesses
-      `.execute(ctx.db);
+      const result = await ctx.asRole(
+        role,
+        async () =>
+          await sql<{ count: string }>`
+            select count(*)::text as count from public.businesses
+          `.execute(ctx.db),
+      );
 
       expect(result.rows[0]?.count).toBe('0');
-
-      await sql.raw('set local role postgres').execute(ctx.db);
     });
   }
 
-  it('the service connection reads normally', async () => {
-    // The control. Same transaction, no role change: the API's credential sees
+  it('the application role reads normally — the control', async () => {
+    // Same transaction, ambient role, no switch: the API's own credential sees
     // its data, which is what makes the two results above meaningful.
-    await makeBusiness('Service Role Probe');
+    await makeBusiness('Application Role Probe');
 
     const result = await sql<{ count: string }>`
       select count(*)::text as count from public.businesses
     `.execute(ctx.db);
 
     expect(Number(result.rows[0]?.count ?? '0')).toBeGreaterThan(0);
+  });
+
+  it('runs as the application role by default', async () => {
+    // The ambient condition itself, asserted rather than assumed. If this ever
+    // reports `postgres`, every other test in the suite is running with
+    // privileges the API does not have.
+    const result = await sql<{ current_user: string }>`
+      select current_user
+    `.execute(ctx.db);
+
+    expect(result.rows[0]?.current_user).toBe('bookflow_api');
   });
 });

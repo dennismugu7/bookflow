@@ -114,11 +114,20 @@ jobs:
       # Neither value below is a secret. They are the fixed, well-known local
       # development values the Supabase CLI prints on every machine — see
       # docs/ENVIRONMENT.md §3. No repository secret is used by this workflow.
+      # Two connections, per ADR-038. DATABASE_URL is the application role —
+      # CRUD, no DDL — and is what apps/api actually uses. ADMIN_DATABASE_URL is
+      # postgres, for the test harness alone: it creates auth.users rows and
+      # switches roles, neither of which the application role can do.
+      #
+      # The application role's local password is set by supabase/seed.sql, which
+      # `supabase start` applies. That is the only reason this works without a
+      # secret — and it is the reason seed.sql must never stop being local-only.
       - name: Verify
         run: npm run verify
         env:
           APP_ENV: local
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          DATABASE_URL: postgresql://bookflow_api:local_dev_password@127.0.0.1:54322/postgres
+          ADMIN_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
 
   # ── Mobile ─────────────────────────────────────────────────────────────────
   # Independent of `verify`. Neither job needs the other, so a Dart failure
