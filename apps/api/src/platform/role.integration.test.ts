@@ -199,6 +199,106 @@ describe('the application role can use its data', () => {
   });
 });
 
+describe('the updated_at trigger fires for the application role', () => {
+  // ADR-036 maintains `updated_at` by trigger. `public.set_updated_at()` is
+  // SECURITY INVOKER, so it executes as whoever fired it — for every write the
+  // API makes, that is `bookflow_api`, which holds EXECUTE only through
+  // PostgreSQL's default grant of function execution to PUBLIC.
+  //
+  // ── WHAT THIS DOES AND DOES NOT PROTECT AGAINST ────────────────────────────
+  //
+  // The obvious worry is that revoking EXECUTE from PUBLIC — a plausible
+  // hardening step — would silently stop `updated_at` being maintained.
+  // **It would not, and this was checked rather than assumed.** PostgreSQL
+  // verifies EXECUTE on a trigger function when the trigger is CREATED, not
+  // each time it fires. Revoking EXECUTE from PUBLIC and writing as
+  // `bookflow_api` still updated the timestamp; `has_function_privilege`
+  // returned false while the trigger kept working.
+  //
+  // What the privilege does still gate is **creating** a trigger on this
+  // function, and calling it directly. Migrations run as `postgres`, which owns
+  // the function and always has EXECUTE, so even that is unlikely to bite.
+  //
+  // These tests are therefore kept for what they genuinely establish — that the
+  // trigger is attached and effective under the application role's own
+  // privileges — and not for a revoke tripwire they cannot be.
+
+  it('is SECURITY INVOKER and executable by the application role', async () => {
+    const result = await sql<{
+      can_execute: boolean;
+      security_invoker: boolean;
+    }>`
+      select has_function_privilege(
+               ${APPLICATION_ROLE}, 'public.set_updated_at()', 'EXECUTE'
+             ) as can_execute,
+             not p.prosecdef as security_invoker
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = 'set_updated_at'
+    `.execute(ctx.db);
+
+    const fn = result.rows[0];
+    expect(fn, 'public.set_updated_at() exists').toBeDefined();
+
+    expect(
+      fn!.security_invoker,
+      'set_updated_at must stay SECURITY INVOKER: as DEFINER it would run with ' +
+        "its owner's privileges, which is a privilege-escalation shape on a " +
+        'function attached to every table',
+    ).toBe(true);
+
+    expect(
+      fn!.can_execute,
+      'the application role should be able to execute set_updated_at — this ' +
+        'does not gate the trigger firing, but it does gate creating triggers ' +
+        'on it and calling it directly',
+    ).toBe(true);
+  });
+
+  it('maintains updated_at on an UPDATE performed as the application role', async () => {
+    // Deliberately NOT wrapped in asAdmin: the point is that the write happens
+    // with exactly the privileges the API has. This is what would catch the
+    // trigger being dropped, detached, or made owner-only.
+    const who = await sql<{
+      current_user: string;
+    }>`select current_user`.execute(ctx.db);
+    expect(
+      who.rows[0]?.current_user,
+      'this test is meaningless unless it runs as the application role',
+    ).toBe(APPLICATION_ROLE);
+
+    const inserted = await sql<{ id: string }>`
+      insert into public.businesses (name) values ('Trigger Privilege Probe')
+      returning id
+    `.execute(ctx.db);
+    const id = inserted.rows[0]?.id;
+    expect(id).toBeTruthy();
+
+    // `now()` is the transaction timestamp and does not advance within a
+    // transaction, so "did it move?" is unobservable here. The stronger
+    // property is used instead: the writer sets updated_at to 2000 and the
+    // trigger must overwrite it.
+    await sql`
+      update public.businesses
+      set name = 'Renamed By App',
+          updated_at = timestamptz '2000-01-01 00:00:00Z'
+      where id = ${id}::uuid
+    `.execute(ctx.db);
+
+    const after = await sql<{ year: number; matches_now: boolean }>`
+      select extract(year from updated_at)::int as year,
+             updated_at = now() as matches_now
+      from public.businesses where id = ${id}::uuid
+    `.execute(ctx.db);
+
+    expect(
+      after.rows[0]?.year,
+      'updated_at still holds the value the writer supplied — the trigger did ' +
+        'not fire for the application role',
+    ).not.toBe(2000);
+    expect(after.rows[0]?.matches_now).toBe(true);
+  });
+});
+
 describe('the application role cannot change the schema', () => {
   it('cannot create a table', async () => {
     await ctx.expectDenied(

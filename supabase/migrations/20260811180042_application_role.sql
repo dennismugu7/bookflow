@@ -154,3 +154,33 @@ grant select, insert, update, delete on public.memberships  to bookflow_api;
 --   no sequences to grant on. A future table with a sequence needs its own
 --   grant, and the enumeration test will not catch that; sequences are not
 --   tables.
+--
+-- * NO EXPLICIT GRANT ON `public.set_updated_at()`, AND THE DEPENDENCY IS
+--   WEAKER THAN IT LOOKS.
+--
+--   ADR-036 maintains `updated_at` by trigger, and that function is SECURITY
+--   INVOKER — it executes as whoever fired it, which for every write the API
+--   makes is `bookflow_api`. The role holds EXECUTE on it only through
+--   PostgreSQL's default grant of function execution to PUBLIC; there is no
+--   explicit grant here and `pg_proc.proacl` is null.
+--
+--   The natural worry is that revoking EXECUTE from PUBLIC — a plausible
+--   hardening step — would silently stop `updated_at` being maintained.
+--   **It would not. This was tested, not assumed.** PostgreSQL checks EXECUTE
+--   on a trigger function when the trigger is CREATED, not each time it fires.
+--   With EXECUTE revoked from PUBLIC and `has_function_privilege` returning
+--   false, an UPDATE as `bookflow_api` still had its `updated_at` overwritten
+--   by the trigger.
+--
+--   What the privilege does gate is CREATING a trigger on this function, and
+--   calling it directly. Migrations run as `postgres`, which owns the function
+--   and always has EXECUTE, so a future migration attaching this trigger to a
+--   new table is unaffected too.
+--
+--   Left on the default deliberately. An explicit grant would imply a
+--   dependency that turns out not to exist, and would be one more line to keep
+--   correct for no gain. `role.integration.test.ts`, in the "the updated_at
+--   trigger fires for the application role" block, asserts the function is
+--   still SECURITY INVOKER and that the trigger is effective under the
+--   application role's own privileges — which is what would actually catch the
+--   trigger being dropped, detached, or made owner-only.
