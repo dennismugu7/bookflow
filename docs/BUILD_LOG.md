@@ -281,11 +281,11 @@ None of this is repository work. All of it needs an account, a purchase or a dec
 
 | Needed | For | Recorded |
 |---|---|---|
-| **Staging Supabase project** | Migrations run in every environment; `DEFINITION_OF_DONE.md` requires deploy-and-smoke-test on staging | ADR-023 |
+| ~~Staging Supabase project~~ | **Done 2026-08-11.** `bookflow-staging`, ref `vvborjxraxdeflrllqwh`, `eu-central-1`. Migrations applied and verified on the hosted project | ADR-023 |
 | **Fly.io account, app and `flyctl`** | The deploy target. `flyctl` is not installed | ADR-024 |
 | **A deployable image** | ADR-024 runs the API and the worker as two processes from one image. No Dockerfile or `fly.toml` exists | ADR-013, ADR-024 |
-| **The deploy job in `.github/workflows/ci.yml`** | Staging deploys automatically on merge to `main`. The workflow has no deploy job at all | ADR-024 |
-| **Fly.io secrets and GitHub Actions secrets** | `DATABASE_URL`, the Supabase keys, the mail provider key. No production credential is ever placed on a development machine | ADR-023 |
+| **The deploy job in `.github/workflows/ci.yml`** | Staging deploys automatically on merge to `main`. **The migration job now exists** (`migrate-staging`, push to `main` only, gated on `verify` and `contracts`); the deploy job does not | ADR-024, ADR-034 |
+| **Fly.io secrets and GitHub Actions secrets** | **`STAGING_DATABASE_URL` exists**; the Fly.io secrets and the app's own runtime config do not. No hosted credential is on a development machine | ADR-023 |
 | ~~Email provider and verified sending domain~~ | **No longer Phase 3.** ADR-027 puts staging on Supabase's built-in SMTP. Needed before any real owner signs up | ADR-023, ADR-027 |
 | ~~A domain name~~ | **No longer Phase 3** for the sender identity. Still needed for `PUBLIC_WEB_ORIGIN` when `apps/web` exists, which is after the owner app | ADR-002, ADR-027 |
 

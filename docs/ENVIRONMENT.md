@@ -97,13 +97,13 @@ given here, deliberately, so this table cannot drift from the lockfile.
 | GitHub repository `dennismugu7/bookflow` | code host; runs Actions | ADR-024, ADR-026 | **exists, private, populated.** History pushed 2026-08-10; the remote is no longer empty. | `gh repo view dennismugu7/bookflow --json visibility,defaultBranchRef` · `git ls-remote --heads origin` |
 | Default branch `main` | trunk; ADR-024 deploys staging on merge to it | ADR-026 | **exists — renamed from `master` and set as the GitHub default, 2026-08-10.** Local `main` tracks `origin/main`. | `git branch --show-current` · `gh repo view dennismugu7/bookflow --json defaultBranchRef --jq '.defaultBranchRef.name'` |
 | Branch protection on `main` | enforce ADR-026's PR-then-squash-merge, and require CI green | ADR-026, ADR-024 | **DEFERRED, DELIBERATELY — see "Accepted risk" below.** Attempted 2026-08-10 via both mechanisms; both return `403 Upgrade to GitHub Pro or make this repository public to enable this feature`. Free personal plan, private repository. Not a TODO: GitHub Pro is not being bought at this stage, and the pre-push hook is the compensating control. | `gh api repos/dennismugu7/bookflow/branches/main/protection` · `gh api repos/dennismugu7/bookflow/rulesets` |
-| GitHub Actions workflows | ADR-024's CI | ADR-024 | **exists — 2026-08-10.** `.github/workflows/ci.yml`, job `verify`, on push to `main` and on PRs targeting it. Runs `npm run verify` against a real Supabase stack (database + gotrue only). ~2m40s. Observed failing and passing, deliberately. Four jobs: `verify` (TypeScript), `mobile` (Dart on Linux), `ios-build` (unsigned, macOS, runs only on `main`, `workflow_dispatch`, or a PR labelled `ios`), and `contracts` (regenerates the spec and Dart client, fails on drift). **Not yet covered:** the Fly.io deploy — Phase 3. | `gh run list --branch main` · `gh workflow view CI` |
-| GitHub Actions secrets | staging/production credentials, Apple signing | ADR-023, ADR-024 | **not yet** | `gh secret list` |
+| GitHub Actions workflows | ADR-024's CI | ADR-024 | **exists — 2026-08-10.** `.github/workflows/ci.yml`, job `verify`, on push to `main` and on PRs targeting it. Runs `npm run verify` against a real Supabase stack (database + gotrue only). ~2m40s. Observed failing and passing, deliberately. Four jobs: `verify` (TypeScript), `mobile` (Dart on Linux), `ios-build` (unsigned, macOS, runs only on `main`, `workflow_dispatch`, or a PR labelled `ios`), and `contracts` (regenerates the spec and Dart client, fails on drift). A fifth job, `migrate-staging`, applies migrations to staging on push to `main` only, gated on `verify` and `contracts` (ADR-034). **Not yet covered:** the Fly.io deploy — Phase 3. | `gh run list --branch main` · `gh workflow view CI` |
+| GitHub Actions secrets | staging/production credentials, Apple signing | ADR-023, ADR-024 | **one exists: `STAGING_DATABASE_URL`**, set 2026-08-11 — the staging session-pooler connection string. Generated at project-creation time, never displayed, never written to disk, never on a development machine. Apple signing secrets: still none. | `gh secret list` |
 | Local Supabase stack | development database; integration tests | ADR-022, ADR-023 | **exists — 2026-08-10.** `supabase/config.toml` committed, Postgres **17.6** (the line spike 001 ran against), one migration applied. Endpoints: API `54321`, DB `54322`, Studio `54323`, Mailpit `54324`. | `npm run db:start` then `supabase status`; `docker ps` shows `supabase_db_bookflow` |
 | Local stack credentials | — | ADR-023 | **not secrets.** The anon, service-role, publishable, secret and S3 keys the CLI prints are fixed, well-known development values, identical on every machine. They are not in `.env.example` and must never be reused for a hosted project. | `supabase status` reprints them at any time |
 | Supabase organisation | owns the hosted projects | ADR-023 | **exists** — `mugu-labs` (`ggvjgvsymgczpyopnljp`), the only org on the account | `supabase orgs list` |
-| Staging Supabase project | hosted staging (ADR-023) | ADR-023 | **not yet.** Confirmed: no bookflow project of any kind exists. | `supabase projects list` |
-| Production Supabase project | hosted production (ADR-023) | ADR-023 | **not yet.** Same. | `supabase projects list` |
+| Staging Supabase project | hosted staging (ADR-023) | ADR-023 | **exists — created 2026-08-11.** `bookflow-staging`, ref **`vvborjxraxdeflrllqwh`**, region `eu-central-1`, PostgreSQL 17.6, `ACTIVE_HEALTHY`. Migrations applied. The ref is an identifier, not a secret. | `supabase projects list` |
+| Production Supabase project | hosted production (ADR-023) | ADR-023 | **not yet, and it does not fit.** The org is on the **free plan** — confirmed by the API refusing `--size` with *"Instance size cannot be specified for free plan organizations"* — which allows two active projects. `Dashboard X` and `bookflow-staging` occupy both. Production is a spend decision, not a provisioning step. | `supabase projects list` |
 | `bookflow-spike` Supabase project (`iohxfurykkocqfagdkzy`) | spike 001's throwaway project; held credentials that appeared in a transcript | ADR-023 marks it for deletion | **deleted — verified 2026-08-10.** The ref is absent from the authenticated project list. Deleting it did **not** retire its password, contrary to ADR-023's expectation: that password was reused from other accounts rather than generated for this project, and was rotated separately on discovery. See the spike's Amendments. | `supabase projects list` — `iohxfurykkocqfagdkzy` must not appear |
 | Unrelated project `Dashboard X` (`wpiaoskqljhrkpfzvmrp`) | **not a Bookflow resource.** Recorded because it occupies a hosted-project slot. | — | **exists**, `ACTIVE_HEALTHY`, eu-central-1, created 2026-07-11 | `supabase projects list` |
 | Fly.io app (API + worker, one image, two processes) | deploy target | ADR-024, ADR-013 | **not yet.** `flyctl` is also not installed. | `flyctl apps list` |
@@ -142,12 +142,17 @@ intent.
 Whichever comes first. Until then this row stays as it is, and it is not a gap to be closed
 quietly — closing it costs money and that is the owner's call.
 
-**One thing to settle before provisioning.** ADR-023 chose two hosted projects partly because
-"two is exactly the free tier's allowance". The account currently holds one project already —
-`Dashboard X`, unrelated to Bookflow. If that allowance is per-organisation and still two,
-staging and production do not both fit alongside it. Check the current limit against
-`mugu-labs` before creating either, rather than discovering it at creation time. This does not
-change ADR-023; it is the kind of plan change ADR-023's last consequence anticipated.
+**Settled 2026-08-11, and the answer is the unwelcome one.** `mugu-labs` is on the **free plan**
+— established before creating anything, by the API rejecting an instance-size flag with
+*"Instance size cannot be specified for free plan organizations."* The free allowance is **two
+active projects per organisation**, and both are now used: `Dashboard X`, which is not a Bookflow
+resource, and `bookflow-staging`.
+
+**Production therefore has no slot.** ADR-023 assumed two projects would fit because two was the
+allowance; it did not account for one already being occupied. The options when production is
+needed are to pay, or to retire `Dashboard X`. Neither is a provisioning step and neither is
+being decided here — it is the plan change ADR-023's last consequence anticipated, and it is now
+a spend decision with a name.
 
 ---
 

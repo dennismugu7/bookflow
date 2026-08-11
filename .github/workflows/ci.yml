@@ -263,3 +263,48 @@ jobs:
       # Docker, and a JDK is not part of this project's toolchain (ADR-022).
       - name: Check for contract drift
         run: npm run contracts:check
+
+  # ── Staging migrations ─────────────────────────────────────────────────────
+  # ADR-034: migrations are applied by CI on merge to `main`, before any deploy
+  # step, using a scoped credential held in Actions secrets — never from a
+  # development machine. ADR-023's rule that no hosted credential lives on a
+  # laptop is only real if nothing requires one to be there.
+  #
+  # `if` is belt and braces: `on.push.branches` already restricts pushes to
+  # `main`, and this additionally guarantees the job cannot fire for a
+  # pull_request event. A PR must never migrate a shared database — its schema
+  # would land before its code was reviewed, and against a branch that may
+  # never merge.
+  #
+  # `needs` means a red test suite or a drifted contract stops the migration.
+  # A migration is the one thing here that is not trivially reversible, so it
+  # goes last among the checks and first among the changes.
+  #
+  # The deploy job, when it exists, will declare `needs: [migrate-staging]` so
+  # that code expecting a column cannot ship before the column exists. That
+  # ordering makes backward-compatible migrations a requirement rather than a
+  # preference — see ADR-034.
+  migrate-staging:
+    name: migrate-staging
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [verify, contracts]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.113.0
+
+      # Fails the step, and so the workflow, on any migration error. The
+      # connection string never appears in the log: it is read from the secret
+      # into the environment, and GitHub masks registered secret values in
+      # output regardless.
+      - name: Apply migrations to staging
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: supabase db push --db-url "$STAGING_DATABASE_URL" --include-all
