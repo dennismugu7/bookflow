@@ -12,7 +12,7 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 
 **Screen numbers** are `01-screen-inventory.md`'s. Web pages are named.
 
-**Status: no `F` items are open.** Two were reopened on 2026-08-11 by a cold-start check — K59 and K61 — and both were closed the same day by ADR-027 and ADR-028. They are recorded in the Resolved table with the rest. Twenty-nine accepted decisions in `docs/decisions/`, plus **spike 001** (`docs/spikes/001-platform.md`), have closed every item that has blocked the foundation. Items each decision settles move to the Resolved table; items narrowed without being settled stay classified where they were, with an italic note; items created are marked **NEW**.
+**Status: two `F` items are open — K72 and K73, both raised by the PR 1 migration review.** Both block PR 2 of ADR-032's sequence. Two earlier `F` items, K59 and K61, were reopened and closed on 2026-08-11 by ADR-027 and ADR-028. Thirty-six accepted decisions in `docs/decisions/`, plus **spike 001** (`docs/spikes/001-platform.md`), have closed every other item that has blocked the foundation. Items each decision settles move to the Resolved table; items narrowed without being settled stay classified where they were, with an italic note; items created are marked **NEW**.
 
 ---
 
@@ -20,6 +20,8 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 
 | ID | Cat | Question | Type | When | Blocked screens |
 |---|---|---|---|---|---|
+| K72 | K | **NEW (PR 1 review).** How does a `public.user_profiles` row come into existence? GoTrue owns the `auth.users` insert and our API is not in that transaction. `terms_version` and `terms_accepted_at` are `not null`, so the profile must exist **with real values the moment the account does** — a client-side follow-up call leaves an auth user with no profile, and no honest way to backfill consent that was never given. Likely answer: a trigger on `auth.users` reading `raw_user_meta_data`, with sign-up passing first name, last name and terms version as metadata. **Blocks PR 2**, and sits on a Do-Not-Vibe surface. | DECISION | **F** | #3, #4, #20 |
+| K73 | K | **NEW (PR 1 review).** Which database role does the API connect as? The tables are owned by `postgres`, which is also the migration role, so an application connecting as `postgres` carries DDL rights over the whole schema and any injection is unbounded. A dedicated role — `usage` on `public`, CRUD on the application tables, no DDL, no ownership — bounds it, and makes `force row level security` available later as a real control rather than something that would break the API. **Interacts with ADR-013:** RLS is bypassed by the table owner, so a non-owner application role changes what RLS is *capable* of protecting. Decide before PR 2 opens a connection. | DECISION | **F** | none — every protected read and write |
 | A1 | A | Do bookable slots step by service duration, by a fixed grid, or by an owner-configured interval? | DECISION | S | web Select date and time |
 | A2 | A | Is there a turnaround buffer between appointments? | DECISION | S | #16; web Select date and time |
 | A5 | A | Is a slot held or reserved while the client moves through the multi-step booking flow? *Narrowed by ADR-007: post-submit expiry reduces the exposure but does not remove the pre-submit race.* | DECISION | S | web Select services → Review and continue |
@@ -121,6 +123,7 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 | K58 | K | **NEW (ADR-026).** Is a feature-flag system needed? Deliberately deferred, with a named trigger: answer before the first production release. | DECISION | D | none — process only |
 | K69 | K | **NEW (ADR-027).** How are sender identity, from-address, subject conventions and branding kept consistent across the two email template systems — GoTrue's for auth mail and the worker's for domain mail — given nothing enforces it and no test covers it? | DECISION | D | all email templates, both paths |
 | K70 | K | **NEW (ADR-031).** The Terms of Service and Privacy Policy documents do not exist. `user_profiles` records acceptance of a version string that currently points at nothing. A content task before launch, not a design question. | DECISION | D | #3, #23 |
+| K71 | K | **NEW (Phase 3 PR 1).** How is `business_public` built, given the base tables now carry both RLS-with-no-policies **and** `revoke all from anon, authenticated`? A plain view fails with `permission denied` rather than returning empty, so the projection must be `security definer` — pinning `search_path`, exposing only the allowlist, and filtering on ADR-004's `published` itself — or else re-grant `anon` on the base tables, which undoes the hardening. Planned as privileged code, not as a view. | DECISION | S | web salon profile, Team, Portfolio, Location |
 
 ## Resolved by accepted decisions
 
@@ -195,27 +198,25 @@ ADR-001 resolves nothing; it sequences the work. ADR-016 resolves no tracked ite
 
 ## F items
 
-**None open.**
+**Two are open: K72 and K73.** Both were raised by the line-by-line review of PR 1's migration —
+which is the review working as intended, and worth saying plainly: neither was visible from the
+ADRs, and both were found by reading SQL.
 
-Two were reopened on 2026-08-11 and closed the same day, which is the part worth keeping rather
-than the count. A cold-start check — a session reading only the standing documents, with no
-memory of how they came to say what they say — found two questions the foundation phases had
-never asked, both on surfaces specified thoroughly for the backend and barely at all for the
-client and the email path.
+- **K72 — how a `user_profiles` row is created.** The migration made `terms_version` and
+  `terms_accepted_at` `not null`, on ADR-031's reasoning that consent recorded later cannot be
+  recorded honestly. That is right, and it has a consequence nobody had stated: the profile must
+  exist, with real values, in the same breath as the account — and GoTrue owns that insert, not
+  us. Anything client-side leaves a window in which an authenticated user has no profile.
+- **K73 — which role the API connects as.** The tables are owned by `postgres`. If the API also
+  connects as `postgres`, it holds DDL over the whole schema and every injection is unbounded.
+  This also decides what RLS can ever do here: the owner bypasses RLS, so as long as the API is
+  the owner, ADR-013's defence in depth protects the API's connection from nothing at all.
 
-- **K59 — who sends the activation email.** Closed by **ADR-027**. The boundary is ownership of
-  the record the email reports on: GoTrue owns the user record and its mail, the outbox owns
-  email about records our API owns. ADR-012's rule was never about auth email, and applying it
-  there would have meant reimplementing token generation, expiry and resend limiting on a
-  Do-Not-Vibe surface to satisfy a rule whose reason was absent.
-- **K61 — Flutter client architecture.** Closed by **ADR-028**. `go_router`, Riverpod for state
-  and injection as one concept, exhaustive `AsyncValue`, and a repository per feature so a
-  wholesale client regeneration has one file per feature to break instead of every screen.
+**Both block PR 2** and neither blocks the merged PR 1, which is schema only.
 
-**The finding behind them outlived them.** Both were invisible for months not because they were
-hard but because nothing was looking: the foundation review specified `apps/api` in detail and
-left `apps/mobile` and the email path to be inferred. That asymmetry is the reusable lesson, and
-it is why the cold-start check is worth repeating before each phase rather than once.
+**The pattern is the same one the cold-start check found**, in a different place: decisions
+recorded thoroughly at the level they were made, and a gap where two of them meet. ADR-031 said
+what the columns are; ADR-027 said who owns the account; neither said who writes the row.
 
 ### The original F set
 

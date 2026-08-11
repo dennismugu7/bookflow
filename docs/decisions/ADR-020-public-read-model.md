@@ -50,3 +50,34 @@ I6 (which fields of a business are publicly readable). It was F.
 
 K55 — the actual field allowlist in `business_public`, including whether the owner's contact
 email belongs in it given the web app's feedback mailto. Classified S.
+
+## Amendments
+
+**2026-08-11 — the projection now has to overcome a REVOKE, not only RLS.**
+
+Phase 3's foundation migration hardened the owner-scoped tables with **two** independent
+mechanisms rather than one: RLS enabled with no policies, **and** `revoke all ... from anon,
+authenticated`. Either alone would stop a public reader; together they change what this ADR's
+projection has to do to work at all.
+
+**With RLS alone**, a view over the base tables returns an empty result to `anon` — safe, and
+the projection would simply have had to be granted `select` and given policies. **With the
+`REVOKE` in place, a plain view fails outright**: a normal view runs with the privileges of the
+*querying* role, so `anon` selecting from `business_public` hits `permission denied` on the
+underlying table, not an empty set.
+
+So `business_public` must be **one of**:
+
+- a **`security definer`** view or function, running as its owner and therefore able to read the
+  base tables, with `anon` granted `select` on the view only; or
+- a plain view plus an **explicit, narrow grant** to `anon` on the base tables, re-opened just
+  far enough for the projection — which reintroduces exactly the exposure the `REVOKE` removed.
+
+**The first is the intended path** and the second is recorded only so it is visibly rejected
+rather than stumbled into. A `security definer` object is also a privilege-escalation shape if
+written carelessly: it must pin `search_path`, expose the allowlist and nothing else, and filter
+on ADR-004's `published` flag itself rather than trusting its caller to.
+
+Nothing in the Decision above changes. What changes is that building the projection is no longer
+"create a view" — it is a small piece of privileged code on a Do-Not-Vibe-adjacent surface, and
+it should be planned as such. Tracked as **K71**.

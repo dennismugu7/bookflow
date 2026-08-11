@@ -92,3 +92,30 @@ That is acceptable for an environment only this project uses. **The trigger for 
 custom SMTP provider — and with it the sending domain and the E1/E2 deliverability work — is
 before any real owner signs up.** Not before staging works and not before the first deploy;
 before a person outside the project receives email from this system.
+
+**2026-08-11 — production has no free slot; it is a spend decision, not a pending task.**
+
+The Decision above chose two hosted projects partly because "two is exactly the free tier's
+allowance". That arithmetic was wrong in one respect: it counted the projects this ADR wanted,
+not the projects the organisation already had.
+
+Confirmed on 2026-08-11, before anything was created — the Supabase API rejected an
+instance-size flag with *"Instance size cannot be specified for free plan organizations"*, which
+establishes the plan from the platform rather than by inference. **`mugu-labs` is on the free
+plan, which allows two active projects per organisation, and both are now used:** `Dashboard X`,
+which is not a Bookflow resource and predates it, and `bookflow-staging`
+(`vvborjxraxdeflrllqwh`), created the same day.
+
+**Production therefore cannot be provisioned at all on the current plan.** The options are to
+pay for a plan that allows a third project, or to retire `Dashboard X`. Both are the owner's
+call and neither is a step anyone can take in a slice.
+
+This does not change the three-environment decision, and it does not make staging provisional —
+staging exists and works. What it changes is the status of production: **it is no longer
+outstanding work waiting its turn, it is a purchase waiting for a decision**, and it should
+appear in planning as a cost rather than as a task. `docs/ENVIRONMENT.md` §3 records the same
+thing against the row it belongs to.
+
+This is precisely the situation the last consequence above anticipated — "if the free tier's
+allowance changes, this decision needs revisiting" — arriving not because the allowance changed
+but because the count was never checked against what was already there.

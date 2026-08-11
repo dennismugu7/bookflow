@@ -248,10 +248,23 @@ asked. **Both are now settled and neither blocks Phase 3.**
   `apps/mobile` layout alongside the API's, and §5 carries the two rules a reviewer must be able
   to check without reading the ADR.
 
-### Phase 0 is complete — every blocking item is decided
+### Phase 0 is complete — but PR 1's review reopened two `F` items
 
-**No `F` and no `S` item blocks Phase 3.** Six ADRs on 2026-08-11 closed the last of them, on
-top of ADR-027 and ADR-029 earlier the same day.
+**No `S` item blocks Phase 3.** Six ADRs on 2026-08-11 closed the last of them, on top of
+ADR-027 and ADR-029 earlier the same day.
+
+**Two `F` items block PR 2**, both raised by the line-by-line review of PR 1's migration and
+neither visible from the ADRs alone:
+
+- **K72** — how a `public.user_profiles` row is created, given GoTrue owns the `auth.users`
+  insert and the profile's consent columns are `not null`. Anything client-side leaves an
+  authenticated user with no profile and no honest backfill.
+- **K73** — which database role the API connects as. If it is `postgres`, the API owns the
+  tables, holds DDL over the schema, and bypasses RLS — which decides what ADR-013's defence in
+  depth is capable of protecting at all.
+
+Both are argued in `docs/analysis/05-triage.md` under "F items". **PR 1 is unaffected and
+merged**; PR 2 does not start until these are settled.
 
 | Decided | By | Was |
 |---|---|---|

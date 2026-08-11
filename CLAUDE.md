@@ -256,7 +256,11 @@ foundation is settled when it is not.
 - Do not invent an answer to an open triage item. Raise it and get a decision.
 - Do not edit `docs/source/` or `docs/analysis/` to reflect a new decision. Write an ADR.
 - Do not create `apps/web/` before the owner app can configure a real salon. (ADR-001)
-- Do not add a currency column, a per-business timezone, or a second name field. v1 is
-  Kenya, KES, Africa/Nairobi, Latin script. (ADR-005)
+- Do not add a currency column or a per-business timezone. v1 is Kenya, KES, Africa/Nairobi,
+  Latin script. (ADR-005)
+- Do not split a **team member's** name into two fields — ADR-005 decides one field for team
+  members specifically, because they are content records in a Latin-script-only market. This
+  does **not** apply to the owner's own account: screen #20 has separate first and last name
+  fields (`DD-Bookflow-Native.md:1109-1110`) and `user_profiles` carries both. (ADR-005, J2)
 - Do not maintain a token denylist to make logout instant. Exposure is bounded at one hour
   by design. (ADR-017)
