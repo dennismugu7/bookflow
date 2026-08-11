@@ -208,10 +208,45 @@ is addition, not infrastructure.**
 
 ### Do-Not-Vibe surfaces this phase touches
 
-Named now rather than discovered mid-implementation (`CLAUDE.md` §6). Phase 3 touches **auth
-and password reset**, **migrations**, **the membership scoping rule**, and **production
-secrets**. Four of the nine, in the first slice. Each is written deliberately, reviewed line by
-line by a human, and named in the completion report.
+Named now rather than discovered mid-implementation (`CLAUDE.md` §6). Phase 3 touches **auth**,
+**migrations**, **the membership scoping rule**, and **production secrets**. Four of the nine,
+in the first slice. Each is written deliberately, reviewed line by line by a human, and named in
+the completion report.
+
+**Password reset is *not* among them** — see the scope decision below.
+
+### Scope, decided
+
+Two questions this section previously left open in a way that contradicted itself. Settled here
+so Phase 0 confirms rather than discovers them.
+
+- **Social login is OUT of Phase 3.** Email and password only: sign-up, login, session and
+  token issuance, one protected route. ADR-018's verified-email linking rule stands; nothing in
+  Phase 3 exercises it. **K56 therefore does not block Phase 3** — it blocks the slice that adds
+  social login.
+- **Password reset is OUT of Phase 3.** The manual's Phase 3 asks for sign-up, login, token
+  issuance and one protected route; reset is a separate journey with its own screens (#10, #11)
+  and its own Do-Not-Vibe review. This section previously listed "auth and password reset"
+  among the surfaces touched, which contradicted its own deliverables list.
+
+Both are their own slices, after the foundation. Widening Phase 3 to include them widens the
+first slice through the app into three auth journeys at once, which is the opposite of a thin
+slice. If Phase 0 disagrees, it says so explicitly and reopens K56.
+
+### Resolve before starting — two `F` items, reopened
+
+A Phase 2 cold-start check — a session reading only the standing documents, with no memory of
+how they came to say what they say — found two questions the foundation phases never asked.
+Both are `F`: they must be settled **before Phase 3 writes client or auth-email code**, not
+during it.
+
+| ID | Why it is `F` |
+|---|---|
+| **K59** | Who sends the account-activation email — Supabase Auth (GoTrue) directly, or the ADR-012 outbox. It decides whether the outbox exists in Phase 3 at all, and it sits on two Do-Not-Vibe surfaces at once. |
+| **K61** | The Flutter client's architecture — routing, state management, dependency injection, and the loading / empty / error conventions every screen inherits. ADR-015 chose the framework and stopped; `CLAUDE.md` §4 fixes module boundaries for `apps/api` and says nothing about `apps/mobile`. |
+
+Both are argued in `docs/analysis/05-triage.md` under "F items". Neither blocked Phase 2, which
+is why Phase 2 completed with them open — but neither can survive into Phase 3's implementation.
 
 ### Resolve before starting — the `S` items this slice touches
 
@@ -228,7 +263,17 @@ the foundation slice touches; the rest of the `S` list belongs to later slices.
 | **I10** | What the app shows an authenticated user with zero memberships. This is literally the first state the "one true page" renders for a user who just signed up, so the shell cannot be built without it. |
 | **J3** | English-only, or English and Swahili. The frontend shell is built here; retrofitting internationalisation through a shell and its routing is far more expensive than deciding it once. |
 | **K5** *(partial)* | Only the auth-screen slots (#3). The other eleven "Backend / System Action" slots belong to the slices that own their screens. |
-| **K56** *(conditional)* | The refused-social-link state. Blocks **only if** social login is in Phase 3's scope. Decide that scope first: email and password alone is a legitimate Phase 3, with social deferred to its own slice. |
+| **K60** | Whether the outbox table and its worker process ship in Phase 3 or later. Depends on K59, and determines the first migration's tables and the deploy's process groups. |
+| **K62** | Which journeys are "critical" in the sense `DEFINITION_OF_DONE.md` requires an e2e test for, and what tooling runs those tests. Neither the term nor the tooling exists anywhere; sign-up and login are almost certainly critical. |
+| **K63** | What the "one placeholder domain table" actually is. Migrations are Do-Not-Vibe and cannot be improvised at implementation time. |
+| **K64** | Which screen is the "one true page". The obvious candidate — the zero-membership state, I10 — has no design at all (§5), so deciding I10 still leaves nothing to render. |
+| **K65** | Whether Phase 3 is one `DEFINITION_OF_DONE.md` pass and one PR, or several. Determines branching and sequencing before the first branch is cut. |
+| **K66** | Whether the sole owner self-reviewing on a PR satisfies the human gate. Phase 3 touches four Do-Not-Vibe surfaces and there is one contributor. |
+| **K67** | How migrations reach staging and production, and under which credential. Both migrations and production secrets are Do-Not-Vibe. |
+| **K68** | The budget position for a domain, an email provider and Fly.io. E1, E2 and the deploy all require a purchase, and no document records whether one will be made. |
+
+**K56 is no longer blocking**, given the scope decision above: it belongs to the slice that adds
+social login.
 
 **Not blocking, and deliberately excluded:**
 
