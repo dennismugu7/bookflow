@@ -216,65 +216,64 @@ the completion report.
 
 **Password reset is *not* among them** — see the scope decision below.
 
-### Scope, decided
+### Scope, fixed by ADR-029
 
-Two questions this section previously left open in a way that contradicted itself. Settled here
-so Phase 0 confirms rather than discovers them.
+**Phase 3 delivers email-and-password authentication only** — sign-up, login, session and token
+issuance, one protected route. **Social login and password reset are both out**, each its own
+slice afterwards. Widening the foundation's thin slice into three auth journeys at once is the
+opposite of thin, and both deferred journeys depend on what Phase 3 establishes rather than the
+reverse.
 
-- **Social login is OUT of Phase 3.** Email and password only: sign-up, login, session and
-  token issuance, one protected route. ADR-018's verified-email linking rule stands; nothing in
-  Phase 3 exercises it. **K56 therefore does not block Phase 3** — it blocks the slice that adds
-  social login.
-- **Password reset is OUT of Phase 3.** The manual's Phase 3 asks for sign-up, login, token
-  issuance and one protected route; reset is a separate journey with its own screens (#10, #11)
-  and its own Do-Not-Vibe review. This section previously listed "auth and password reset"
-  among the surfaces touched, which contradicted its own deliverables list.
+**K56 is not a Phase 3 blocker**; it belongs to the social-login slice.
 
-Both are their own slices, after the foundation. Widening Phase 3 to include them widens the
-first slice through the app into three auth journeys at once, which is the opposite of a thin
-slice. If Phase 0 disagrees, it says so explicitly and reopens K56.
+This was decided here first, in this file, which was the wrong home for a scope decision with
+that reach. ADR-029 now holds it and this section cites it.
 
-### Resolve before starting — two `F` items, reopened
+### The two `F` items are closed
 
-A Phase 2 cold-start check — a session reading only the standing documents, with no memory of
-how they came to say what they say — found two questions the foundation phases never asked.
-Both are `F`: they must be settled **before Phase 3 writes client or auth-email code**, not
-during it.
+A Phase 2 cold-start check reopened two foundation-level questions the earlier phases never
+asked. **Both are now settled and neither blocks Phase 3.**
 
-| ID | Why it is `F` |
-|---|---|
-| **K59** | Who sends the account-activation email — Supabase Auth (GoTrue) directly, or the ADR-012 outbox. It decides whether the outbox exists in Phase 3 at all, and it sits on two Do-Not-Vibe surfaces at once. |
-| **K61** | The Flutter client's architecture — routing, state management, dependency injection, and the loading / empty / error conventions every screen inherits. ADR-015 chose the framework and stopped; `CLAUDE.md` §4 fixes module boundaries for `apps/api` and says nothing about `apps/mobile`. |
-
-Both are argued in `docs/analysis/05-triage.md` under "F items". Neither blocked Phase 2, which
-is why Phase 2 completed with them open — but neither can survive into Phase 3's implementation.
+- **K59 → ADR-027.** Auth email is sent by Supabase Auth; the ADR-012 outbox carries email about
+  records our own API owns. Three consequences land on this phase: **the outbox does not ship in
+  Phase 3** (K60 resolved), **verification code rules become GoTrue configuration** rather than
+  code (K7 substantially resolved), and **E1 and E2 leave Phase 3's critical path** — staging
+  sends through Supabase's built-in SMTP, and choosing a provider, verifying a domain and
+  spiking deliverability all move to the custom-SMTP cutover, triggered **before any real owner
+  signs up**. That removes a purchase, a domain registration and an empirical spike from this
+  phase's entry conditions.
+- **K61 → ADR-028.** `go_router`, Riverpod for state and dependency injection as one concept
+  with no service locator, exhaustive `AsyncValue` handling, and a repository per feature
+  wrapping `packages/bookflow_api` so no screen imports it. `CLAUDE.md` §4 now carries the
+  `apps/mobile` layout alongside the API's, and §5 carries the two rules a reviewer must be able
+  to check without reading the ADR.
 
 ### Resolve before starting — the `S` items this slice touches
 
 An `S` item is answered in its slice's Phase 0, never during implementation. These are the ones
-the foundation slice touches; the rest of the `S` list belongs to later slices.
+the foundation slice touches; the rest of the `S` list belongs to later slices. Thirteen remain
+after ADR-027 and ADR-029 — the triage owns the list, this is the subset that blocks here.
 
 | ID | Why it blocks Phase 3 |
 |---|---|
-| **E1** | Email provider, sender identity and domain. Sign-up cannot activate an account without email, and nothing here is buildable until a provider exists. |
-| **E2** | The deliverability spike for that provider. E1 chooses; E2 is whether the choice actually delivers to Kenya fast enough to gate activation. Empirical, so it needs doing, not deciding. |
 | **K6** | Password policy. Sign-up validates a password on the first day; retrofitting a policy invalidates stored credentials. |
-| **K7** | Verification code expiry, attempt limit, resend cooldown, lockout. The verification screen is part of auth end to end, and every one of these is a stored value or a rate limit. |
+| **K7** | *Narrowed by ADR-027.* The mechanism is now GoTrue configuration, not code. What remains: which values to set for expiry, attempt limit, resend cooldown and lockout — and whether GoTrue can issue the 8-digit code the design specifies at all. |
 | **K10** | Whether Terms and Privacy are versioned and acceptance recorded at sign-up. If yes it is a column in the auth schema this phase creates — cheap now, a migration and a backfill later. |
 | **I10** | What the app shows an authenticated user with zero memberships. This is literally the first state the "one true page" renders for a user who just signed up, so the shell cannot be built without it. |
 | **J3** | English-only, or English and Swahili. The frontend shell is built here; retrofitting internationalisation through a shell and its routing is far more expensive than deciding it once. |
 | **K5** *(partial)* | Only the auth-screen slots (#3). The other eleven "Backend / System Action" slots belong to the slices that own their screens. |
-| **K60** | Whether the outbox table and its worker process ship in Phase 3 or later. Depends on K59, and determines the first migration's tables and the deploy's process groups. |
 | **K62** | Which journeys are "critical" in the sense `DEFINITION_OF_DONE.md` requires an e2e test for, and what tooling runs those tests. Neither the term nor the tooling exists anywhere; sign-up and login are almost certainly critical. |
 | **K63** | What the "one placeholder domain table" actually is. Migrations are Do-Not-Vibe and cannot be improvised at implementation time. |
 | **K64** | Which screen is the "one true page". The obvious candidate — the zero-membership state, I10 — has no design at all (§5), so deciding I10 still leaves nothing to render. |
 | **K65** | Whether Phase 3 is one `DEFINITION_OF_DONE.md` pass and one PR, or several. Determines branching and sequencing before the first branch is cut. |
 | **K66** | Whether the sole owner self-reviewing on a PR satisfies the human gate. Phase 3 touches four Do-Not-Vibe surfaces and there is one contributor. |
 | **K67** | How migrations reach staging and production, and under which credential. Both migrations and production secrets are Do-Not-Vibe. |
-| **K68** | The budget position for a domain, an email provider and Fly.io. E1, E2 and the deploy all require a purchase, and no document records whether one will be made. |
+| **K68** | The budget position. *Narrowed by ADR-027*, which removed the email provider and sending domain from this phase — what remains is Fly.io, the only Phase 3 item that certainly costs money, plus confirming the Supabase free-tier allowance. No document records whether a spend will be made. |
 
-**K56 is no longer blocking**, given the scope decision above: it belongs to the slice that adds
-social login.
+**No longer blocking, and why:** **K56** (ADR-029 — social login is out of scope). **K60**
+(ADR-027 — the outbox does not ship here). **E1 and E2** (ADR-027 — staging uses Supabase's
+built-in SMTP; the provider, the sending domain and the deliverability spike belong to the
+custom-SMTP cutover, before any real owner signs up).
 
 **Not blocking, and deliberately excluded:**
 
@@ -299,8 +298,8 @@ None of this is repository work. All of it needs an account, a purchase or a dec
 | **A deployable image** | ADR-024 runs the API and the worker as two processes from one image. No Dockerfile or `fly.toml` exists | ADR-013, ADR-024 |
 | **The deploy job in `.github/workflows/ci.yml`** | Staging deploys automatically on merge to `main`. The workflow has no deploy job at all | ADR-024 |
 | **Fly.io secrets and GitHub Actions secrets** | `DATABASE_URL`, the Supabase keys, the mail provider key. No production credential is ever placed on a development machine | ADR-023 |
-| **Email provider account and a verified sending domain** | E1 and E2 above. This is infrastructure, not only a decision — a domain has to exist and be verified | ADR-012 |
-| **A domain name** | The sender identity, and `PUBLIC_WEB_ORIGIN` for the booking links ADR-002 emails | ADR-002, ADR-012 |
+| ~~Email provider and verified sending domain~~ | **No longer Phase 3.** ADR-027 puts staging on Supabase's built-in SMTP. Needed before any real owner signs up | ADR-023, ADR-027 |
+| ~~A domain name~~ | **No longer Phase 3** for the sender identity. Still needed for `PUBLIC_WEB_ORIGIN` when `apps/web` exists, which is after the owner app | ADR-002, ADR-027 |
 
 **The free-tier constraint bites here.** `docs/ENVIRONMENT.md` §4 records it: ADR-023 chose two
 hosted Supabase projects partly because two is the free allowance, and the account already

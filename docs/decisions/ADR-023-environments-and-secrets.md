@@ -59,3 +59,36 @@ Phase 2 requires.
 ## Items created
 
 None.
+
+## Amendments
+
+**2026-08-11 — `APP_ENV`, not `NODE_ENV`, is the environment discriminator.**
+
+This ADR names three environments — local, staging, production — without naming the variable
+that carries which one a process is in. The obvious choice was `NODE_ENV`, and it does not work.
+
+**`NODE_ENV` belongs to the JavaScript tooling, which writes to it unasked.** Vitest sets it to
+`test` if it is unset, and bundlers set it to `production`. The first integration run against
+the real stack failed on exactly this: the config module rejected `NODE_ENV=test` because
+`test` is not one of this ADR's three environments, and the value had been overwritten by the
+test runner after `.env` was loaded.
+
+A test runner silently reclassifying which environment a process believes it is in is not a
+risk this ADR can carry, given its central rule is that **no production credential is ever
+placed on a development machine**. That rule is only as good as the process's belief about
+where it is running.
+
+**`APP_ENV` is therefore the discriminator**, validated in `apps/api/src/platform/config.ts`
+against exactly `local | staging | production`, and documented in `.env.example`. `NODE_ENV` is
+left to the tooling that owns it and is not read by this project.
+
+**2026-08-11 — staging's mail sender, per ADR-027.**
+
+ADR-027 routes auth email through Supabase Auth rather than the ADR-012 outbox. Staging
+therefore sends through **Supabase's built-in SMTP**, which is rate-limited, shared, and
+documented by Supabase as unsuitable for production.
+
+That is acceptable for an environment only this project uses. **The trigger for provisioning a
+custom SMTP provider — and with it the sending domain and the E1/E2 deliverability work — is
+before any real owner signs up.** Not before staging works and not before the first deploy;
+before a person outside the project receives email from this system.

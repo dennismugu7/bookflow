@@ -80,9 +80,12 @@ bookflow/
 npm workspaces cover `apps/api` and `packages/contracts`. Flutter sits outside the workspace
 and has its own toolchain.
 
-## 4. Module layout inside apps/api
+## 4. Module layout — both apps
 
-Vertical modules, not horizontal layers.
+Vertical modules, not horizontal layers. The same shape on both sides of the wire, so a feature
+is one folder in each. (`apps/api` from the start; `apps/mobile` per ADR-028.)
+
+### apps/api
 
 ```
 src/
@@ -100,6 +103,27 @@ top-level directories.
 
 Never the reverse: routes hold no logic, repositories hold no rules, services know nothing
 about HTTP.
+
+### apps/mobile (ADR-028)
+
+```
+lib/
+├─ features/<feature>/   <feature>_repository.dart · <feature>_providers.dart
+│                        <feature>_screen.dart · <feature>_models.dart
+├─ platform/             api client · auth · storage · config · router
+└─ app.dart
+```
+
+Term for term with the API: **repository** knows the data source and nothing else — the database
+there, the generated HTTP client here. **Providers** hold what logic the client has, which is
+state derivation and orchestration, never business rules; those are server-side. **Screen** knows
+the delivery mechanism, as routes know HTTP.
+
+Never the reverse: screens hold no logic, repositories hold no rules, providers know nothing
+about widgets.
+
+`go_router` for routing and the auth-aware redirect. Riverpod for state **and** dependency
+injection — one concept, no service locator.
 
 ## 5. Non-negotiables
 
@@ -128,8 +152,18 @@ about HTTP.
   writes for real, and leaves rows behind. (ADR-022, `apps/api/test/integration/harness.ts`)
 - Public unauthenticated reads come only from the `business_public` allowlist projection.
   Public endpoints never read owner-scoped tables. Allowlist, never denylist. (ADR-020)
-- Email is written to the transactional outbox inside the same transaction as the state
-  change it reports. The mail provider is never called inside a request. (ADR-012)
+- Email about a record **our API owns** — booking confirmed, cancelled, reinstated — is written
+  to the transactional outbox inside the same transaction as the state change it reports, and
+  the mail provider is never called inside a request. Email about a record **Supabase Auth
+  owns** — activation, password reset, email change, magic link — is sent by Supabase Auth and
+  is not routed through the outbox. The test for a new email is which system owns the row that
+  changed. (ADR-012, ADR-027)
+- A Flutter screen never imports `packages/bookflow_api`. Each feature wraps the generated
+  client in a thin repository, and that repository is the only file a regeneration can break.
+  (ADR-028)
+- Every asynchronous UI state in Flutter flows through `AsyncValue` and is handled
+  exhaustively — loading, error and data, all three, always. A missing branch is a compile
+  error, which is the point. (ADR-028)
 - The OpenAPI 3.1 spec is generated from code, never hand-written. The Dart client is
   generated from that spec in CI. Hand-written Dart request/response models are prohibited.
   (ADR-014)

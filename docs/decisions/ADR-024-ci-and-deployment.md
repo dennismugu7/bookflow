@@ -57,3 +57,46 @@ blocking Phase 2.
 ## Items created
 
 None.
+
+## Amendments
+
+**2026-08-11 — the CI database is the Supabase stack, not a plain Postgres service container.**
+
+The Decision above specifies "integration tests against a Postgres service container".
+`.github/workflows/ci.yml` does not do that, and has not since the workflow was written. **This
+records the divergence rather than leaving the ADR and the workflow to contradict each other.**
+
+What CI actually runs: `supabase start` with **eleven services excluded** — `kong`, `postgrest`,
+`storage-api`, `imgproxy`, `realtime`, `mailpit`, `postgres-meta`, `studio`, `edge-runtime`,
+`logflare`, `vector`, `supavisor` — leaving the database and **`gotrue`**.
+
+Why, in one sentence: **stock Postgres does not have the `auth` schema.** ADR-013 puts Supabase
+Auth in the stack and ADR-027 now makes GoTrue the owner of every auth record and every auth
+email, so the schema an integration test runs against has to include `auth` or the test stops
+being evidence about the system that ships. `gotrue` is retained specifically because it is what
+creates and owns that schema; verified locally that with those eleven exclusions `auth` still
+has its full set of tables.
+
+The exclusions are a speed measure and nothing more — every excluded service is unused by a
+suite that speaks SQL through Kysely and nothing else. The verified job runs in about 2m45s.
+
+**2026-08-11 — the iOS job's trigger conditions.**
+
+The Decision above says the iOS job runs on a macOS runner and notes that macOS minutes are
+billable on private repositories, calling the scoping "a Phase 2 implementation detail". This
+records what that detail turned out to be.
+
+**`ios-build` runs on push to `main`, on `workflow_dispatch`, and on a pull request only when
+the PR carries the `ios` label.** It does not run on every push.
+
+**Rationale, measured rather than estimated:** macOS bills at **ten times** the Linux rate
+against the included allowance. The job's observed wall time is 1m44s, which GitHub rounds up
+to 2 minutes, giving **20 billable minutes per run** — about 1% of the 2,000-minute monthly
+free-tier allowance for a private repository. The two Linux jobs on the same run cost roughly
+10 billable minutes together. Running iOS on every push to every branch would therefore cost
+several times what the rest of CI does, to re-prove a compile that changes only when
+`apps/mobile` does.
+
+The label makes the expensive job **opt-in per pull request**, so a change that touches iOS can
+still be proven before merge without every unrelated PR paying for it. `main` and
+`workflow_dispatch` cover the cases where the result matters regardless.

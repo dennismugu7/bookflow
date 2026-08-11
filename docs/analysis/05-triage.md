@@ -12,7 +12,7 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 
 **Screen numbers** are `01-screen-inventory.md`'s. Web pages are named.
 
-**Status: two `F` items are open again — K59 and K61, both raised by a Phase 2 cold-start check.** For most of this project's life there were none; Phases 0 and 1 closed every item that blocked the foundation. These two were missed rather than deferred, and both concern surfaces the foundation settled for the backend and left open for the client and for auth email. Phase 2 nonetheless completed. Twenty-six accepted decisions in `docs/decisions/`, plus **spike 001** (`docs/spikes/001-platform.md`) which supplied the evidence for ADR-013, ADR-016 and ADR-017, have closed every item that blocked the foundation. ADR-022 to ADR-026 additionally settle toolchain, environments, CI, contract generation and repository conventions — none of which this triage ever tracked, since it records design gaps rather than engineering choices. Items each decision settles move to the Resolved table; items narrowed without being settled stay classified where they were, with an italic note; items created are marked **NEW**.
+**Status: no `F` items are open.** Two were reopened on 2026-08-11 by a cold-start check — K59 and K61 — and both were closed the same day by ADR-027 and ADR-028. They are recorded in the Resolved table with the rest. Twenty-nine accepted decisions in `docs/decisions/`, plus **spike 001** (`docs/spikes/001-platform.md`), have closed every item that has blocked the foundation. Items each decision settles move to the Resolved table; items narrowed without being settled stay classified where they were, with an italic note; items created are marked **NEW**.
 
 ---
 
@@ -20,8 +20,6 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 
 | ID | Cat | Question | Type | When | Blocked screens |
 |---|---|---|---|---|---|
-| K59 | K | **NEW (Phase 2 cold-start).** Who sends the account-activation email — Supabase Auth (GoTrue) directly, or the ADR-012 transactional outbox? GoTrue sends its own verification mail as part of sign-up; `CLAUDE.md` §5 forbids calling a mail provider inside a request and ADR-012 mandates the outbox with delivery by a worker. The two are architecturally incompatible for the same message, and no ADR notices the collision. | DECISION | **F** | #3, #4, #10, #11 |
-| K61 | K | **NEW (Phase 2 cold-start).** What is the Flutter client's architecture — routing, state management, dependency injection, and the loading / empty / error conventions every screen inherits? ADR-015 chose the framework and stopped. `CLAUDE.md` §4 fixes the module layout for `apps/api` and says nothing about `apps/mobile`. | DECISION | **F** | all 28 native screens |
 | A1 | A | Do bookable slots step by service duration, by a fixed grid, or by an owner-configured interval? | DECISION | S | web Select date and time |
 | A2 | A | Is there a turnaround buffer between appointments? | DECISION | S | #16; web Select date and time |
 | A5 | A | Is a slot held or reserved while the client moves through the multi-step booking flow? *Narrowed by ADR-007: post-submit expiry reduces the exposure but does not remove the pre-submit race.* | DECISION | S | web Select services → Review and continue |
@@ -38,8 +36,8 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 | B6 | B | What formats and size limit apply to the proof-of-payment upload, and how long is it retained? *Narrowed by ADR-011: proofs live in the private bucket behind an authorizing endpoint.* | DECISION | S | #13; web Confirmation / Deposit Instructions |
 | C5 | C | Can a price vary by professional or by time slot, as the web copy's "from KES 400" implies? *Narrowed by ADR-006: snapshotting makes variable pricing safe to introduce later.* | DECISION | S | #22; web service cards, summary bar, time slots |
 | D5 | D | What date and time format do the confirmation, cancellation and reinstatement emails use? *Narrowed by ADR-005 and ADR-010: Africa/Nairobi, and one formatting helper owns it.* | DECISION | S | all three email templates |
-| E1 | E | Which email provider and sender identity, on which domain? *Narrowed by ADR-005, ADR-002 and ADR-012: must deliver to Kenya, carries the client's booking link, and is called only from the worker.* | DECISION | S | #4, #10, #11, #13, #18; web Confirmation / Deposit Instructions, booking page |
-| E2 | E | Does the chosen provider deliver verification codes and transactional mail reliably and fast enough to be an activation gate? *Narrowed by ADR-005 and ADR-012.* | **SPIKE** | S | #4, #10, #11; web booking page |
+| E1 | E | Which email provider and sender identity, on which domain? *Narrowed by ADR-005, ADR-002 and ADR-012: must deliver to Kenya, carries the client's booking link, and is called only from the worker.* *Reassigned by ADR-027: staging sends through Supabase built-in SMTP, so this belongs to the custom-SMTP cutover — triggered before any real owner signs up — not to Phase 3.* | DECISION | S | #4, #10, #11, #13, #18; web Confirmation / Deposit Instructions, booking page |
+| E2 | E | Does the chosen provider deliver verification codes and transactional mail reliably and fast enough to be an activation gate? *Narrowed by ADR-005 and ADR-012.* *Reassigned by ADR-027: same trigger as E1. Not a Phase 3 blocker.* | **SPIKE** | S | #4, #10, #11; web booking page |
 | E4 | E | Is the owner notified of a new booking, and through which channel? *Narrowed by ADR-012: an email notification is a new outbox row.* | DECISION | S | #12, #13, #16 |
 | E9 | E | Does the **Booked** state itself send the client anything beyond the web flow's own confirmation? *Narrowed by ADR-012.* | DECISION | S | #13; web Confirmation / Deposit Instructions |
 | E12 | E | **NEW (ADR-012).** What retry policy, backoff, failure ceiling and dead-letter handling applies to the outbox? *Narrowed by ADR-013: the Node worker owns this in testable code.* | DECISION | S | #13, #14; web booking page |
@@ -56,7 +54,7 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 | J3 | J | Is v1 UI copy English-only, or English and Swahili? *Narrowed by ADR-005: RTL and non-Latin script are out of scope.* | DECISION | S | all screens on both clients |
 | K5 | K | What belongs in each of the twelve empty "Backend / System Action" slots? *Narrowed by ADR-014: envelope, error format and pagination are fixed, so each slot is an endpoint definition.* | DECISION | S | #3, #12, #17, #19, #20, #22, #23 |
 | K6 | K | What is the password policy? | DECISION | S | #3, #24 |
-| K7 | K | What are the verification code's expiry, attempt limit, resend cooldown and lockout? | DECISION | S | #4, #10 |
+| K7 | K | What are the verification code's expiry, attempt limit, resend cooldown and lockout? *Substantially resolved by ADR-027: these are GoTrue configuration, not code we write. What remains is which values to set, and whether GoTrue supports the 8-digit code the design specifies — its OTP length is a configured range, not an arbitrary one.* | DECISION | S | #4, #10 |
 | K10 | K | Are Terms and Privacy versioned, and is acceptance recorded at sign-up? | DECISION | S | #3, #23 |
 | K12 | K | On which screens can business profile, team roster, portfolio and opening hours be edited after onboarding? *Narrowed by ADR-021: renaming a handle is one of the things this surface has to support.* | DECISION | S | #5, #6, #7, #8, #17 — the editing screens do not exist |
 | K15 | K | What are the four referenced-but-unspecified screens — Add/Edit Service, contact detail, calendar booking detail, reinstate confirmation? | DECISION | S | #13, #15, #16, #21, #22 |
@@ -80,15 +78,14 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 | K52 | K | **NEW (ADR-008).** What is the exact phone normalisation rule applied before keying, and does phone become a required field on the client booking form? | DECISION | S | #15; web Confirmation / Deposit Instructions |
 | K54 | K | **NEW (ADR-021).** The handle field on the Business Branding onboarding step, its live availability check, and the contents of the reserved-word list. | DECISION | S | #5 — the field does not exist in any design |
 | K55 | K | **NEW (ADR-020).** What is the actual field allowlist in `business_public`, including whether the owner's contact email belongs in it given the web feedback mailto? | DECISION | S | #5, #6, #7, #8, #20; web salon profile, Team, Portfolio, Other |
-| K56 | K | **NEW (ADR-018).** What is the owner shown when a social link is refused because the provider does not assert a verified email? | DECISION | S | #3, #9 |
-| K60 | K | **NEW (Phase 2 cold-start).** Does the outbox table and its worker process ship in Phase 3, or later? Phase 3's deliverables never mention either, yet E1/E2 block it *because sign-up needs email*, and ADR-024 deploys the API and the worker as two processes from one image. Depends on K59. | DECISION | S | #4, #10, #11 |
+| K56 | K | **NEW (ADR-018).** What is the owner shown when a social link is refused because the provider does not assert a verified email? *ADR-029: social login is out of Phase 3, so this belongs to the social-login slice.* | DECISION | S | #3, #9 |
 | K62 | K | **NEW (Phase 2 cold-start).** Which journeys are "critical" in the sense `DEFINITION_OF_DONE.md` requires an e2e test for, and what tooling runs those tests across a Fastify API and a Flutter client? Neither the term nor the tooling is defined anywhere; sign-up and login are almost certainly critical. | DECISION | S | all critical journeys, both clients |
 | K63 | K | **NEW (Phase 2 cold-start).** What is Phase 3's "one placeholder domain table" — name, columns, relationship to the membership table? Migrations are Do-Not-Vibe, so it cannot be improvised at implementation time. | DECISION | S | none — Phase 3 data layer |
 | K64 | K | **NEW (Phase 2 cold-start).** Which screen is Phase 3's "one true page"? The obvious candidate is the zero-membership state (I10), which `docs/BUILD_LOG.md` §5 records as having no design at all — so deciding I10's behaviour still leaves nothing to render. | DECISION | S | #12, and a screen that does not exist |
 | K65 | K | **NEW (Phase 2 cold-start).** Is Phase 3 one `DEFINITION_OF_DONE.md` pass and one PR, or several? The checklist is written per slice and `BUILD_LOG` §6 says one slice at a time, but Phase 3 delivers six layers. Determines branching and sequencing. | DECISION | S | none — process |
 | K66 | K | **NEW (Phase 2 cold-start).** Does the sole owner self-reviewing on a PR satisfy `DEFINITION_OF_DONE.md`'s human gate for Do-Not-Vibe surfaces? There is one contributor, `main` is unprotected, and PR-first is discipline-enforced. Phase 3 touches four Do-Not-Vibe surfaces. | DECISION | S | none — process |
 | K67 | K | **NEW (Phase 2 cold-start).** How do migrations reach staging and production — from CI, from a developer machine, or as a release command — and under which credential? ADR-023 bars production credentials locally but is silent on staging. Migrations and production secrets are both Do-Not-Vibe. | DECISION | S | none — deployment |
-| K68 | K | **NEW (Phase 2 cold-start).** What is the budget position for a domain name, a transactional email provider and Fly.io? `docs/ENVIRONMENT.md` §3 records a deliberate refusal to buy GitHub Pro and is silent on every other spend. E1, E2 and the Phase 3 deploy all require a purchase. | DECISION | S | #4, #10, #11; web booking page |
+| K68 | K | **NEW (Phase 2 cold-start).** What is the budget position for a domain name, a transactional email provider and Fly.io? `docs/ENVIRONMENT.md` §3 records a deliberate refusal to buy GitHub Pro and is silent on every other spend. E1, E2 and the Phase 3 deploy all require a purchase. *Narrowed by ADR-027: the email provider and sending domain move to the custom-SMTP cutover, leaving Fly.io as the Phase 3 spend.* | DECISION | S | #4, #10, #11; web booking page |
 | A7 | A | Are holidays, one-off closures and mid-day breaks supported? *Narrowed by ADR-007: closures apply at two layers.* | DECISION | D | #8; web Opening times |
 | B4 | B | Is there any reconciliation of deposit against total — balance due, receipts? | DECISION | D | #13; unspecified contact detail view |
 | B5 | B | Are deposits refundable, and by what mechanism? | DECISION | D | #13, #14 |
@@ -134,6 +131,7 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 | K46 | K | Is a single wide input the right control for an 8-digit code, and is it validated to exactly 8 numeric characters? | DECISION | D | #4, #10 |
 | K57 | K | **NEW (ADR-017).** What is the refresh token's absolute lifetime, and does it rotate on use? | DECISION | D | #3, #9, #19 |
 | K58 | K | **NEW (ADR-026).** Is a feature-flag system needed? Deliberately deferred, with a named trigger: answer before the first production release. | DECISION | D | none — process only |
+| K69 | K | **NEW (ADR-027).** How are sender identity, from-address, subject conventions and branding kept consistent across the two email template systems — GoTrue's for auth mail and the worker's for domain mail — given nothing enforces it and no test covers it? | DECISION | D | all email templates, both paths |
 
 ## Resolved by accepted decisions
 
@@ -178,6 +176,9 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 | H4 | H | Cancellation window or notice period | S | ADR-019 — the client may cancel at any point up to the appointment start, with no notice period. Owner-side cancellation remains unconstrained, as the designs have it. |
 | J6 | J | Validation locale | S | ADR-005 — Kenyan phone format, Latin name charset. |
 | K53 | K | iOS CI provider and signing credential management | S | ADR-024 — GitHub Actions with a macOS runner; signing credentials as encrypted secrets imported at build time. CI is the only mechanism by which an iOS artifact can exist. This was the last item blocking Phase 2. |
+| K59 | K | Who sends the account-activation email — GoTrue or the ADR-012 outbox | **F** | ADR-027 — the boundary is ownership of the record the email reports on. GoTrue owns the user record and the mail; the outbox owns email about records our API owns. |
+| K61 | K | Flutter client architecture — routing, state, DI, and the loading/empty/error conventions | **F** | ADR-028 — `go_router`, Riverpod for state and injection with no service locator, exhaustive `AsyncValue`, and a repository per feature wrapping the generated client. |
+| K60 | K | Whether the outbox and its worker ship in Phase 3 | S | ADR-027 — they do not. No domain record exists to notify anyone about until the booking slice. |
 | C4 | C | Multi-currency | D | ADR-005 — no, in v1. |
 | J4 | J | RTL in the owner app | D | ADR-005 — Latin script only. |
 | G1 | G | Who may leave a review | — | ADR-002 — the per-booking token authenticates the reviewer. |
@@ -193,23 +194,27 @@ ADR-001 resolves nothing; it sequences the work. ADR-016 resolves no tracked ite
 
 ## F items
 
-**Two are open: K59 and K61.** Both were raised on 2026-08-11 by a cold-start check — a session
-reading only the standing documents, with no memory of how they came to say what they say. Both
-had been invisible for the same reason: the foundation phases specified the backend thoroughly
-and the client and the email path barely at all, so nothing in review noticed the asymmetry.
+**None open.**
 
-- **K59 — who sends the activation email.** Classified `F` rather than `S` because it decides
-  whether the outbox exists in Phase 3 at all, it sits on two Do-Not-Vibe surfaces at once
-  (auth, and the outbox transaction boundary), and it is a module-boundary question: whether
-  `platform/mailer` and `platform/outbox` are load-bearing from the first slice or arrive later.
-  Answering it after auth ships means rebuilding auth's email path.
-- **K61 — Flutter client architecture.** Classified `F` because the shell decided here is the
-  one every later screen sits inside. State management and dependency injection are module
-  boundaries for the entire client, and `CLAUDE.md` §4 fixes those boundaries for `apps/api`
-  while saying nothing about `apps/mobile`. Changing them later is not a refactor of one screen.
+Two were reopened on 2026-08-11 and closed the same day, which is the part worth keeping rather
+than the count. A cold-start check — a session reading only the standing documents, with no
+memory of how they came to say what they say — found two questions the foundation phases had
+never asked, both on surfaces specified thoroughly for the backend and barely at all for the
+client and the email path.
 
-Both must be settled before Phase 3 writes client or auth-email code. Neither blocked Phase 2,
-which is why Phase 2 completed with them open.
+- **K59 — who sends the activation email.** Closed by **ADR-027**. The boundary is ownership of
+  the record the email reports on: GoTrue owns the user record and its mail, the outbox owns
+  email about records our API owns. ADR-012's rule was never about auth email, and applying it
+  there would have meant reimplementing token generation, expiry and resend limiting on a
+  Do-Not-Vibe surface to satisfy a rule whose reason was absent.
+- **K61 — Flutter client architecture.** Closed by **ADR-028**. `go_router`, Riverpod for state
+  and injection as one concept, exhaustive `AsyncValue`, and a repository per feature so a
+  wholesale client regeneration has one file per feature to break instead of every screen.
+
+**The finding behind them outlived them.** Both were invisible for months not because they were
+hard but because nothing was looking: the foundation review specified `apps/api` in detail and
+left `apps/mobile` and the email path to be inferred. That asymmetry is the reusable lesson, and
+it is why the cold-start check is worth repeating before each phase rather than once.
 
 ### The original F set
 
