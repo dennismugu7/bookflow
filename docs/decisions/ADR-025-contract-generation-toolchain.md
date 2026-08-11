@@ -78,25 +78,41 @@ true of the integration tests, so it adds no new prerequisite — but it does
 mean `npm run contracts:generate` is not available on a machine with Docker
 stopped, and the error will be Docker's rather than something friendlier.
 
-**2. The generated client is relocated into the app package, with its import
-prefix rewritten.** `dart-dio` emits a standalone Dart *package* — its own
-pubspec, its own `lib/`, and imports of the form `package:bookflow_api/src/…`.
-This ADR puts the client at `apps/mobile/lib/api/generated/`, inside the app's
-own package, where those imports do not resolve.
+**2. The generated client is a package at `packages/bookflow_api/`, depended on
+by path.** This ADR said `apps/mobile/lib/api/generated/`. That was wrong, and
+is superseded here.
 
-`scripts/generate-dart-client.mjs` therefore copies the generated `lib/` into
-place and rewrites exactly one thing: the package prefix. The generator's
-pubspec, README and test scaffolding are discarded, and the runtime
-dependencies it declares are mirrored into `apps/mobile/pubspec.yaml` by hand —
-that pubspec is the one hand-maintained artifact in this pipeline, and a
-generator upgrade that changes its dependencies will not update it
-automatically.
+`dart-dio` emits a standalone Dart *package*: its own pubspec, its own `lib/`,
+its own `dev_dependencies`, and imports of the form `package:bookflow_api/…`.
+Putting that inside another package's `lib/` produced two pieces of machinery
+that existed only to fight the layout:
 
-The rewrite is mechanical, total, and re-run on every generation, and CI's
-drift check covers its output. It is not a hand edit of a model: no human
-writes or repairs a line of the client, and any attempt would be overwritten by
-the next generation and caught by the drift check before merge.
+- **A package-prefix rewrite** over every generated file, because
+  `package:bookflow_api/src/…` does not resolve from inside `package:bookflow`.
+  Post-processing generated output is a thing you then have to explain, defend,
+  and keep working.
+- **A hand-mirrored dependency list.** The generator's pubspec was discarded, so
+  `dio`, `built_value`, `built_collection` and the rest were copied into
+  `apps/mobile/pubspec.yaml` by hand — an artifact nothing regenerated and
+  nothing checked. A generator upgrade that changed a dependency would have
+  been absorbed silently.
+
+Both disappear with a path dependency. `apps/mobile/pubspec.yaml` names
+`bookflow_api: {path: ../../packages/bookflow_api}` and nothing else from the
+client; the generated pubspec carries the client's own dependencies, and the
+drift check covers **the whole package including that pubspec** and
+`.openapi-generator/VERSION`. A generator upgrade that changes dependencies now
+fails CI instead of passing quietly.
+
+The original path was a TypeScript layout instinct applied to Dart — where
+generated output does sit inside the consuming project, and where there is no
+package manifest per directory. Dart's unit of code is the package, and the
+generator was already producing one.
 
 `dart-dio` also requires `build_runner` to emit the `.g.dart` half of every
 `built_value` model. That run is part of generation rather than a separate step,
-because the client does not compile without it.
+because the client does not compile without it. It runs inside the generated
+package, against the `dev_dependencies` the generator itself declares. The
+`--delete-conflicting-outputs` flag was removed: this version of `build_runner`
+ignores it and warns, and a flag that does nothing while implying it does
+something is worse than its absence.

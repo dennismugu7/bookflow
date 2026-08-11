@@ -74,11 +74,10 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
     transformObject: jsonSchemaTransformObject,
   });
 
-  // `/health` sits outside ADR-014's `/v1` prefix on purpose. It is an
-  // operational liveness probe for the platform to poll, not a resource in the
-  // versioned API surface, and it carries no data a client would parse into a
-  // model. Versioning it would imply a `/v2/health` one day, which is not a
-  // thing anyone wants.
+  // Unversioned by rule, not by preference: the ADR-014 amendment puts
+  // liveness and readiness probes outside the `/v1` surface. Their consumer is
+  // infrastructure rather than a client, and a probe has to answer when the
+  // versioned surface cannot.
   app.get(
     '/health',
     {

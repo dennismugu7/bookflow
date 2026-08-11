@@ -5,7 +5,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:bookflow/api/generated/src/auth/auth.dart';
+import 'package:bookflow_api/src/auth/auth.dart';
 
 class BasicAuthInfo {
   final String username;
@@ -18,14 +18,16 @@ class BasicAuthInterceptor extends AuthInterceptor {
   final Map<String, BasicAuthInfo> authInfo = {};
 
   @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+  void onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) {
     final metadataAuthInfo = getAuthInfo(
-      options,
-      (secure) =>
-          (secure['type'] == 'http' &&
-              secure['scheme']?.toLowerCase() == 'basic') ||
-          secure['type'] == 'basic',
-    );
+        options,
+        (secure) =>
+            (secure['type'] == 'http' &&
+                secure['scheme']?.toLowerCase() == 'basic') ||
+            secure['type'] == 'basic');
     for (final info in metadataAuthInfo) {
       final authName = info['name'] as String;
       final basicAuthInfo = authInfo[authName];

@@ -10,8 +10,7 @@ const HealthResponseInputStatusEnum _$healthResponseInputStatusEnum_ok =
     const HealthResponseInputStatusEnum._('ok');
 
 HealthResponseInputStatusEnum _$healthResponseInputStatusEnumValueOf(
-  String name,
-) {
+    String name) {
   switch (name) {
     case 'ok':
       return _$healthResponseInputStatusEnum_ok;
@@ -21,17 +20,20 @@ HealthResponseInputStatusEnum _$healthResponseInputStatusEnumValueOf(
 }
 
 final BuiltSet<HealthResponseInputStatusEnum>
-_$healthResponseInputStatusEnumValues = BuiltSet<HealthResponseInputStatusEnum>(
-  const <HealthResponseInputStatusEnum>[_$healthResponseInputStatusEnum_ok],
-);
+    _$healthResponseInputStatusEnumValues = BuiltSet<
+        HealthResponseInputStatusEnum>(const <HealthResponseInputStatusEnum>[
+  _$healthResponseInputStatusEnum_ok,
+]);
 
 Serializer<HealthResponseInputStatusEnum>
-_$healthResponseInputStatusEnumSerializer =
+    _$healthResponseInputStatusEnumSerializer =
     _$HealthResponseInputStatusEnumSerializer();
 
 class _$HealthResponseInputStatusEnumSerializer
     implements PrimitiveSerializer<HealthResponseInputStatusEnum> {
-  static const Map<String, Object> _toWire = const <String, Object>{'ok': 'ok'};
+  static const Map<String, Object> _toWire = const <String, Object>{
+    'ok': 'ok',
+  };
   static const Map<Object, String> _fromWire = const <Object, String>{
     'ok': 'ok',
   };
@@ -43,34 +45,31 @@ class _$HealthResponseInputStatusEnumSerializer
 
   @override
   Object serialize(
-    Serializers serializers,
-    HealthResponseInputStatusEnum object, {
-    FullType specifiedType = FullType.unspecified,
-  }) => _toWire[object.name] ?? object.name;
+          Serializers serializers, HealthResponseInputStatusEnum object,
+          {FullType specifiedType = FullType.unspecified}) =>
+      _toWire[object.name] ?? object.name;
 
   @override
   HealthResponseInputStatusEnum deserialize(
-    Serializers serializers,
-    Object serialized, {
-    FullType specifiedType = FullType.unspecified,
-  }) => HealthResponseInputStatusEnum.valueOf(
-    _fromWire[serialized] ?? (serialized is String ? serialized : ''),
-  );
+          Serializers serializers, Object serialized,
+          {FullType specifiedType = FullType.unspecified}) =>
+      HealthResponseInputStatusEnum.valueOf(
+          _fromWire[serialized] ?? (serialized is String ? serialized : ''));
 }
 
 class _$HealthResponseInput extends HealthResponseInput {
   @override
   final HealthResponseInputStatusEnum status;
 
-  factory _$HealthResponseInput([
-    void Function(HealthResponseInputBuilder)? updates,
-  ]) => (HealthResponseInputBuilder()..update(updates))._build();
+  factory _$HealthResponseInput(
+          [void Function(HealthResponseInputBuilder)? updates]) =>
+      (HealthResponseInputBuilder()..update(updates))._build();
 
   _$HealthResponseInput._({required this.status}) : super._();
   @override
   HealthResponseInput rebuild(
-    void Function(HealthResponseInputBuilder) updates,
-  ) => (toBuilder()..update(updates)).build();
+          void Function(HealthResponseInputBuilder) updates) =>
+      (toBuilder()..update(updates)).build();
 
   @override
   HealthResponseInputBuilder toBuilder() =>
@@ -92,9 +91,9 @@ class _$HealthResponseInput extends HealthResponseInput {
 
   @override
   String toString() {
-    return (newBuiltValueToStringHelper(
-      r'HealthResponseInput',
-    )..add('status', status)).toString();
+    return (newBuiltValueToStringHelper(r'HealthResponseInput')
+          ..add('status', status))
+        .toString();
   }
 }
 
@@ -133,14 +132,10 @@ class HealthResponseInputBuilder
   HealthResponseInput build() => _build();
 
   _$HealthResponseInput _build() {
-    final _$result =
-        _$v ??
+    final _$result = _$v ??
         _$HealthResponseInput._(
           status: BuiltValueNullFieldError.checkNotNull(
-            status,
-            r'HealthResponseInput',
-            'status',
-          ),
+              status, r'HealthResponseInput', 'status'),
         );
     replace(_$result);
     return _$result;

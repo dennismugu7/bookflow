@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:bookflow/api/generated/bookflow_api.dart';
+import 'package:bookflow_api/bookflow_api.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 

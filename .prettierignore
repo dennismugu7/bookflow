@@ -9,6 +9,10 @@ package-lock.json
 packages/contracts/
 apps/api/src/platform/db.types.ts
 
+# The generated Dart client package. `dart format` owns it — it is formatted as
+# part of generation — and Prettier would fight that over its YAML and JSON.
+packages/bookflow_api/
+
 # Scratch space written by `supabase start`. Gitignored by supabase/.gitignore;
 # Prettier does not read that.
 supabase/.temp/

@@ -20,15 +20,17 @@ HealthResponseStatusEnum _$healthResponseStatusEnumValueOf(String name) {
 
 final BuiltSet<HealthResponseStatusEnum> _$healthResponseStatusEnumValues =
     BuiltSet<HealthResponseStatusEnum>(const <HealthResponseStatusEnum>[
-      _$healthResponseStatusEnum_ok,
-    ]);
+  _$healthResponseStatusEnum_ok,
+]);
 
 Serializer<HealthResponseStatusEnum> _$healthResponseStatusEnumSerializer =
     _$HealthResponseStatusEnumSerializer();
 
 class _$HealthResponseStatusEnumSerializer
     implements PrimitiveSerializer<HealthResponseStatusEnum> {
-  static const Map<String, Object> _toWire = const <String, Object>{'ok': 'ok'};
+  static const Map<String, Object> _toWire = const <String, Object>{
+    'ok': 'ok',
+  };
   static const Map<Object, String> _fromWire = const <Object, String>{
     'ok': 'ok',
   };
@@ -39,20 +41,16 @@ class _$HealthResponseStatusEnumSerializer
   final String wireName = 'HealthResponseStatusEnum';
 
   @override
-  Object serialize(
-    Serializers serializers,
-    HealthResponseStatusEnum object, {
-    FullType specifiedType = FullType.unspecified,
-  }) => _toWire[object.name] ?? object.name;
+  Object serialize(Serializers serializers, HealthResponseStatusEnum object,
+          {FullType specifiedType = FullType.unspecified}) =>
+      _toWire[object.name] ?? object.name;
 
   @override
   HealthResponseStatusEnum deserialize(
-    Serializers serializers,
-    Object serialized, {
-    FullType specifiedType = FullType.unspecified,
-  }) => HealthResponseStatusEnum.valueOf(
-    _fromWire[serialized] ?? (serialized is String ? serialized : ''),
-  );
+          Serializers serializers, Object serialized,
+          {FullType specifiedType = FullType.unspecified}) =>
+      HealthResponseStatusEnum.valueOf(
+          _fromWire[serialized] ?? (serialized is String ? serialized : ''));
 }
 
 class _$HealthResponse extends HealthResponse {
@@ -86,9 +84,9 @@ class _$HealthResponse extends HealthResponse {
 
   @override
   String toString() {
-    return (newBuiltValueToStringHelper(
-      r'HealthResponse',
-    )..add('status', status)).toString();
+    return (newBuiltValueToStringHelper(r'HealthResponse')
+          ..add('status', status))
+        .toString();
   }
 }
 
@@ -127,14 +125,10 @@ class HealthResponseBuilder
   HealthResponse build() => _build();
 
   _$HealthResponse _build() {
-    final _$result =
-        _$v ??
+    final _$result = _$v ??
         _$HealthResponse._(
           status: BuiltValueNullFieldError.checkNotNull(
-            status,
-            r'HealthResponse',
-            'status',
-          ),
+              status, r'HealthResponse', 'status'),
         );
     replace(_$result);
     return _$result;

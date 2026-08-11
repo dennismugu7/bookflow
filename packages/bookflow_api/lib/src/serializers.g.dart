@@ -6,12 +6,11 @@ part of 'serializers.dart';
 // BuiltValueGenerator
 // **************************************************************************
 
-Serializers _$serializers =
-    (Serializers().toBuilder()
-          ..add(HealthResponse.serializer)
-          ..add(HealthResponseInput.serializer)
-          ..add(HealthResponseInputStatusEnum.serializer)
-          ..add(HealthResponseStatusEnum.serializer))
-        .build();
+Serializers _$serializers = (Serializers().toBuilder()
+      ..add(HealthResponse.serializer)
+      ..add(HealthResponseInput.serializer)
+      ..add(HealthResponseInputStatusEnum.serializer)
+      ..add(HealthResponseStatusEnum.serializer))
+    .build();
 
 // ignore_for_file: deprecated_member_use_from_same_package,type=lint

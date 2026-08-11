@@ -3,17 +3,15 @@
 //
 
 import 'package:dio/dio.dart';
-import 'package:bookflow/api/generated/src/auth/auth.dart';
+import 'package:bookflow_api/src/auth/auth.dart';
 
 class ApiKeyAuthInterceptor extends AuthInterceptor {
   final Map<String, String> apiKeys = {};
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    final authInfo = getAuthInfo(
-      options,
-      (secure) => secure['type'] == 'apiKey',
-    );
+    final authInfo =
+        getAuthInfo(options, (secure) => secure['type'] == 'apiKey');
     for (final info in authInfo) {
       final authName = info['name'] as String;
       final authKeyName = info['keyName'] as String;

@@ -8,7 +8,7 @@ import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:dio/dio.dart';
 
-import 'package:bookflow/api/generated/src/model/health_response.dart';
+import 'package:bookflow_api/src/model/health_response.dart';
 
 class HealthApi {
   final Dio _dio;
@@ -41,8 +41,13 @@ class HealthApi {
     final _path = r'/health';
     final _options = Options(
       method: r'GET',
-      headers: <String, dynamic>{...?headers},
-      extra: <String, dynamic>{'secure': <Map<String, String>>[], ...?extra},
+      headers: <String, dynamic>{
+        ...?headers,
+      },
+      extra: <String, dynamic>{
+        'secure': <Map<String, String>>[],
+        ...?extra,
+      },
       validateStatus: validateStatus,
     );
 
@@ -61,10 +66,9 @@ class HealthApi {
       _responseData = rawResponse == null
           ? null
           : _serializers.deserialize(
-                  rawResponse,
-                  specifiedType: const FullType(HealthResponse),
-                )
-                as HealthResponse;
+              rawResponse,
+              specifiedType: const FullType(HealthResponse),
+            ) as HealthResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,

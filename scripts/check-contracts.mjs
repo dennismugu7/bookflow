@@ -13,7 +13,12 @@
 
 import { execFileSync } from 'node:child_process';
 
-const WATCHED = ['packages/contracts', 'apps/mobile/lib/api/generated'];
+// The whole generated package, not just its lib/. Its pubspec is generated
+// too, and it is the file that carries the client's runtime dependencies — a
+// generator upgrade that changes them has to show up as drift rather than be
+// absorbed silently. `.openapi-generator/VERSION` is in here as well, so the
+// generator version itself is under the same check.
+const WATCHED = ['packages/contracts', 'packages/bookflow_api'];
 
 function git(args) {
   return execFileSync('git', args, { encoding: 'utf8' });

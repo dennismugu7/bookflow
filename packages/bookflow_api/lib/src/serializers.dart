@@ -11,22 +11,24 @@ import 'package:built_value/json_object.dart';
 import 'package:built_value/serializer.dart';
 import 'package:built_value/standard_json_plugin.dart';
 import 'package:built_value/iso_8601_date_time_serializer.dart';
-import 'package:bookflow/api/generated/src/date_serializer.dart';
-import 'package:bookflow/api/generated/src/model/date.dart';
+import 'package:bookflow_api/src/date_serializer.dart';
+import 'package:bookflow_api/src/model/date.dart';
 
-import 'package:bookflow/api/generated/src/model/health_response.dart';
-import 'package:bookflow/api/generated/src/model/health_response_input.dart';
+import 'package:bookflow_api/src/model/health_response.dart';
+import 'package:bookflow_api/src/model/health_response_input.dart';
 
 part 'serializers.g.dart';
 
-@SerializersFor([HealthResponse, HealthResponseInput])
-Serializers serializers =
-    (_$serializers.toBuilder()
-          ..add(const OneOfSerializer())
-          ..add(const AnyOfSerializer())
-          ..add(const DateSerializer())
-          ..add(Iso8601DateTimeSerializer()))
-        .build();
+@SerializersFor([
+  HealthResponse,
+  HealthResponseInput,
+])
+Serializers serializers = (_$serializers.toBuilder()
+      ..add(const OneOfSerializer())
+      ..add(const AnyOfSerializer())
+      ..add(const DateSerializer())
+      ..add(Iso8601DateTimeSerializer()))
+    .build();
 
 Serializers standardSerializers =
     (serializers.toBuilder()..addPlugin(StandardJsonPlugin())).build();

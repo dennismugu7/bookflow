@@ -3,19 +3,18 @@
 //
 
 import 'package:dio/dio.dart';
-import 'package:bookflow/api/generated/src/auth/auth.dart';
+import 'package:bookflow_api/src/auth/auth.dart';
 
-class BearerAuthInterceptor extends AuthInterceptor {
+class OAuthInterceptor extends AuthInterceptor {
   final Map<String, String> tokens = {};
 
   @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    final authInfo = getAuthInfo(
-      options,
-      (secure) =>
-          secure['type'] == 'http' &&
-          secure['scheme']?.toLowerCase() == 'bearer',
-    );
+  void onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) {
+    final authInfo = getAuthInfo(options,
+        (secure) => secure['type'] == 'oauth' || secure['type'] == 'oauth2');
     for (final info in authInfo) {
       final token = tokens[info['name']];
       if (token != null) {

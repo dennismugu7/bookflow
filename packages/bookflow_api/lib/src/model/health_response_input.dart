@@ -7,63 +7,64 @@ import 'package:built_collection/built_collection.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
-part 'health_response.g.dart';
+part 'health_response_input.g.dart';
 
 /// Liveness response.
 ///
 /// Properties:
 /// * [status]
 @BuiltValue()
-abstract class HealthResponse
-    implements Built<HealthResponse, HealthResponseBuilder> {
+abstract class HealthResponseInput
+    implements Built<HealthResponseInput, HealthResponseInputBuilder> {
   @BuiltValueField(wireName: r'status')
-  HealthResponseStatusEnum get status;
+  HealthResponseInputStatusEnum get status;
   // enum statusEnum {  ok,  };
 
-  HealthResponse._();
+  HealthResponseInput._();
 
-  factory HealthResponse([void updates(HealthResponseBuilder b)]) =
-      _$HealthResponse;
+  factory HealthResponseInput([void updates(HealthResponseInputBuilder b)]) =
+      _$HealthResponseInput;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(HealthResponseBuilder b) => b;
+  static void _defaults(HealthResponseInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<HealthResponse> get serializer =>
-      _$HealthResponseSerializer();
+  static Serializer<HealthResponseInput> get serializer =>
+      _$HealthResponseInputSerializer();
 }
 
-class _$HealthResponseSerializer
-    implements PrimitiveSerializer<HealthResponse> {
+class _$HealthResponseInputSerializer
+    implements PrimitiveSerializer<HealthResponseInput> {
   @override
-  final Iterable<Type> types = const [HealthResponse, _$HealthResponse];
+  final Iterable<Type> types = const [
+    HealthResponseInput,
+    _$HealthResponseInput
+  ];
 
   @override
-  final String wireName = r'HealthResponse';
+  final String wireName = r'HealthResponseInput';
 
   Iterable<Object?> _serializeProperties(
     Serializers serializers,
-    HealthResponse object, {
+    HealthResponseInput object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
     yield r'status';
     yield serializers.serialize(
       object.status,
-      specifiedType: const FullType(HealthResponseStatusEnum),
+      specifiedType: const FullType(HealthResponseInputStatusEnum),
     );
   }
 
   @override
   Object serialize(
     Serializers serializers,
-    HealthResponse object, {
+    HealthResponseInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(
-      serializers,
-      object,
-      specifiedType: specifiedType,
-    ).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -71,7 +72,7 @@ class _$HealthResponseSerializer
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
     required List<Object?> serializedList,
-    required HealthResponseBuilder result,
+    required HealthResponseInputBuilder result,
     required List<Object?> unhandled,
   }) {
     for (var i = 0; i < serializedList.length; i += 2) {
@@ -79,12 +80,10 @@ class _$HealthResponseSerializer
       final value = serializedList[i + 1];
       switch (key) {
         case r'status':
-          final valueDes =
-              serializers.deserialize(
-                    value,
-                    specifiedType: const FullType(HealthResponseStatusEnum),
-                  )
-                  as HealthResponseStatusEnum;
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(HealthResponseInputStatusEnum),
+          ) as HealthResponseInputStatusEnum;
           result.status = valueDes;
           break;
         default:
@@ -96,12 +95,12 @@ class _$HealthResponseSerializer
   }
 
   @override
-  HealthResponse deserialize(
+  HealthResponseInput deserialize(
     Serializers serializers,
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    final result = HealthResponseBuilder();
+    final result = HealthResponseInputBuilder();
     final serializedList = (serialized as Iterable<Object?>).toList();
     final unhandled = <Object?>[];
     _deserializeProperties(
@@ -116,17 +115,18 @@ class _$HealthResponseSerializer
   }
 }
 
-class HealthResponseStatusEnum extends EnumClass {
+class HealthResponseInputStatusEnum extends EnumClass {
   @BuiltValueEnumConst(wireName: r'ok')
-  static const HealthResponseStatusEnum ok = _$healthResponseStatusEnum_ok;
+  static const HealthResponseInputStatusEnum ok =
+      _$healthResponseInputStatusEnum_ok;
 
-  static Serializer<HealthResponseStatusEnum> get serializer =>
-      _$healthResponseStatusEnumSerializer;
+  static Serializer<HealthResponseInputStatusEnum> get serializer =>
+      _$healthResponseInputStatusEnumSerializer;
 
-  const HealthResponseStatusEnum._(String name) : super(name);
+  const HealthResponseInputStatusEnum._(String name) : super(name);
 
-  static BuiltSet<HealthResponseStatusEnum> get values =>
-      _$healthResponseStatusEnumValues;
-  static HealthResponseStatusEnum valueOf(String name) =>
-      _$healthResponseStatusEnumValueOf(name);
+  static BuiltSet<HealthResponseInputStatusEnum> get values =>
+      _$healthResponseInputStatusEnumValues;
+  static HealthResponseInputStatusEnum valueOf(String name) =>
+      _$healthResponseInputStatusEnumValueOf(name);
 }
