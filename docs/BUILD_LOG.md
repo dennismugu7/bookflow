@@ -248,45 +248,28 @@ asked. **Both are now settled and neither blocks Phase 3.**
   `apps/mobile` layout alongside the API's, and §5 carries the two rules a reviewer must be able
   to check without reading the ADR.
 
-### Phase 0 is complete — but PR 1's review reopened two `F` items
+### Phase 0 is complete — and PR 1's two findings are closed
 
-**No `S` item blocks Phase 3.** Six ADRs on 2026-08-11 closed the last of them, on top of
-ADR-027 and ADR-029 earlier the same day.
+**No `F` and no `S` item blocks Phase 3.** Six ADRs closed the `S` list; ADR-027 and ADR-029
+closed the two `F` items a cold-start check had reopened; and **ADR-037 and ADR-038 closed the
+two the PR 1 migration review raised** — neither of which was visible from the ADRs alone.
 
-**Two `F` items block PR 2**, both raised by the line-by-line review of PR 1's migration and
-neither visible from the ADRs alone:
+- **K72 → ADR-037.** Sign-up is mediated by our API, which proxies to GoTrue server-side so the
+  activation email still flows, then writes the profile with a **server-supplied** terms version
+  and compensates with an admin delete if that write fails. The trigger-on-`auth.users`
+  alternative was rejected: `raw_user_meta_data` is client-supplied, so a consent record the
+  subject controls is not a consent record. **Open sign-up must be disabled on GoTrue**, and
+  that must be verified on staging rather than assumed.
+- **K73 → ADR-038.** The API connects as a dedicated non-owner role — CRUD, no DDL, no
+  ownership, plus `BYPASSRLS` so that RLS-with-no-policies does not lock it out of its own
+  tables. **Verified on the hosted project before the ADR claimed it works**, because
+  `BYPASSRLS` normally needs a superuser and Supabase's `postgres` is not one. It holds
+  `BYPASSRLS` and `CREATEROLE`, which is enough. ADR-013's model is unchanged.
 
-- **K72** — how a `public.user_profiles` row is created, given GoTrue owns the `auth.users`
-  insert and the profile's consent columns are `not null`. Anything client-side leaves an
-  authenticated user with no profile and no honest backfill.
-- **K73** — which database role the API connects as. If it is `postgres`, the API owns the
-  tables, holds DDL over the schema, and bypasses RLS — which decides what ADR-013's defence in
-  depth is capable of protecting at all.
-
-Both are argued in `docs/analysis/05-triage.md` under "F items". **PR 1 is unaffected and
-merged**; PR 2 does not start until these are settled.
-
-| Decided | By | Was |
-|---|---|---|
-| Password minimum eight characters, no composition rules, leaked-password protection on. Verification code six digits, ten-minute expiry, sixty-second resend cooldown, GoTrue rate limiting. | **ADR-030** | K6, K7 |
-| Three tables, not a placeholder: `user_profiles`, `businesses`, `memberships` — the tenancy spine, so the membership scoping rule is proved rather than asserted. Terms acceptance versioned and timestamped at sign-up. | **ADR-031** | K63, K10, I10 (data) |
-| One true page is **My Profile Details (#20)**. Four sequential PRs, each runnable; full `DEFINITION_OF_DONE.md` pass when the slice is whole. Sole-contributor human gate under three named constraints. Zero-membership users see a stub. | **ADR-032** | K64, K65, K66, I10 (UI) |
-| A critical journey is one whose failure prevents a booking being taken or made. Flutter `integration_test` against staging, and nothing else satisfies the gate. | **ADR-033** | K62 |
-| Migrations applied by CI on merge to `main`, before deploy, with a scoped Actions credential. Never from a development machine. Production gets a manual gate. Phase 3 is free-tier only. | **ADR-034** | K67, K68 (for this phase) |
-| English only for v1. No i18n wiring. Revisit on demand from real owners, not speculation. | **ADR-035** | J3 |
-
-**K5 is not a prerequisite and never was.** The twelve empty "Backend / System Action" slots are
-the *output* of building those screens, not an input to them — each is settled as its endpoint is
-written and reviewed with it. Recorded so nobody waits on it.
-
-**One deviation from the design is now on record.** The verification screen shows six digits, not
-the eight `DD-Bookflow-Native.md` specifies — see `docs/analysis/08-design-deviations.md`, a list
-ADR-030 starts because none existed.
-
-**Still open but not blocking:** K57 (`D` — refresh token absolute lifetime and rotation) will be
-met during implementation; answer it deliberately rather than by default. K69 (`D`) is branding
-consistency across the two email template systems. K70 (`D`) is that the Terms and Privacy
-documents do not yet exist, so the version string recorded at sign-up currently points at nothing.
+**PR 2 may now start.** Its obligations from these two: the no-orphan test for the compensating
+delete, verification that `enable_signup = false` actually applies on staging, a reproducible
+way to provision the application role in every environment, and grants for tables future
+migrations create.
 
 ### Provision before starting — infrastructure that does not exist
 

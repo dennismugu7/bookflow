@@ -12,7 +12,7 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 
 **Screen numbers** are `01-screen-inventory.md`'s. Web pages are named.
 
-**Status: two `F` items are open — K72 and K73, both raised by the PR 1 migration review.** Both block PR 2 of ADR-032's sequence. Two earlier `F` items, K59 and K61, were reopened and closed on 2026-08-11 by ADR-027 and ADR-028. Thirty-six accepted decisions in `docs/decisions/`, plus **spike 001** (`docs/spikes/001-platform.md`), have closed every other item that has blocked the foundation. Items each decision settles move to the Resolved table; items narrowed without being settled stay classified where they were, with an italic note; items created are marked **NEW**.
+**Status: no `F` items are open.** K72 and K73 were raised by the PR 1 migration review on 2026-08-11 and closed the same day by ADR-037 and ADR-038 — the second only after its central assumption was verified against the hosted project rather than asserted. Thirty-eight accepted decisions in `docs/decisions/`, plus **spike 001** (`docs/spikes/001-platform.md`), have closed every item that has blocked the foundation. Items each decision settles move to the Resolved table; items narrowed without being settled stay classified where they were, with an italic note; items created are marked **NEW**.
 
 ---
 
@@ -20,8 +20,6 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 
 | ID | Cat | Question | Type | When | Blocked screens |
 |---|---|---|---|---|---|
-| K72 | K | **NEW (PR 1 review).** How does a `public.user_profiles` row come into existence? GoTrue owns the `auth.users` insert and our API is not in that transaction. `terms_version` and `terms_accepted_at` are `not null`, so the profile must exist **with real values the moment the account does** — a client-side follow-up call leaves an auth user with no profile, and no honest way to backfill consent that was never given. Likely answer: a trigger on `auth.users` reading `raw_user_meta_data`, with sign-up passing first name, last name and terms version as metadata. **Blocks PR 2**, and sits on a Do-Not-Vibe surface. | DECISION | **F** | #3, #4, #20 |
-| K73 | K | **NEW (PR 1 review).** Which database role does the API connect as? The tables are owned by `postgres`, which is also the migration role, so an application connecting as `postgres` carries DDL rights over the whole schema and any injection is unbounded. A dedicated role — `usage` on `public`, CRUD on the application tables, no DDL, no ownership — bounds it, and makes `force row level security` available later as a real control rather than something that would break the API. **Interacts with ADR-013:** RLS is bypassed by the table owner, so a non-owner application role changes what RLS is *capable* of protecting. Decide before PR 2 opens a connection. | DECISION | **F** | none — every protected read and write |
 | A1 | A | Do bookable slots step by service duration, by a fixed grid, or by an owner-configured interval? | DECISION | S | web Select date and time |
 | A2 | A | Is there a turnaround buffer between appointments? | DECISION | S | #16; web Select date and time |
 | A5 | A | Is a slot held or reserved while the client moves through the multi-step booking flow? *Narrowed by ADR-007: post-submit expiry reduces the exposure but does not remove the pre-submit race.* | DECISION | S | web Select services → Review and continue |
@@ -168,6 +166,8 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 | H4 | H | Cancellation window or notice period | S | ADR-019 — the client may cancel at any point up to the appointment start, with no notice period. Owner-side cancellation remains unconstrained, as the designs have it. |
 | J6 | J | Validation locale | S | ADR-005 — Kenyan phone format, Latin name charset. |
 | K53 | K | iOS CI provider and signing credential management | S | ADR-024 — GitHub Actions with a macOS runner; signing credentials as encrypted secrets imported at build time. CI is the only mechanism by which an iOS artifact can exist. This was the last item blocking Phase 2. |
+| K72 | K | How a `public.user_profiles` row is created, given GoTrue owns the `auth.users` insert and the consent columns are `not null` | **F** | ADR-037 — sign-up is mediated by our API, which proxies to GoTrue server-side and inserts the profile with a server-supplied terms version, compensating with an admin delete if the profile insert fails. The trigger-on-`auth.users` alternative was rejected: `raw_user_meta_data` is client-supplied, and a consent record the subject controls is not a consent record. |
+| K73 | K | Which database role the API connects as | **F** | ADR-038 — a dedicated non-owner role with CRUD, no DDL, no ownership, and the `BYPASSRLS` attribute. **Verified on staging, not assumed:** `postgres` is not a superuser but holds `BYPASSRLS` and `CREATEROLE`, so the grant works; the role reads through RLS, cannot create or alter, and `anon` stays blocked. ADR-013's model is unchanged. |
 | A13 | A | Do the GiST operator classes from `btree_gist` resolve when the exclusion constraint is created on a hosted project, and must the migration set `search_path` or schema-qualify | S (SPIKE) | **Answered on the hosted project, 2026-08-11** — not the local stack. `bookflow-staging` (`vvborjxraxdeflrllqwh`): the migration role is `postgres`, its `search_path` is `"$user", public, extensions`, and an unqualified `exclude using gist (uuid_col with =, range_col with &&)` **succeeded**. No `set search_path` and no schema qualification is required. `extensions.gist_uuid_ops` is also addressable explicitly if ever wanted. |
 | K6 | K | What is the password policy | S | ADR-030 — minimum eight characters, no composition rules, GoTrue leaked-password protection enabled. NIST SP 800-63B: length plus a breach check, not composition. |
 | K7 | K | What are the verification code's expiry, attempt limit, resend cooldown and lockout | S | ADR-027 made these configuration rather than code; ADR-030 sets the values — six digits, ten-minute expiry, sixty-second resend cooldown, GoTrue rate limiting for lockout. |
@@ -198,25 +198,24 @@ ADR-001 resolves nothing; it sequences the work. ADR-016 resolves no tracked ite
 
 ## F items
 
-**Two are open: K72 and K73.** Both were raised by the line-by-line review of PR 1's migration —
-which is the review working as intended, and worth saying plainly: neither was visible from the
-ADRs, and both were found by reading SQL.
+**None open.**
 
-- **K72 — how a `user_profiles` row is created.** The migration made `terms_version` and
-  `terms_accepted_at` `not null`, on ADR-031's reasoning that consent recorded later cannot be
-  recorded honestly. That is right, and it has a consequence nobody had stated: the profile must
-  exist, with real values, in the same breath as the account — and GoTrue owns that insert, not
-  us. Anything client-side leaves a window in which an authenticated user has no profile.
-- **K73 — which role the API connects as.** The tables are owned by `postgres`. If the API also
-  connects as `postgres`, it holds DDL over the whole schema and every injection is unbounded.
-  This also decides what RLS can ever do here: the owner bypasses RLS, so as long as the API is
-  the owner, ADR-013's defence in depth protects the API's connection from nothing at all.
+Four have been opened and closed since Phase 2 ended, which is the number worth noticing rather
+than the zero. Two came from a cold-start check reading the standing documents (K59, K61); two
+came from the line-by-line review of PR 1's migration (K72, K73). **Neither pair was visible from
+the ADRs** — one set surfaced by reading the documents against each other, the other by reading
+SQL.
 
-**Both block PR 2** and neither blocks the merged PR 1, which is schema only.
+- **K59 → ADR-027**, the email boundary. **K61 → ADR-028**, the Flutter architecture.
+- **K72 → ADR-037.** How a profile row is created. The obvious answer — a trigger reading
+  `raw_user_meta_data` — was rejected because that metadata is client-supplied, and a consent
+  record the subject controls is not a consent record.
+- **K73 → ADR-038.** Which role the API connects as. Answered only after checking on the hosted
+  project that `BYPASSRLS` can be granted at all by a non-superuser `postgres`; had it failed,
+  the fallback would have made RLS load-bearing and amended ADR-013.
 
-**The pattern is the same one the cold-start check found**, in a different place: decisions
-recorded thoroughly at the level they were made, and a gap where two of them meet. ADR-031 said
-what the columns are; ADR-027 said who owns the account; neither said who writes the row.
+**The pattern across all four:** decisions recorded thoroughly at the level they were made, with
+a gap where two of them meet. Reviews find those. ADR authorship does not.
 
 ### The original F set
 

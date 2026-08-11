@@ -304,7 +304,14 @@ jobs:
       # connection string never appears in the log: it is read from the secret
       # into the environment, and GitHub masks registered secret values in
       # output regardless.
+      #
+      # `--yes` is explicit on purpose. `db push` prompts "[Y/n]" before
+      # applying; on a non-interactive runner it receives no input and proceeds
+      # on its default. That worked, but it is undocumented behaviour being
+      # relied on for a Do-Not-Vibe operation against a shared database — the
+      # kind of thing that changes in a CLI release and is noticed by a
+      # migration silently not applying. Answering the question is free.
       - name: Apply migrations to staging
         env:
           STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-        run: supabase db push --db-url "$STAGING_DATABASE_URL" --include-all
+        run: supabase db push --db-url "$STAGING_DATABASE_URL" --include-all --yes
