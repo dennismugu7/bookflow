@@ -13,6 +13,7 @@
     "packages/contracts"
   ],
   "scripts": {
+    "prepare": "node scripts/install-git-hooks.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

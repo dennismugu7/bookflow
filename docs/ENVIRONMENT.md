@@ -51,9 +51,12 @@ Required-version column cites the ADR that imposes it. "—" means no ADR pins a
 | Docker Compose | implied by the local stack | **v5.3.1** ✓ | `docker compose version` |
 | Supabase CLI | required (ADR-022) | **2.113.0** ✓ | `supabase --version` |
 | Supabase CLI auth | needed to manage hosted projects (ADR-023) | **logged in** ✓ — org `mugu-labs` | `supabase orgs list` |
-| Flutter | required (ADR-015) | **3.44.8** stable ✓ | `flutter --version` |
+| Flutter | required (ADR-015); CI pins the same 3.44.8 | **3.44.8** stable ✓ | `flutter --version` |
+| Android toolchain | `flutter build apk` in CI; local Android builds optional | CI-only for now — no local emulator or device has been used | `flutter doctor` |
+| Xcode / iOS toolchain | **impossible locally.** The development machine is Windows (ADR-015). iOS exists only through the macOS CI job. | not applicable | — |
 | Dart | ships with Flutter (ADR-015) | **3.12.2** ✓ | `dart --version` |
-| Java runtime | needed by `openapi-generator` (ADR-025) | **openjdk 17.0.20** ✓ | `java --version` |
+| Java runtime | needed by `openapi-generator` (ADR-025) and by Gradle for Android builds | **openjdk 17.0.20** ✓ | `java --version` |
+| Pre-push hook | runs `npm run verify` before a push leaves the machine | **installed** ✓ — `core.hooksPath` = `.githooks`, wired by npm's `prepare` on install | `git config --local --get core.hooksPath` |
 | TypeScript | `tsc --noEmit` is a hard gate (ADR-022) | **5.9.x** ✓ — root devDependency | `npx tsc --version` |
 | ESLint | 9, flat config (ADR-022) | **9.x** ✓ — root devDependency, `eslint.config.js` | `npx eslint --version` |
 | Prettier | formatting gate (ADR-022) | **3.x** ✓ — root devDependency | `npx prettier --version` |
@@ -92,7 +95,7 @@ given here, deliberately, so this table cannot drift from the lockfile.
 | git remote `origin` | pushes to GitHub | ADR-026 | **exists** — `https://github.com/dennismugu7/bookflow.git` | `git remote -v` |
 | GitHub repository `dennismugu7/bookflow` | code host; runs Actions | ADR-024, ADR-026 | **exists, private, populated.** History pushed 2026-08-10; the remote is no longer empty. | `gh repo view dennismugu7/bookflow --json visibility,defaultBranchRef` · `git ls-remote --heads origin` |
 | Default branch `main` | trunk; ADR-024 deploys staging on merge to it | ADR-026 | **exists — renamed from `master` and set as the GitHub default, 2026-08-10.** Local `main` tracks `origin/main`. | `git branch --show-current` · `gh repo view dennismugu7/bookflow --json defaultBranchRef --jq '.defaultBranchRef.name'` |
-| Branch protection on `main` | enforce ADR-026's PR-then-squash-merge, and require CI green | ADR-026, ADR-024 | **BLOCKED BY PLAN — not configured, and not configurable.** Attempted 2026-08-10 via both mechanisms; both return `403 Upgrade to GitHub Pro or make this repository public to enable this feature`. This account is a free personal plan and the repository is private. **ADR-026's trunk-based, squash-merge, PR-first convention is therefore enforced by discipline alone — nothing mechanical stops a direct push to `main`, including a red one.** | `gh api repos/dennismugu7/bookflow/branches/main/protection` · `gh api repos/dennismugu7/bookflow/rulesets` |
+| Branch protection on `main` | enforce ADR-026's PR-then-squash-merge, and require CI green | ADR-026, ADR-024 | **DEFERRED, DELIBERATELY — see "Accepted risk" below.** Attempted 2026-08-10 via both mechanisms; both return `403 Upgrade to GitHub Pro or make this repository public to enable this feature`. Free personal plan, private repository. Not a TODO: GitHub Pro is not being bought at this stage, and the pre-push hook is the compensating control. | `gh api repos/dennismugu7/bookflow/branches/main/protection` · `gh api repos/dennismugu7/bookflow/rulesets` |
 | GitHub Actions workflows | ADR-024's CI | ADR-024 | **exists — 2026-08-10.** `.github/workflows/ci.yml`, job `verify`, on push to `main` and on PRs targeting it. Runs `npm run verify` against a real Supabase stack (database + gotrue only). ~2m40s. Observed failing and passing, deliberately. **Not yet covered:** the Flutter job, the iOS macOS-runner job, the contract drift check and the Fly.io deploy — all of ADR-024, none of them possible yet. | `gh run list --branch main` · `gh workflow view CI` |
 | GitHub Actions secrets | staging/production credentials, Apple signing | ADR-023, ADR-024 | **not yet** | `gh secret list` |
 | Local Supabase stack | development database; integration tests | ADR-022, ADR-023 | **exists — 2026-08-10.** `supabase/config.toml` committed, Postgres **17.6** (the line spike 001 ran against), one migration applied. Endpoints: API `54321`, DB `54322`, Studio `54323`, Mailpit `54324`. | `npm run db:start` then `supabase status`; `docker ps` shows `supabase_db_bookflow` |
@@ -110,6 +113,34 @@ given here, deliberately, so this table cannot drift from the lockfile.
 hosted-project rows are checked rather than assumed, and `bookflow-spike` is confirmed gone
 rather than reported gone.
 
+### Accepted risk — `main` is unprotected
+
+**Position, not oversight.** GitHub Pro is not being purchased at this stage. The repository
+is private on a free personal plan, and both branch protection and rulesets are gated behind
+Pro; there is no configuration that achieves this and none is being sought.
+
+**What is actually true, stated without softening.** Nothing on the server refuses a direct
+push to `main`. Nothing refuses a *red* push to `main`. CI runs and reports afterwards, which
+is a notification, not a gate. ADR-026's PR-first, squash-merge convention is enforced by
+discipline alone.
+
+**Compensating control.** The committed pre-push hook (`.githooks/pre-push`, installed by
+npm's `prepare`) runs `npm run verify` and refuses the push on failure. It is genuinely
+weaker than branch protection and says so when it blocks: it runs only on machines that
+installed it, and `git push --no-verify` walks straight past it. It catches accidents, not
+intent.
+
+**Buy Pro, or make the repository public, when either becomes true:**
+
+1. **A second person commits.** Discipline is a property of a person, not of a repository;
+   one shared convention with no enforcement stops being a convention as soon as it is shared.
+2. **Before the first production release.** ADR-024 deploys production on a tag from `main`.
+   An unprotected `main` at that point means an unreviewed commit can reach production
+   without anything having refused it.
+
+Whichever comes first. Until then this row stays as it is, and it is not a gap to be closed
+quietly — closing it costs money and that is the owner's call.
+
 **One thing to settle before provisioning.** ADR-023 chose two hosted projects partly because
 "two is exactly the free tier's allowance". The account currently holds one project already —
 `Dashboard X`, unrelated to Bookflow. If that allowance is per-organisation and still two,
@@ -125,20 +156,20 @@ change ADR-023; it is the kind of plan change ADR-023's last consequence anticip
 
 | Missing | Why it blocks |
 |---|---|
-| Flutter project in `apps/mobile` | ADR-015, ADR-022. `dart format`, `flutter analyze` and `flutter test` are Definition-of-Done gates with nothing to run against, and ADR-024's Flutter and iOS jobs have nothing to build. |
+| Apple Developer account and signing credentials | **K53, still open.** ADR-024 imports them as encrypted secrets at build time. Until then the iOS job runs `--no-codesign`, which proves the target compiles and nothing more — no installable artifact, no TestFlight, no device. |
 | `supabase/seed.sql` | ADR-026. `db reset` warns `no files matched pattern: supabase/seed.sql` on every run. Not writable yet — ADR-026 wants one demo salon with bookings in every status, which needs tables, which are Phase 3. |
 
 **Done since this file was written:** the `master` → `main` rename and the first push
 (ADR-026); `.env.example` (ADR-023); the npm workspace, the `apps/api` Fastify skeleton and
 the lint / format / type-check / test gates (ADR-022); the local Supabase stack, the
 extensions migration and Kysely with generated types (ADR-022); the config module and the
-unit/integration test layering; and GitHub Actions running `npm run verify` on every push and
-PR (ADR-024). See `docs/BUILD_LOG.md` §1.
+unit/integration test layering; GitHub Actions running `npm run verify` on every push and PR
+(ADR-024); and the Flutter skeleton in `apps/mobile` with its analyze / format / test / build
+jobs on Linux and an unsigned iOS build on macOS. See `docs/BUILD_LOG.md` §1.
 
-Both remaining items are repository work plus the already-installed toolchain. **No purchase,
-no signup and no external provisioning is required to finish Phase 2** — with the one
-exception recorded in §3: branch protection cannot be configured on this plan at all, and no
-amount of repository work changes that.
+The remaining items need a decision or an account, not repository work: `seed.sql` waits on
+tables, signing waits on an Apple Developer account (K53), and branch protection waits on a
+purchase that is deliberately not being made yet — see the accepted risk in §3.
 
 ### Does not block Phase 2 — Phase 3 and later
 

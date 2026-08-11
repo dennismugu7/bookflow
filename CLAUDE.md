@@ -45,7 +45,7 @@ bookflow/
 │  └─ ENVIRONMENT.md  the one mutable doc — state of the world outside the repo    ✓
 ├─ apps/                          ✓
 │  ├─ api/          Fastify service and the outbox/expiry worker                  ✓ skeleton
-│  └─ mobile/       Flutter owner app                                             ✗
+│  └─ mobile/       Flutter owner app                                             ✓ skeleton
 ├─ packages/                      ✓
 │  └─ contracts/    OpenAPI spec and generated Dart/TypeScript clients            ✓ empty
 ├─ supabase/                      ✓

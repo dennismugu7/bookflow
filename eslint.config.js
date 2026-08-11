@@ -35,8 +35,19 @@ export default tseslint.config(
   },
   {
     // Config files at the root are plain ESM and are not part of any tsconfig.
-    files: ['*.js', '*.config.js', '*.config.ts'],
+    files: ['*.js', '*.config.js', '*.config.ts', 'scripts/**/*.mjs'],
     ...tseslint.configs.disableTypeChecked,
+  },
+  {
+    // Plain Node scripts. Declared explicitly rather than pulling in the
+    // `globals` package for two names.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+      },
+    },
   },
   // Must stay last: turns off every rule Prettier owns, so formatting is
   // decided in exactly one place.
