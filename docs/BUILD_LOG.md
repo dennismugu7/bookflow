@@ -29,15 +29,24 @@ types generated from the live schema · root `db:*` scripts · fail-fast environ
 unit and integration test layers with a rollback-per-test harness · GitHub Actions running
 `npm run verify` on every push and PR, observed both red and green.
 
-**Phase 2, outstanding:** the Flutter project in `apps/mobile` (ADR-015), which also unblocks
-ADR-024's Flutter and iOS jobs · `supabase/seed.sql`, which ADR-026 wants carrying a demo
-salon and therefore cannot be written before there are tables. `docs/ENVIRONMENT.md` §4 is the
-live list.
+Then: the Flutter skeleton in `apps/mobile` — package `com.mugulabs.bookflow`, no screens,
+strict analysis options — with `flutter analyze` / `dart format` / `flutter test` / Android
+debug build on Linux CI and an unsigned iOS build on macOS CI · a committed pre-push hook
+running `npm run verify`.
 
-**One thing cannot be done at all:** branch protection on `main` is unavailable on this
-GitHub plan for a private repository — both the classic API and rulesets return 403. ADR-026's
-PR-first, squash-merge convention is enforced by discipline, not by the platform. Recorded in
-`docs/ENVIRONMENT.md` §3 rather than quietly left looking configured.
+**Phase 2, outstanding:** `supabase/seed.sql`, which ADR-026 wants carrying a demo salon and
+therefore cannot be written before there are tables. `docs/ENVIRONMENT.md` §4 is the live
+list.
+
+**Two things are accepted rather than done**, both in `docs/ENVIRONMENT.md` §3 with their
+trigger conditions, neither a TODO:
+
+- **`main` is unprotected**, and cannot be protected without buying GitHub Pro or making the
+  repository public. Not being bought at this stage. The pre-push hook is the compensating
+  control; it is weaker and says so when it blocks. Revisit when a second person commits, or
+  before the first production release — whichever comes first.
+- **iOS is unsigned.** K53 is still open; there is no Apple Developer account. The macOS job
+  proves the target compiles and produces nothing installable.
 
 **The API does nothing product-specific.** One static health route, no tables, no auth, no
 tests. The database has extensions and nothing else — the domain schema belongs to the first

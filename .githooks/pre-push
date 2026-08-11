@@ -1,0 +1,45 @@
+#!/usr/bin/env sh
+#
+# Pre-push hook: runs the TypeScript gate before a push leaves the machine.
+#
+# Lives in .githooks/ and is committed, because .git/hooks is not
+# version-controlled and a hook only one person has is not a practice. Wired up
+# by scripts/install-git-hooks.mjs, which npm runs automatically via `prepare`
+# on `npm install` / `npm ci` — so a fresh clone gets it from the first install.
+#
+# Deliberately does NOT run the Flutter gates. `flutter analyze` alone takes
+# over a minute and the Android build far longer; a pre-push hook that costs
+# minutes is a hook people disable. CI covers Dart on every push and PR.
+
+set -e
+
+printf '\n▸ pre-push: npm run verify\n\n'
+
+if npm run verify; then
+  printf '\n▸ pre-push: passed\n\n'
+  exit 0
+fi
+
+cat <<'MESSAGE'
+
+────────────────────────────────────────────────────────────────────────────
+  PUSH BLOCKED — npm run verify failed.
+
+  This hook is a CONVENIENCE, not a gate.
+
+    • It runs on your machine only. Anyone who has not installed it, or who
+      runs `git push --no-verify`, pushes straight past it. That is a
+      supported escape hatch, not a workaround — use it when you know why.
+
+    • Nothing else will catch a red push. Branch protection on `main` is
+      unavailable on this GitHub plan for a private repository (both the
+      classic API and rulesets return 403 — see docs/ENVIRONMENT.md §3), so
+      a direct push to `main` cannot be refused by the server, red or not.
+      CI will run and go red, but only after the fact.
+
+  So: fix it, or bypass it on purpose. Do not bypass it by habit.
+────────────────────────────────────────────────────────────────────────────
+
+MESSAGE
+
+exit 1

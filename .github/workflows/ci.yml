@@ -1,15 +1,23 @@
 name: CI
 
-# ADR-024: GitHub Actions, one CI system for everything. This workflow is the
-# TypeScript half. The Flutter and iOS jobs that ADR-024 also specifies are not
-# here yet — apps/mobile does not exist. Nor is the Fly.io deploy: it belongs
-# after there is something worth deploying.
+# ADR-024: GitHub Actions, one CI system for everything.
+#
+# Three independent jobs: `verify` (TypeScript), `mobile` (Dart on Linux) and
+# `ios-build` (Dart on macOS). None depends on another, so one failure never
+# hides another's result.
+#
+# Still missing from ADR-024: the contract drift check, which needs ADR-025's
+# generation pipeline, and the Fly.io deploy, which belongs after there is
+# something worth deploying.
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  # Lets the iOS job be run on demand against a branch, without paying for it
+  # on every push. See the `ios` job's `if:` below.
+  workflow_dispatch:
 
 # One run per ref. Pushing twice in quick succession cancels the first, so the
 # queue never fills with runs whose result nobody will read.
@@ -111,3 +119,96 @@ jobs:
         env:
           APP_ENV: local
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+
+  # ── Mobile ─────────────────────────────────────────────────────────────────
+  # Independent of `verify`. Neither job needs the other, so a Dart failure
+  # does not hide a TypeScript failure, and both results arrive on the PR.
+  mobile:
+    name: mobile
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Gradle needs a JDK; the Flutter action does not supply one.
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Pinned to the version on the development machine, for the same reason
+      # the Supabase CLI is pinned above: CI and local should disagree because
+      # someone changed a number, not because a channel moved.
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.8
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # --fatal-infos matters: every lint in analysis_options.yaml reports as an
+      # "info", and without this the analyzer would exit zero with a page of
+      # them (ADR-022 requires zero warnings).
+      - name: Analyze
+        run: flutter analyze --fatal-infos --fatal-warnings
+
+      - name: Format check
+        run: dart format --set-exit-if-changed lib test
+
+      - name: Test
+        run: flutter test
+
+      - name: Build Android (debug)
+        run: flutter build apk --debug
+
+  # ── iOS ────────────────────────────────────────────────────────────────────
+  # Proves the iOS target compiles. It cannot do more than that: there is no
+  # Apple Developer account, so --no-codesign is the ceiling and signing stays
+  # open as K53 in docs/analysis/05-triage.md.
+  #
+  # COST. macOS runners bill at 10x the Linux rate against this private
+  # repository's included allowance, so this job is deliberately NOT run on
+  # every push:
+  #   - always on push to main, where the result matters;
+  #   - on demand via workflow_dispatch;
+  #   - on a pull request ONLY when it carries the `ios` label, so a PR that
+  #     touches iOS can opt in and everything else pays nothing.
+  ios:
+    name: ios-build
+    if: >-
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.labels.*.name, 'ios')
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.8
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build iOS (unsigned)
+        run: flutter build ios --no-codesign
