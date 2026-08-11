@@ -1,4 +1,5 @@
 import { buildApp } from './app.ts';
+import { createDb } from './platform/db.ts';
 import { ConfigError, getConfig, type Config } from './platform/config.ts';
 
 /**
@@ -20,7 +21,8 @@ try {
   throw error;
 }
 
-const app = await buildApp(config);
+const db = createDb();
+const app = await buildApp(config, { db: () => db });
 
 try {
   await app.listen({ port: config.PORT, host: config.HOST });

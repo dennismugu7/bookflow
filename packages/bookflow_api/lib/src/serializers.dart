@@ -14,14 +14,22 @@ import 'package:built_value/iso_8601_date_time_serializer.dart';
 import 'package:bookflow_api/src/date_serializer.dart';
 import 'package:bookflow_api/src/model/date.dart';
 
+import 'package:bookflow_api/src/model/business.dart';
+import 'package:bookflow_api/src/model/business_input.dart';
 import 'package:bookflow_api/src/model/health_response.dart';
 import 'package:bookflow_api/src/model/health_response_input.dart';
+import 'package:bookflow_api/src/model/profile.dart';
+import 'package:bookflow_api/src/model/profile_input.dart';
 
 part 'serializers.g.dart';
 
 @SerializersFor([
+  Business,
+  BusinessInput,
   HealthResponse,
   HealthResponseInput,
+  Profile,
+  ProfileInput,
 ])
 Serializers serializers = (_$serializers.toBuilder()
       ..add(const OneOfSerializer())

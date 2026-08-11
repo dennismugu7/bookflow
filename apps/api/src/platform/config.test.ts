@@ -16,6 +16,9 @@ function validEnv(): Record<string, string> {
   return {
     APP_ENV: 'local',
     DATABASE_URL: SECRET_DB_URL,
+    // Required as of the auth slice: jwt.ts derives both the JWKS URI and the
+    // expected issuer from it (ADR-017).
+    SUPABASE_URL: 'https://project.supabase.co',
     SUPABASE_SERVICE_ROLE_KEY: SECRET_SERVICE_KEY,
     MAIL_PROVIDER_API_KEY: SECRET_MAIL_KEY,
   };
@@ -66,6 +69,7 @@ describe('loadConfig', () => {
 
     expect(error.message).toContain('APP_ENV');
     expect(error.message).toContain('DATABASE_URL');
+    expect(error.message).toContain('SUPABASE_URL');
     expect(error.message).toContain('MAIL_FROM_ADDRESS');
   });
 
@@ -80,6 +84,7 @@ describe('loadConfig', () => {
       SUPABASE_SERVICE_ROLE_KEY: SECRET_SERVICE_KEY,
       MAIL_PROVIDER_API_KEY: SECRET_MAIL_KEY,
       MAIL_FROM_ADDRESS: 'not-an-email',
+      SUPABASE_URL: 'https://project.supabase.co',
     });
 
     expect(error.message).toContain('APP_ENV');

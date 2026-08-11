@@ -1,4 +1,4 @@
-import { Kysely, PostgresDialect } from 'kysely';
+import { Kysely, PostgresDialect, type Transaction } from 'kysely';
 import pg from 'pg';
 
 import { getConfig } from './config.ts';
@@ -61,3 +61,14 @@ export function createDb(
 }
 
 export type Database = Kysely<DB>;
+
+/**
+ * What a repository accepts.
+ *
+ * A `Kysely` or a `Transaction`, so the same repository works in a request and
+ * inside the test harness's rolled-back transaction. Repositories take this as
+ * a parameter and never reach for a connection of their own — a repository that
+ * opens its own pool escapes the caller's transaction and writes for real
+ * (`CLAUDE.md` §5).
+ */
+export type Executor = Kysely<DB> | Transaction<DB>;

@@ -48,10 +48,20 @@ alter role bookflow_api with password 'local_dev_password';
 -- email to click. Password is 'password123' — bcrypt hashed below — and is a
 -- local fixture, not a credential: it grants access to a disposable container
 -- that listens on localhost only.
+-- The empty strings are not decoration. GoTrue scans these columns into Go
+-- `string`, not `*string`, so a NULL makes login fail with
+--   Database error querying schema
+--   sql: Scan error on column index 3, name "confirmation_token":
+--   converting NULL to string is unsupported
+-- which reads like a schema problem and is really a seed problem. Found by the
+-- first integration test that tried to sign this user in.
 insert into auth.users (
   instance_id, id, aud, role, email,
   encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data,
+  confirmation_token, recovery_token,
+  email_change, email_change_token_new, email_change_token_current,
+  phone_change, phone_change_token, reauthentication_token,
   created_at, updated_at
 )
 values (
@@ -64,6 +74,9 @@ values (
   now(),
   '{"provider":"email","providers":["email"]}',
   '{}',
+  '', '',
+  '', '', '',
+  '', '', '',
   now(),
   now()
 )

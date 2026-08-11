@@ -7,10 +7,14 @@ part of 'serializers.dart';
 // **************************************************************************
 
 Serializers _$serializers = (Serializers().toBuilder()
+      ..add(Business.serializer)
+      ..add(BusinessInput.serializer)
       ..add(HealthResponse.serializer)
       ..add(HealthResponseInput.serializer)
       ..add(HealthResponseInputStatusEnum.serializer)
-      ..add(HealthResponseStatusEnum.serializer))
+      ..add(HealthResponseStatusEnum.serializer)
+      ..add(Profile.serializer)
+      ..add(ProfileInput.serializer))
     .build();
 
 // ignore_for_file: deprecated_member_use_from_same_package,type=lint

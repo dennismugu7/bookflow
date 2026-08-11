@@ -21,9 +21,18 @@ const config = {
   PORT: 3000,
   HOST: '127.0.0.1',
   DATABASE_URL: 'postgresql://unused:unused@127.0.0.1:1/unused',
+  SUPABASE_URL: 'http://127.0.0.1:54321',
+  SUPABASE_JWT_AUDIENCE: 'authenticated',
 };
 
-const app = await buildApp(config);
+// No database and no auth server are reached: `app.ready()` builds the route
+// table and the JWKS is fetched lazily, on the first request, which never
+// happens here.
+const app = await buildApp(config, {
+  db: () => {
+    throw new Error('the spec generator never executes a query');
+  },
+});
 await app.ready();
 
 const document = app.swagger();

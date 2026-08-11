@@ -9,7 +9,9 @@ import 'package:bookflow_api/src/auth/api_key_auth.dart';
 import 'package:bookflow_api/src/auth/basic_auth.dart';
 import 'package:bookflow_api/src/auth/bearer_auth.dart';
 import 'package:bookflow_api/src/auth/oauth.dart';
+import 'package:bookflow_api/src/api/businesses_api.dart';
 import 'package:bookflow_api/src/api/health_api.dart';
+import 'package:bookflow_api/src/api/me_api.dart';
 
 class BookflowApi {
   static const String basePath = r'http://localhost';
@@ -76,9 +78,21 @@ class BookflowApi {
     }
   }
 
+  /// Get BusinessesApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  BusinessesApi getBusinessesApi() {
+    return BusinessesApi(dio, serializers);
+  }
+
   /// Get HealthApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
   HealthApi getHealthApi() {
     return HealthApi(dio, serializers);
+  }
+
+  /// Get MeApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  MeApi getMeApi() {
+    return MeApi(dio, serializers);
   }
 }
