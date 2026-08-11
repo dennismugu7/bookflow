@@ -1,40 +1,30 @@
 import { sql } from 'kysely';
 import { describe, expect, it } from 'vitest';
 
-import { useTransaction } from '../../test/integration/harness.ts';
+import {
+  APPLICATION_ROLE,
+  useTransaction,
+} from '../../test/integration/harness.ts';
 
 /**
  * The application database role (ADR-038).
  *
  * The API connects as `bookflow_api` — CRUD on the application tables, no DDL,
  * no ownership, plus `BYPASSRLS` so that RLS-with-no-policies does not lock it
- * out of its own data. These assert all three halves of that.
+ * out of its own data. These assert all three.
  *
- * ── READ THIS BEFORE ADDING A TEST THAT EXPECTS A PERMISSION FAILURE ────────
+ * Note what is NOT here: role switching. The harness makes the application role
+ * the ambient condition, so these tests simply run — which is the point. A test
+ * that had to switch role to check the application's own privileges would be
+ * testing a simulation of the API rather than the API's actual condition.
  *
- * A PL/pgSQL exception handler is a SAVEPOINT, and rolling back to a savepoint
- * REVERTS `SET LOCAL ROLE`. The same is true of the `rollback to savepoint`
- * this file's `expectDenied` helper uses.
- *
- * So a test that switches role, triggers an error, and then keeps asserting is
- * NOT testing the role it thinks it is — it is testing `postgres`, silently,
- * and it will pass while proving the opposite of what it claims.
- *
- * This was found the hard way while verifying ADR-038 against the hosted
- * project: a probe reported that the restricted role could CREATE TABLE, which
- * was true only because the role had already been reverted by an earlier
- * handler. The rule that falls out of it:
- *
- *   **Re-establish the role after every expected failure**, or assert the
- *   privilege without switching role at all.
- *
- * `has_table_privilege` is preferred wherever it will do, precisely because it
- * answers the question from the `postgres` session without any role switching.
+ * The savepoint caveat and the `asAdmin` / `asRole` rules are documented in
+ * `test/integration/harness.ts`. Read that before adding a test here that
+ * expects a permission failure.
  */
 
 const ctx = useTransaction();
 
-const APP_ROLE = 'bookflow_api';
 const PRIVILEGES = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'] as const;
 
 /** Every table the application schema currently contains. */
@@ -45,36 +35,46 @@ async function applicationTables(): Promise<string[]> {
   return result.rows.map((row) => row.tablename);
 }
 
-/**
- * Runs a statement expected to fail, inside a savepoint, and puts the session
- * back on `postgres` afterwards.
- *
- * The role reset is not tidiness — see the note at the top of this file. The
- * savepoint rollback reverts `SET LOCAL ROLE` as a side effect, so without an
- * explicit reset the next statement's role depends on whether the previous one
- * threw. That is how a test comes to assert something about the wrong role.
- */
-async function expectDenied(
-  statement: string,
-  pattern: RegExp,
-  message: string,
-): Promise<void> {
-  await sql.raw('savepoint probe').execute(ctx.db);
-  let caught: unknown;
-  try {
-    await sql.raw(statement).execute(ctx.db);
-  } catch (error) {
-    caught = error;
-  }
-  await sql.raw('rollback to savepoint probe').execute(ctx.db);
-  await sql.raw('set local role postgres').execute(ctx.db);
+describe('the harness runs as the application role', () => {
+  it('is bookflow_api, not postgres', async () => {
+    // The ambient condition, asserted rather than assumed. If this reports
+    // `postgres`, every repository test in the suite is running with privileges
+    // the API does not have, and a missing grant would pass CI.
+    const result = await sql<{
+      current_user: string;
+    }>`select current_user`.execute(ctx.db);
 
-  expect(caught, message).toBeInstanceOf(Error);
-  expect((caught as Error).message, message).toMatch(pattern);
-}
+    expect(result.rows[0]?.current_user).toBe(APPLICATION_ROLE);
+  });
 
-describe('the application role exists with the right attributes', () => {
-  it('can log in, bypasses RLS, and is not a superuser or an owner', async () => {
+  it('restores the application role after asAdmin', async () => {
+    await ctx.asAdmin(async () => {
+      const inside = await sql<{ current_user: string }>`
+        select current_user
+      `.execute(ctx.db);
+      expect(inside.rows[0]?.current_user).toBe('postgres');
+    });
+
+    const after = await sql<{
+      current_user: string;
+    }>`select current_user`.execute(ctx.db);
+    expect(after.rows[0]?.current_user).toBe(APPLICATION_ROLE);
+  });
+
+  it('restores the application role even when asAdmin throws', async () => {
+    await expect(
+      ctx.asAdmin(() => Promise.reject(new Error('deliberate'))),
+    ).rejects.toThrow('deliberate');
+
+    const after = await sql<{
+      current_user: string;
+    }>`select current_user`.execute(ctx.db);
+    expect(after.rows[0]?.current_user).toBe(APPLICATION_ROLE);
+  });
+});
+
+describe('the application role has the right attributes', () => {
+  it('can log in, bypasses RLS, and is not a superuser', async () => {
     const result = await sql<{
       rolcanlogin: boolean;
       rolbypassrls: boolean;
@@ -83,11 +83,11 @@ describe('the application role exists with the right attributes', () => {
       rolcreaterole: boolean;
     }>`
       select rolcanlogin, rolbypassrls, rolsuper, rolcreatedb, rolcreaterole
-      from pg_roles where rolname = ${APP_ROLE}
+      from pg_roles where rolname = ${APPLICATION_ROLE}
     `.execute(ctx.db);
 
     const role = result.rows[0];
-    expect(role, `${APP_ROLE} exists`).toBeDefined();
+    expect(role, `${APPLICATION_ROLE} exists`).toBeDefined();
     expect(role!.rolcanlogin).toBe(true);
     expect(role!.rolbypassrls).toBe(true);
     expect(role!.rolsuper).toBe(false);
@@ -96,11 +96,11 @@ describe('the application role exists with the right attributes', () => {
   });
 
   it('owns nothing in public', async () => {
-    // Ownership is what would give it DDL over its own tables regardless of
-    // any grant, so this is the assertion the no-DDL claim rests on.
+    // Ownership would give it DDL over its own tables regardless of any grant,
+    // so this is the assertion the no-DDL claim rests on.
     const result = await sql<{ count: string }>`
       select count(*)::text as count
-      from pg_tables where schemaname = 'public' and tableowner = ${APP_ROLE}
+      from pg_tables where schemaname = 'public' and tableowner = ${APPLICATION_ROLE}
     `.execute(ctx.db);
 
     expect(result.rows[0]?.count).toBe('0');
@@ -108,8 +108,8 @@ describe('the application role exists with the right attributes', () => {
 
   it('has usage but not create on the public schema', async () => {
     const result = await sql<{ usage: boolean; create: boolean }>`
-      select has_schema_privilege(${APP_ROLE}, 'public', 'USAGE') as usage,
-             has_schema_privilege(${APP_ROLE}, 'public', 'CREATE') as create
+      select has_schema_privilege(${APPLICATION_ROLE}, 'public', 'USAGE') as usage,
+             has_schema_privilege(${APPLICATION_ROLE}, 'public', 'CREATE') as create
     `.execute(ctx.db);
 
     expect(result.rows[0]?.usage).toBe(true);
@@ -124,12 +124,12 @@ describe('grants cover every application table', () => {
   // list, so a table added by a later migration without a grant fails here
   // instead of failing a request in production.
   //
-  // If this test fails, the fix is a grant in the migration that added the
-  // table — not an exclusion here.
+  // If this fails, the fix is a grant in the migration that added the table —
+  // not an exclusion here.
 
   it('finds at least the three foundation tables', async () => {
-    // Guards the enumeration itself: a query that returned nothing would make
-    // every assertion below vacuously true.
+    // Guards the enumeration itself: a query returning nothing would make the
+    // assertion below vacuously true.
     const tables = await applicationTables();
     expect(tables).toEqual(
       expect.arrayContaining(['businesses', 'memberships', 'user_profiles']),
@@ -146,7 +146,7 @@ describe('grants cover every application table', () => {
       for (const privilege of PRIVILEGES) {
         const result = await sql<{ granted: boolean }>`
           select has_table_privilege(
-            ${APP_ROLE}, ${`public.${table}`}, ${privilege}
+            ${APPLICATION_ROLE}, ${`public.${table}`}, ${privilege}
           ) as granted
         `.execute(ctx.db);
 
@@ -158,7 +158,7 @@ describe('grants cover every application table', () => {
 
     expect(
       missing,
-      `every table in public must grant all four privileges to ${APP_ROLE}; ` +
+      `every table in public must grant all four privileges to ${APPLICATION_ROLE}; ` +
         'a table added without a grant belongs in the migration that added it',
     ).toEqual([]);
   });
@@ -170,22 +170,19 @@ describe('the application role can use its data', () => {
       ctx.db,
     );
 
-    await sql.raw(`set local role ${APP_ROLE}`).execute(ctx.db);
     const result = await sql<{ count: string }>`
       select count(*)::text as count from public.businesses
     `.execute(ctx.db);
-    await sql.raw('set local role postgres').execute(ctx.db);
 
     expect(Number(result.rows[0]?.count ?? '0')).toBeGreaterThan(0);
   });
 
   it('inserts, updates and deletes', async () => {
-    await sql.raw(`set local role ${APP_ROLE}`).execute(ctx.db);
-
     const inserted = await sql<{ id: string }>`
       insert into public.businesses (name) values ('Role Write Probe') returning id
     `.execute(ctx.db);
     const id = inserted.rows[0]?.id;
+    expect(id).toBeTruthy();
 
     await sql`update public.businesses set name = 'Renamed By App' where id = ${id}::uuid`.execute(
       ctx.db,
@@ -198,51 +195,61 @@ describe('the application role can use its data', () => {
       select count(*)::text as count from public.businesses where id = ${id}::uuid
     `.execute(ctx.db);
 
-    await sql.raw('set local role postgres').execute(ctx.db);
-
-    expect(id).toBeTruthy();
     expect(remaining.rows[0]?.count).toBe('0');
   });
 });
 
 describe('the application role cannot change the schema', () => {
   it('cannot create a table', async () => {
-    await sql.raw(`set local role ${APP_ROLE}`).execute(ctx.db);
-    await expectDenied(
-      'create table public.should_not_exist (x int)',
+    await ctx.expectDenied(
+      () =>
+        sql.raw('create table public.should_not_exist (x int)').execute(ctx.db),
       /permission denied for schema public/i,
       'the application role cannot create tables',
     );
   });
 
   it('cannot alter an existing table', async () => {
-    await sql.raw(`set local role ${APP_ROLE}`).execute(ctx.db);
-    await expectDenied(
-      'alter table public.businesses add column should_not_exist int',
+    await ctx.expectDenied(
+      () =>
+        sql
+          .raw('alter table public.businesses add column should_not_exist int')
+          .execute(ctx.db),
       /must be owner of table businesses/i,
       'the application role cannot alter tables',
     );
   });
 
   it('cannot drop a table', async () => {
-    await sql.raw(`set local role ${APP_ROLE}`).execute(ctx.db);
-    await expectDenied(
-      'drop table public.memberships',
+    await ctx.expectDenied(
+      () => sql.raw('drop table public.memberships').execute(ctx.db),
       /must be owner of table memberships/i,
       'the application role cannot drop tables',
     );
   });
 
-  it('is still postgres after those failures — the savepoint caveat', async () => {
-    // Proves the discipline the header note demands actually holds. If
-    // `expectDenied` stopped resetting the role, this would still pass by
-    // accident — the savepoint rollback reverts to postgres anyway — which is
-    // exactly why the reset is explicit rather than relied upon.
-    const result = await sql<{ current_user: string }>`
-      select current_user
-    `.execute(ctx.db);
+  it('cannot write auth.users — ADR-037 keeps that on GoTrue', async () => {
+    await ctx.expectDenied(
+      () =>
+        sql
+          .raw(
+            "insert into auth.users (instance_id, id, aud, role, email) values ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated', 'nope@bookflow.test')",
+          )
+          .execute(ctx.db),
+      /permission denied/i,
+      'the application role holds nothing on auth',
+    );
+  });
 
-    expect(result.rows[0]?.current_user).toBe('postgres');
+  it('is still the application role after those failures', async () => {
+    // The savepoint caveat, asserted. `expectDenied` restores the role; if it
+    // stopped doing so, the rollback would leave `postgres` in force and every
+    // later assertion in the test would be about the wrong role.
+    const result = await sql<{
+      current_user: string;
+    }>`select current_user`.execute(ctx.db);
+
+    expect(result.rows[0]?.current_user).toBe(APPLICATION_ROLE);
   });
 });
 
@@ -253,13 +260,15 @@ describe('anon and authenticated still read nothing', () => {
   for (const role of ['anon', 'authenticated'] as const) {
     it(`denies ${role} on every application table`, async () => {
       const tables = await applicationTables();
+      expect(tables.length).toBeGreaterThan(0);
 
       for (const table of tables) {
-        await sql.raw(`set local role ${role}`).execute(ctx.db);
-        await expectDenied(
-          `select * from public.${table}`,
-          /permission denied/i,
-          `${role} cannot read ${table}`,
+        await ctx.asRole(role, () =>
+          ctx.expectDenied(
+            () => sql.raw(`select * from public.${table}`).execute(ctx.db),
+            /permission denied/i,
+            `${role} cannot read ${table}`,
+          ),
         );
       }
     });

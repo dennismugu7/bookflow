@@ -37,6 +37,24 @@ describe('bookings repository', () => {
 `useTransaction()` goes at the **top level** of the file, once. `ctx.db` is used
 **inside test bodies**.
 
+## What role your test runs as
+
+`ctx.db` runs as **`bookflow_api`**, the application role — CRUD on the
+application tables, no DDL, no ownership (ADR-038). That is what the API runs
+as, so it is what your code under test runs as. A repository reading a table
+nobody granted fails here rather than in production.
+
+Privilege is asked for explicitly:
+
+```ts
+await ctx.asAdmin(() => createAnAuthUser());   // needs postgres
+await ctx.asRole('anon', () => ...);           // needs some other role
+```
+
+Both restore the application role afterwards, including on failure. Use
+`asAdmin` only for fixtures the application must never be able to write itself —
+an `auth.users` row is the canonical case.
+
 ## What the transaction wrapper does
 
 Every test is wrapped in a transaction that is **rolled back** when it finishes:
@@ -52,6 +70,14 @@ Every test is wrapped in a transaction that is **rolled back** when it finishes:
 
 ## What not to do
 
+- **Do not reach for `asAdmin` to make a test pass.** If your code under test
+  needs privileges the application role lacks, the answer is a grant in the
+  migration that created the table — or a reconsideration of what that code is
+  doing. `asAdmin` is for fixtures, not for the subject.
+- **Do not assume the role survives a failure.** A savepoint rollback reverts
+  `SET LOCAL ROLE`, so a test that expects a permission error and keeps
+  asserting is testing whatever the rollback restored. Use `ctx.expectDenied`,
+  which restores it. The long version is in `integration/harness.ts`.
 - **Do not skip when the database is down.** The suite fails instead, on
   purpose. A skipped integration suite reports green while checking nothing,
   which looks identical in CI to a passing one. `harness.ts` explains this at

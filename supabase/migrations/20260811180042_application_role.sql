@@ -72,11 +72,35 @@ alter role bookflow_api
 comment on role bookflow_api is
   'The API connects as this role (ADR-038). CRUD only, no DDL, no ownership. Password set per environment, never in a migration.';
 
--- Since PostgreSQL 16, a CREATEROLE role receives membership in roles it
--- creates with SET FALSE — so `postgres` cannot SET ROLE to bookflow_api
--- without this, and the integration tests that verify the grants could not run.
--- It confers nothing: `postgres` owns these tables and can already do anything
--- this role can.
+-- ---------------------------------------------------------------------------
+-- Membership: postgres may SET ROLE to bookflow_api
+-- ---------------------------------------------------------------------------
+-- WHY THIS EXISTS: so tests can run as the application role.
+--
+-- The integration harness connects as `postgres` — it must, because it needs to
+-- create `auth.users` fixtures and switch roles — and then immediately
+-- `set local role bookflow_api`, so that every test runs under exactly the
+-- privileges the API has. Without this grant that switch is refused, and the
+-- whole suite would silently run as `postgres`: a repository reading a table
+-- nobody granted would pass CI and fail in production, which is most of what
+-- this migration exists to prevent.
+--
+-- WHY IT MUST BE EXPLICIT: since PostgreSQL 16, a CREATEROLE role receives
+-- membership in roles it creates with **SET FALSE** — the membership exists,
+-- but `SET ROLE` is not part of it. `postgres` created this role and therefore
+-- has admin over it, and still cannot assume it. The error is
+-- `permission denied to set role "bookflow_api"`, which reads like a missing
+-- grant rather than a defaulted option, and cost an afternoon on the hosted
+-- project before it was understood.
+--
+-- WHAT IT CONFERS: nothing. `postgres` owns every table here and holds
+-- BYPASSRLS itself, so it can already do everything `bookflow_api` can and a
+-- great deal more. This grant adds no capability; it only removes an
+-- inconvenience that would otherwise make the restriction untestable.
+--
+-- The reverse grant does NOT exist and must never be added: `bookflow_api` has
+-- no membership in `postgres` and so no path back up. That asymmetry is the
+-- security property.
 grant bookflow_api to postgres with set true;
 
 -- ---------------------------------------------------------------------------
