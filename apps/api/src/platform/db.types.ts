@@ -3,4 +3,50 @@
  * Please do not edit it manually.
  */
 
-export interface DB {}
+import type { ColumnType } from "kysely";
+
+export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
+  ? ColumnType<S, I | undefined, U>
+  : ColumnType<T, T | undefined, T>;
+
+export type Timestamp = ColumnType<Date, Date | string, Date | string>;
+
+export interface Businesses {
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  name: string;
+  /**
+   * ADR-004. Every public read filters on this. Defaults false.
+   */
+  published: Generated<boolean>;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface Memberships {
+  business_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  role: Generated<string>;
+  updated_at: Generated<Timestamp>;
+  user_id: string;
+}
+
+export interface UserProfiles {
+  /**
+   * Storage object path, not a URL (ADR-011). URLs are derived at read time.
+   */
+  avatar_path: string | null;
+  created_at: Generated<Timestamp>;
+  first_name: string;
+  id: string;
+  last_name: string;
+  terms_accepted_at: Timestamp;
+  terms_version: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface DB {
+  businesses: Businesses;
+  memberships: Memberships;
+  user_profiles: UserProfiles;
+}
