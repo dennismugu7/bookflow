@@ -57,3 +57,38 @@ K4 (API contract style — envelope, error format, pagination, versioning). It w
 ## Items created
 
 None.
+
+## Amendments
+
+**2026-08-11 — operational endpoints sit outside the versioned surface.**
+
+This ADR fixes `/v1` as the version prefix without saying whether *everything*
+the service exposes lives under it. The first route to exist, `GET /health`,
+made the question concrete, and it was initially answered in a code comment —
+which is a precedent someone has to infer, not a rule they can follow.
+
+**The rule: liveness and readiness probes are not part of the API contract and
+are not versioned.** They are served at the root — `/health` today, `/ready` if
+one is ever needed — and they carry no resource a client parses into a model.
+
+Why they are different in kind from every other route:
+
+- **Their consumer is infrastructure, not a client.** A platform health check,
+  a load balancer, a container orchestrator. None of them negotiates a version,
+  and none of them holds a generated model.
+- **Versioning implies a deprecation path.** `/v1` exists so a breaking change
+  can ship as `/v2` while the old shape keeps working. Nothing about a liveness
+  probe is ever going to need that, and `/v2/health` is not a thing anyone
+  wants to have to explain.
+- **They must answer when the versioned surface cannot.** A probe's whole job
+  is to report on a process that may be failing; coupling it to the API
+  contract couples it to the thing it is monitoring.
+
+They still appear in the OpenAPI document, because the document describes what
+the service serves. They are simply not part of what a versioned client
+depends on.
+
+**What this does not license.** Anything that returns business data is a
+resource and goes under `/v1`, however operational it feels. A metrics endpoint
+exposing booking counts is not a probe. The test is whether the response is
+about the *process* or about the *product*.

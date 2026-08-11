@@ -47,7 +47,8 @@ bookflow/
 │  ├─ api/          Fastify service and the outbox/expiry worker                  ✓ skeleton
 │  └─ mobile/       Flutter owner app                                             ✓ skeleton
 ├─ packages/                      ✓
-│  └─ contracts/    OpenAPI spec and generated Dart/TypeScript clients            ✓ empty
+│  ├─ contracts/    the OpenAPI 3.1 spec, generated from apps/api                 ✓
+│  └─ bookflow_api/ generated Dart client package; apps/mobile depends by path    ✓
 ├─ supabase/                      ✓
 │  ├─ migrations/   plain SQL, Supabase CLI (ADR-022)                             ✓ extensions only
 │  └─ seed.sql      one demo salon, bookings in every status (ADR-026)            ✗
@@ -70,7 +71,9 @@ bookflow/
     amendment may note what has changed beneath them.
 - `apps/api/` — all business logic and both processes. No client-facing rendering.
 - `apps/mobile/` — Flutter only. No hand-written API models; they are generated.
-- `packages/contracts/` — generated output plus the spec. Nothing hand-authored is committed here.
+- `packages/contracts/` — the generated spec. Nothing hand-authored is committed here.
+- `packages/bookflow_api/` — the generated Dart client, as the package `dart-dio`
+  emits. Regenerated wholesale; never edited, never merged into. (ADR-025)
 - `supabase/migrations/` — schema only. No seed data, no application logic.
 - `apps/web/` — does not exist. Do not create it before the owner app is usable.
 

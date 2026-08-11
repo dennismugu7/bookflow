@@ -55,7 +55,8 @@ Required-version column cites the ADR that imposes it. "—" means no ADR pins a
 | Android toolchain | `flutter build apk` in CI; local Android builds optional | CI-only for now — no local emulator or device has been used | `flutter doctor` |
 | Xcode / iOS toolchain | **impossible locally.** The development machine is Windows (ADR-015). iOS exists only through the macOS CI job. | not applicable | — |
 | Dart | ships with Flutter (ADR-015) | **3.12.2** ✓ | `dart --version` |
-| Java runtime | needed by `openapi-generator` (ADR-025) and by Gradle for Android builds | **openjdk 17.0.20** ✓ | `java --version` |
+| Java runtime | **only** for Gradle / Android builds. Not for `openapi-generator` — that runs as a container (ADR-025 amendment). | **openjdk 17.0.20** ✓ | `java --version` |
+| openapi-generator | generates the Dart client (ADR-025) | **container**, `openapitools/openapi-generator-cli:v7.16.0` — pinned, pulled on demand, no local JDK | `docker image ls openapitools/openapi-generator-cli` |
 | Pre-push hook | runs `npm run verify` before a push leaves the machine | **installed** ✓ — `core.hooksPath` = `.githooks`, wired by npm's `prepare` on install | `git config --local --get core.hooksPath` |
 | TypeScript | `tsc --noEmit` is a hard gate (ADR-022) | **5.9.x** ✓ — root devDependency | `npx tsc --version` |
 | ESLint | 9, flat config (ADR-022) | **9.x** ✓ — root devDependency, `eslint.config.js` | `npx eslint --version` |

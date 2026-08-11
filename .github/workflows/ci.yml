@@ -212,3 +212,54 @@ jobs:
 
       - name: Build iOS (unsigned)
         run: flutter build ios --no-codesign
+
+  # ── Contract drift ─────────────────────────────────────────────────────────
+  # Its own job rather than a step inside `verify`, for two reasons.
+  #
+  # First, it needs a different toolchain: Node to build the app, Docker to run
+  # openapi-generator, and the Dart SDK to run build_runner. Folding that into
+  # `verify` would make the fast pre-push gate depend on all three.
+  #
+  # Second, a drift failure should read as "the contract drifted", not as a
+  # late step in a job named after something else. Independent jobs also mean a
+  # drift failure never hides a test failure or vice versa.
+  #
+  # This is the job ADR-014 leans on. Without it, "the spec is generated from
+  # code" and "hand-written Dart models are prohibited" are conventions rather
+  # than guarantees.
+  contracts:
+    name: contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.8
+          channel: stable
+          cache: true
+
+      - name: Install Dart dependencies
+        run: flutter pub get
+        working-directory: apps/mobile
+
+      # Regenerates the spec and the Dart client, then fails if either differs
+      # from what is committed — including a generated file nobody committed at
+      # all. openapi-generator runs as a container; the runner already has
+      # Docker, and a JDK is not part of this project's toolchain (ADR-022).
+      - name: Check for contract drift
+        run: npm run contracts:check

@@ -20,7 +20,7 @@ try {
   throw error;
 }
 
-const app = buildApp(config);
+const app = await buildApp(config);
 
 try {
   await app.listen({ port: config.PORT, host: config.HOST });

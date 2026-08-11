@@ -31,6 +31,17 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # The generated API client, as the package it is (ADR-014, ADR-025).
+  # Its own pubspec carries dio, built_value and the rest — nothing is
+  # mirrored here, so a generator upgrade cannot silently change what this
+  # app depends on without the drift check seeing it.
+  bookflow_api:
+    path: ../../packages/bookflow_api
+
+  # Used directly by this package: the app configures the Dio instance it
+  # hands to the generated client, and the client test stubs its adapter.
+  dio: ^5.7.0
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
