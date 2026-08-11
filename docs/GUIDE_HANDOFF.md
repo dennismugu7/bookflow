@@ -51,9 +51,9 @@ Two recurring behaviours to plan around:
 
 **Phases 0, 1 and 2 of the project manual are complete.** No product feature exists yet.
 
-- 26 ADRs in `docs/decisions/`, covering build order, tenancy, the booking record,
+- ADRs in `docs/decisions/`, covering build order, tenancy, the booking record,
   availability, money, time, storage, email delivery, platform, contracts, and Phase 2
-  tooling. All foundation-level (F) decisions are closed.
+  tooling.
 - A platform spike validated Supabase against six capability requirements — critically
   that a Postgres exclusion constraint over a time range enforces the booking-conflict
   rule at the database level.
@@ -62,8 +62,11 @@ Two recurring behaviours to plan around:
   GitHub Actions running lint, format, typecheck, unit and integration tests plus a
   contract drift check. iOS compiles on a macOS runner.
 - `docs/analysis/05-triage.md` tracks every unresolved item, classified F / S / D.
-  F is zero. S items are resolved during their slice's Phase 0, never during
-  implementation.
+  **That file owns which items are open and in which class; no tally is repeated
+  here, because a copied one goes stale silently while still reading as current.**
+  F blocks the foundation and is settled before code that depends on it. S is
+  resolved during its slice's Phase 0, never during implementation. D is
+  deferrable.
 
 **Read these to orient** (he can attach them, or paste sections):
 `CLAUDE.md`, `docs/BUILD_LOG.md`, `docs/ENVIRONMENT.md`, `docs/analysis/05-triage.md`.
@@ -77,9 +80,13 @@ real page, and CI deploying to staging. Nothing product-specific.
 
 It has not started, and should not start until its Phase 0 is done. Blocking:
 
-- **Nine S items**, listed in `BUILD_LOG.md` §7 — email provider and its deliverability
-  spike, password policy, verification code rules, terms acceptance, the zero-membership
-  state, and language scope.
+- **The `S` items in `BUILD_LOG.md` §7** — among them the email provider and its
+  deliverability spike, password policy, verification code rules, terms acceptance,
+  the zero-membership state, and language scope. That section is the list; read it
+  there rather than trusting a count quoted here.
+- **The `F` items in `BUILD_LOG.md` §7**, which §7 requires settled before the `S`
+  list. The two below are those items — they are not extra findings alongside the
+  triage, they are in it.
 - **An unresolved architectural contradiction**: Supabase Auth (GoTrue) sends activation
   email directly, while `CLAUDE.md` forbids calling a mail provider inside a request and
   ADR-012 mandates a transactional outbox. Both cannot hold. It sits on two Do-Not-Vibe

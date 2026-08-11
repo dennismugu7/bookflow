@@ -121,22 +121,23 @@ vertical slice, not to the foundation. `apps/mobile` holds a Flutter skeleton wi
 
 ## 4. Open work
 
-Open items live in `docs/analysis/05-triage.md`, classified `F` (blocks the foundation), `S`
-(blocks a slice) or `D` (deferrable). **That file owns the counts. They are not copied here** —
-a duplicated count is a fact that can go stale silently.
+Open items live in `docs/analysis/05-triage.md`, in one of three classes:
 
-**No `F` items remain.**
+- **`F`** — blocks the foundation. Settle it before writing code that depends on it; a wrong
+  answer forces a migration, an auth rewrite, or a module-boundary change.
+- **`S`** — blocks a specific slice. **Resolved during that slice's Phase 0, never during
+  implementation.** If a slice hits an unresolved `S` item mid-build, stop and decide it — do
+  not infer an answer.
+- **`D`** — deferrable. Log it and ship without it.
 
-**Rule: an `S` item is resolved during its slice's Phase 0, never during implementation.**
-If a slice hits an unresolved `S` item mid-build, stop and decide it — do not infer an answer.
+**That file owns which items are open, and in which class. No count and no all-clear is copied
+here** — a duplicated tally goes stale silently while still reading as current, and this
+section previously carried one that did exactly that.
 
-**Nothing blocks Phase 2.** K53 (iOS CI and signing) was the last one; ADR-024 resolves it.
+**Where the open items stand for the phase being entered** is §7, which lists them by class and
+in the order they must be settled. That section is the answer; this one is the rule.
 
-**First to bite in Phase 3: E1** (email provider, sender identity, domain) and **E2** (its
-deliverability spike) — the first vertical slice is auth, and auth cannot activate an account
-without email.
-
-**Prerequisites before Phase 2 can execute.** Toolchain installation and infrastructure
+**Toolchain and provisioning are recorded elsewhere.** Toolchain installation and infrastructure
 provisioning are recorded in `docs/ENVIRONMENT.md` — §2 for tools, §3 for what is provisioned,
 §4 for what is missing and which phase each missing item blocks. Read it rather than this file;
 any claim here about the machine or the hosted accounts would be stale by construction.

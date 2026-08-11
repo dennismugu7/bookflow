@@ -6,9 +6,9 @@
 > | File | Supplies |
 > |---|---|
 > | `docs/BUILD_LOG.md` | Where the project stands — phases complete, what exists, what is next, how work proceeds |
-> | `docs/decisions/` | Why every rule below is the rule — 26 ADRs, cited here by number only |
-> | `docs/analysis/05-triage.md` | What is still undecided — the `S` and `D` items, and which slice each blocks |
-| `docs/ENVIRONMENT.md` | What exists outside the repo — installed tools, remotes, hosted projects, deploy targets |
+> | `docs/decisions/` | Why every rule below is the rule — one ADR per decision, cited here by number only |
+> | `docs/analysis/05-triage.md` | What is still undecided — the `F`, `S` and `D` items, and what each blocks |
+> | `docs/ENVIRONMENT.md` | What exists outside the repo — installed tools, remotes, hosted projects, deploy targets |
 >
 > A session holding only this file knows the rules but not the situation, and will not know
 > what it is forbidden from inventing.
@@ -191,7 +191,7 @@ is the process; it is not restated here. Project-specific deviations and additio
 
 | Question | Location |
 |---|---|
-| Why is it this way? | `docs/decisions/` — 26 ADRs, numbered, each stating what it resolves |
+| Why is it this way? | `docs/decisions/` — numbered ADRs, each stating what it resolves. The directory listing is the count. |
 | What tools do I actually run? | ADR-022 (toolchain) · ADR-024 (CI) · ADR-025 (contract generation) · ADR-026 (conventions) |
 | What do the design docs actually say? | `docs/source/` — read-only, authoritative on intent |
 | What did they fail to say? | `docs/analysis/` — 01 screens, 02 backend capabilities, 03 flagged ambiguities, 04 unstated assumptions |
@@ -199,9 +199,18 @@ is the process; it is not restated here. Project-specific deviations and additio
 | Was the platform actually verified? | `docs/spikes/001-platform.md` — seven executed verdicts |
 | What exists outside the repo right now — tools, remotes, hosted projects, deploy targets? | `docs/ENVIRONMENT.md` — **the one mutable file**; every claim carries the command that verifies it |
 
-`05-triage.md` classifies open items `S` (blocks a slice) or `D` (deferrable). **An
-`S` item must be resolved during its slice's Phase 0, not during implementation.** There are
-no `F` items left; the foundation is settled.
+`05-triage.md` classifies every open item into one of three classes:
+
+- **`F`** — blocks the foundation. Settle it before writing code that depends on it; a wrong
+  answer forces a migration, an auth rewrite, or a module-boundary change.
+- **`S`** — blocks a specific slice. **Resolve it during that slice's Phase 0, never during
+  implementation.**
+- **`D`** — deferrable. Log it and ship without it.
+
+**Which items are open, and in which class, is owned by that file alone.** This file states the
+rule and never the tally. A count or an "all clear" copied to here is a fact that goes stale
+silently while still reading as current — which is exactly how a session comes to believe the
+foundation is settled when it is not.
 
 ## 9. What not to do
 
