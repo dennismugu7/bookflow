@@ -1,6 +1,7 @@
 import { sql } from 'kysely';
 
 import { createDb } from '../../src/platform/db.ts';
+import { adminConnectionString } from './admin-connection.ts';
 
 /**
  * Runs once, before any integration test file is loaded.
@@ -15,7 +16,7 @@ import { createDb } from '../../src/platform/db.ts';
  * Throwing here fails the run. That is the intended behaviour.
  */
 export default async function setup(): Promise<void> {
-  const db = createDb();
+  const db = createDb(adminConnectionString());
 
   try {
     await sql`select 1`.execute(db);

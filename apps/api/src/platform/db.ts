@@ -38,6 +38,10 @@ pg.types.setTypeParser(
  * Builds a Kysely instance. Takes the connection string as an argument, with
  * the validated configuration as the default, so tests and the worker
  * (ADR-013) can hold their own pool with their own lifetime.
+ *
+ * The default is `DATABASE_URL`, which is the APPLICATION role's connection —
+ * `bookflow_api`, with CRUD and no DDL (ADR-038). Nothing in the application
+ * passes anything else.
  */
 export function createDb(
   connectionString: string = getConfig().DATABASE_URL,

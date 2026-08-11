@@ -24,6 +24,23 @@
 --   membership: 00000000-0000-4000-8000-000000000003
 
 -- ---------------------------------------------------------------------------
+-- The application role's LOCAL password
+-- ---------------------------------------------------------------------------
+-- The migration creates `bookflow_api` with LOGIN and no password, because that
+-- file is committed and a password in it would be a committed credential
+-- (CLAUDE.md §5). The password is set per environment, out of band.
+--
+-- This is the local one, and it belongs here because seed.sql is the only file
+-- that is local-only by construction: `supabase db reset` and `supabase start`
+-- run it, and the migrate-staging job does not — `db push` does not apply
+-- seeds. The value is fixed and published in .env.example, in the same class as
+-- the local anon key: it authenticates to a disposable container listening on
+-- localhost, and it is not a secret.
+--
+-- If this ever needs to stop being a fixed value, it stops being seed data too.
+alter role bookflow_api with password 'local_dev_password';
+
+-- ---------------------------------------------------------------------------
 -- The owner's auth identity
 -- ---------------------------------------------------------------------------
 -- Normally GoTrue's job (ADR-027). Written directly here because seeding runs

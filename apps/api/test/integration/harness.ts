@@ -2,6 +2,7 @@ import { afterAll, afterEach, beforeEach } from 'vitest';
 import type { Kysely } from 'kysely';
 
 import { createDb } from '../../src/platform/db.ts';
+import { adminConnectionString } from './admin-connection.ts';
 import type { DB } from '../../src/platform/db.types.ts';
 
 /**
@@ -58,7 +59,7 @@ let shared: Kysely<DB> | undefined;
  * a file's transactions all share a pool, and files cannot interfere.
  */
 function sharedDb(): Kysely<DB> {
-  shared ??= createDb();
+  shared ??= createDb(adminConnectionString());
   return shared;
 }
 
