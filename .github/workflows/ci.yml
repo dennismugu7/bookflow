@@ -95,7 +95,6 @@ jobs:
       - name: Start Supabase (database and auth only)
         run: |
           supabase start \
-            -x kong \
             -x postgrest \
             -x storage-api \
             -x imgproxy \
