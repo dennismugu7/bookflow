@@ -47,13 +47,14 @@ Please follow the [installation procedure](#installation--usage) and then run th
 import 'package:bookflow_api/bookflow_api.dart';
 
 
-final api = BookflowApi().getHealthApi();
+final api = BookflowApi().getBusinessesApi();
+final String businessId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
 
 try {
-    final response = await api.getHealth();
+    final response = await api.getBusiness(businessId);
     print(response);
 } catch on DioException (e) {
-    print("Exception when calling HealthApi->getHealth: $e\n");
+    print("Exception when calling BusinessesApi->getBusiness: $e\n");
 }
 
 ```
@@ -64,13 +65,19 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+[*BusinessesApi*](doc/BusinessesApi.md) | [**getBusiness**](doc/BusinessesApi.md#getbusiness) | **GET** /v1/businesses/{businessId} | A business the caller belongs to
 [*HealthApi*](doc/HealthApi.md) | [**getHealth**](doc/HealthApi.md#gethealth) | **GET** /health | Liveness probe
+[*MeApi*](doc/MeApi.md) | [**getMe**](doc/MeApi.md#getme) | **GET** /v1/me | The authenticated owner&#39;s profile
 
 
 ## Documentation For Models
 
+ - [Business](doc/Business.md)
+ - [BusinessInput](doc/BusinessInput.md)
  - [HealthResponse](doc/HealthResponse.md)
  - [HealthResponseInput](doc/HealthResponseInput.md)
+ - [Profile](doc/Profile.md)
+ - [ProfileInput](doc/ProfileInput.md)
 
 
 ## Documentation For Authorization

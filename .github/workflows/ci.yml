@@ -66,7 +66,6 @@ jobs:
       #
       # Excluded services, and why: every one of these is unused by the test
       # suite, which speaks SQL to Postgres through Kysely and nothing else.
-      #   kong          API gateway — nothing calls the REST surface
       #   postgrest     ADR-013: clients never talk to PostgREST
       #   storage-api   ADR-011's buckets are not exercised yet
       #   imgproxy      image transforms, only meaningful with storage
@@ -81,8 +80,14 @@ jobs:
       #
       # `gotrue` is deliberately NOT excluded. It owns the `auth` schema, and
       # dropping it would remove the one thing that makes this stack worth
-      # starting instead of a plain Postgres container. Verified: with the
-      # exclusions below, `auth` still has its full set of tables.
+      # starting instead of a plain Postgres container.
+      #
+      # `kong` is no longer excluded either, as of the auth slice. GoTrue is
+      # only reachable over HTTP through the gateway, and the integration tests
+      # sign the seeded user in for a real ES256 token rather than minting one
+      # against keys they control (ADR-017, spike 001/C5). Excluding kong makes
+      # those tests fail with a connection error that looks like a bug in the
+      # API.
       #
       # `supabase start` applies everything in supabase/migrations as part of
       # bringing the database up, so the schema is in place before the suite
@@ -90,7 +95,6 @@ jobs:
       - name: Start Supabase (database and auth only)
         run: |
           supabase start \
-            -x kong \
             -x postgrest \
             -x storage-api \
             -x imgproxy \
@@ -128,6 +132,11 @@ jobs:
           APP_ENV: local
           DATABASE_URL: postgresql://bookflow_api:local_dev_password@127.0.0.1:54322/postgres
           ADMIN_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          # The issuer and JWKS URI are derived from this (ADR-017). The anon
+          # key below is the fixed local development value the CLI prints on
+          # every machine — not a secret, and not a repository secret.
+          SUPABASE_URL: http://127.0.0.1:54321
+          SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
 
   # ── Mobile ─────────────────────────────────────────────────────────────────
   # Independent of `verify`. Neither job needs the other, so a Dart failure

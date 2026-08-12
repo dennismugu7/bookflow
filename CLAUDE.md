@@ -170,6 +170,12 @@ injection — one concept, no service locator.
 - Brand assets go to the public content-hashed immutable bucket; payment proofs go to the
   private bucket and are served only through an authorizing endpoint returning a short-lived
   signed URL. (ADR-011)
+- Every route is authenticated unless it **explicitly declares itself public**. Default-deny,
+  enforced by one `onRequest` hook over `config: { public: true }` in `apps/api/src/app.ts`,
+  never by a route remembering to call something. Forgetting to opt in publishes data;
+  forgetting to opt out fails the first test that calls the route — and only one of those two
+  mistakes is recoverable. Tokens are ES256, verified against the published JWKS.
+  (ADR-017, `platform/auth.ts`)
 - Booking tokens are opaque stored values, not JWTs — one per booking, time-gated cancel and
   review capabilities. Entirely separate from Supabase Auth, which authenticates owners only.
   (ADR-019)

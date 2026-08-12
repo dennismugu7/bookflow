@@ -9,7 +9,13 @@ import {
 } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 
+import { auth } from './platform/auth.ts';
 import type { Config } from './platform/config.ts';
+import type { Executor } from './platform/db.ts';
+import { createJwtVerifier, type JwtVerifier } from './platform/jwt.ts';
+import { registerProblemHandler } from './platform/problem.ts';
+import { registerBusinessRoutes } from './modules/businesses/businesses.routes.ts';
+import { registerMeRoutes } from './modules/me/me.routes.ts';
 
 /**
  * The health response, declared once.
@@ -43,7 +49,20 @@ export const healthResponseSchema = z
  * environment is parsed once, at the entry point, and everything downstream
  * receives an already-validated value (see `platform/config.ts`).
  */
-export async function buildApp(config: Config): Promise<FastifyInstance> {
+export interface BuildAppOptions {
+  /**
+   * The database executor routes receive. A function so the caller controls
+   * lifetime — a request in production, a rolled-back transaction in tests.
+   */
+  readonly db: () => Executor;
+  /** Injected so tests can verify against their own keys. */
+  readonly verifier?: JwtVerifier;
+}
+
+export async function buildApp(
+  config: Config,
+  options: BuildAppOptions,
+): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
       // Verbose locally, quiet in the environments where request volume is
@@ -74,13 +93,28 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
     transformObject: jsonSchemaTransformObject,
   });
 
+  registerProblemHandler(app);
+
+  await app.register(auth, {
+    verifier:
+      options.verifier ??
+      createJwtVerifier({
+        supabaseUrl: config.SUPABASE_URL,
+        audience: config.SUPABASE_JWT_AUDIENCE,
+      }),
+  });
+
   // Unversioned by rule, not by preference: the ADR-014 amendment puts
   // liveness and readiness probes outside the `/v1` surface. Their consumer is
   // infrastructure rather than a client, and a probe has to answer when the
   // versioned surface cannot.
+  //
+  // `public: true` is the opt-OUT from authentication. Default-deny means this
+  // is the only route that needs to say anything (see platform/auth.ts).
   app.get(
     '/health',
     {
+      config: { public: true },
       schema: {
         operationId: 'getHealth',
         summary: 'Liveness probe',
@@ -96,6 +130,9 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
       return { status: 'ok' as const };
     },
   );
+
+  registerMeRoutes(app, options.db);
+  registerBusinessRoutes(app, options.db);
 
   return app;
 }

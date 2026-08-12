@@ -46,12 +46,17 @@ export const configSchema = z.object({
   ADMIN_DATABASE_URL: nonEmpty.startsWith('postgres').optional(),
 
   // ─── Supabase ──────────────────────────────────────────────────────────────
-  // Optional *for now*, and deliberately so. No Supabase client library is
-  // installed and the API reaches Postgres directly (ADR-013), so requiring
-  // these would fail startup over something nothing reads. They are declared
-  // anyway, so a malformed value is caught the day it is first set rather than
-  // the day it is first used. The auth slice makes them required.
-  SUPABASE_URL: z.url().optional(),
+  // REQUIRED as of the auth slice. Both the JWKS URI and the expected `iss`
+  // are derived from it (`jwt.ts`), so a wrong value does not degrade
+  // authentication — it disables it, loudly, at startup. The issuer check is
+  // what stops a token minted by a different Supabase project authenticating
+  // here, and it is only as good as this value.
+  SUPABASE_URL: z.url(),
+
+  // The expected `aud`. GoTrue issues `authenticated` for a signed-in user;
+  // the publishable anon key carries a different audience, which is what stops
+  // it being presented as a session.
+  SUPABASE_JWT_AUDIENCE: nonEmpty.default('authenticated'),
   SUPABASE_ANON_KEY: nonEmpty.optional(),
   SUPABASE_SERVICE_ROLE_KEY: nonEmpty.optional(),
 
