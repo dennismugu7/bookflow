@@ -2,7 +2,9 @@ import { SignJWT, exportJWK, generateKeyPair } from 'jose';
 import type { CryptoKey, JSONWebKeySet, JWK } from 'jose';
 import { beforeAll, describe, expect, it } from 'vitest';
 
-import { JwtError, createJwtVerifier } from './jwt.ts';
+import { createServer } from 'node:http';
+
+import { JwtError, createJwtVerifier, defaultFetchJwks } from './jwt.ts';
 
 /**
  * Unit tests for the verification module. No database, no network — the JWKS is
@@ -215,6 +217,27 @@ describe('tampering', () => {
 });
 
 describe('key rotation and the unknown-kid path', () => {
+  it('does not fetch twice for a cold cache plus an unknown kid', async () => {
+    // The cold-cache refresh and the unknown-kid refetch would otherwise fire
+    // microseconds apart, and the second cannot learn anything the first did
+    // not.
+    let fetches = 0;
+    const subject = createJwtVerifier({
+      supabaseUrl: SUPABASE_URL,
+      audience: AUDIENCE,
+      fetchJwks: () => {
+        fetches += 1;
+        return Promise.resolve(jwks);
+      },
+    });
+
+    await expect(
+      subject.verify(await mint({ kid: 'never-heard-of-it' })),
+    ).rejects.toBeInstanceOf(JwtError);
+
+    expect(fetches, 'one fetch, not two').toBe(1);
+  });
+
   it('refetches exactly once for an unknown kid, then caches the negative', async () => {
     let fetches = 0;
     const subject = createJwtVerifier({
@@ -226,11 +249,15 @@ describe('key rotation and the unknown-kid path', () => {
       },
     });
 
+    // Warm the cache first, so the refetch below is unambiguously the
+    // unknown-kid one rather than the cold-start one.
+    await subject.verify(await mint());
+    expect(fetches, 'cold start').toBe(1);
+
     const stranger = await mint({ kid: 'a-key-we-do-not-have' });
 
     await expect(subject.verify(stranger)).rejects.toBeInstanceOf(JwtError);
-    // One initial fetch (cold cache) plus one refetch for the unknown kid.
-    expect(fetches, 'cold fetch plus one refetch').toBe(2);
+    expect(fetches, 'one refetch for the unknown kid').toBe(2);
 
     // Twenty more attempts with the same unknown kid must not touch the
     // network at all. Without the negative cache this endpoint is an
@@ -241,6 +268,89 @@ describe('key rotation and the unknown-kid path', () => {
     expect(fetches, 'negative cache absorbed the flood').toBe(2);
   });
 
+  it('bounds the unknown-kid map instead of growing it per request', async () => {
+    // The TTL bounds how LONG an entry lives, not how MANY exist. Without a
+    // cap, a caller sending a fresh random kid every request adds an entry per
+    // request and frees none for thirty seconds — the same unauthenticated
+    // denial of service the negative cache exists to prevent, arriving as
+    // memory exhaustion rather than fetch amplification.
+    const subject = createJwtVerifier({
+      supabaseUrl: SUPABASE_URL,
+      audience: AUDIENCE,
+      fetchJwks: () => Promise.resolve(jwks),
+    });
+
+    const attempts = 5_000;
+    for (let i = 0; i < attempts; i += 1) {
+      await expect(
+        subject.verify(await mint({ kid: `flood-${String(i)}` })),
+      ).rejects.toBeInstanceOf(JwtError);
+    }
+
+    // Unbounded, this would be 5000.
+    expect(
+      subject.unknownKidCount,
+      'the map is capped, not merely expiring',
+    ).toBeLessThanOrEqual(1_000);
+    expect(
+      subject.unknownKidCount,
+      'and it is actually being used',
+    ).toBeGreaterThan(0);
+  });
+
+  it('sweeps expired entries rather than only evicting on overflow', async () => {
+    let clock = 1_000_000;
+    const subject = createJwtVerifier({
+      supabaseUrl: SUPABASE_URL,
+      audience: AUDIENCE,
+      fetchJwks: () => Promise.resolve(jwks),
+      now: () => clock,
+    });
+
+    for (let i = 0; i < 5; i += 1) {
+      await expect(
+        subject.verify(await mint({ kid: `stale-${String(i)}` })),
+      ).rejects.toBeInstanceOf(JwtError);
+    }
+    expect(subject.unknownKidCount).toBe(5);
+
+    // Past the TTL. The next insert should sweep all five.
+    clock += 60_000;
+    await expect(
+      subject.verify(await mint({ kid: 'fresh' })),
+    ).rejects.toBeInstanceOf(JwtError);
+
+    expect(subject.unknownKidCount, 'five swept, one remembered').toBe(1);
+  });
+
+  it('coalesces concurrent refreshes into a single fetch', async () => {
+    // A key rotation makes every in-flight request miss at the same instant.
+    // Fifty of them must not become fifty fetches against the auth server at
+    // the moment it is least wanted.
+    let fetches = 0;
+    const subject = createJwtVerifier({
+      supabaseUrl: SUPABASE_URL,
+      audience: AUDIENCE,
+      fetchJwks: async () => {
+        fetches += 1;
+        // Yield, so all fifty callers are genuinely in flight together. With a
+        // synchronously-resolved promise they would serialise and the test
+        // would pass without the fix.
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        return jwks;
+      },
+    });
+
+    const token = await mint();
+    const results = await Promise.all(
+      Array.from({ length: 50 }, () => subject.verify(token)),
+    );
+
+    expect(results).toHaveLength(50);
+    expect(results[0]).toEqual({ userId: SUBJECT });
+    // Uncoalesced, this would be 50.
+    expect(fetches, 'fifty concurrent misses, one fetch').toBe(1);
+  });
   it('picks up a rotated key without a restart', async () => {
     const rotated = await generateKeyPair('ES256', { extractable: true });
     const rotatedJwk = {
@@ -278,5 +388,39 @@ describe('key rotation and the unknown-kid path', () => {
       userId: SUBJECT,
     });
     expect(fetches, 'one refetch, no deploy required').toBe(2);
+  });
+});
+
+describe('the default JWKS fetcher', () => {
+  it('gives up rather than hanging on a server that accepts and stalls', async () => {
+    // `fetch` has no default timeout. A JWKS endpoint that completes the TCP
+    // handshake and then never answers would otherwise hold the request that
+    // triggered the refresh open indefinitely — and, since refreshes are
+    // coalesced, every request waiting on it too.
+    const server = createServer(() => {
+      // Accept, and deliberately never respond.
+    });
+
+    await new Promise<void>((resolve) => {
+      server.listen(0, '127.0.0.1', resolve);
+    });
+    const address = server.address();
+    const port =
+      typeof address === 'object' && address !== null ? address.port : 0;
+
+    try {
+      const started = Date.now();
+      await expect(
+        defaultFetchJwks(`http://127.0.0.1:${String(port)}/jwks.json`, 250),
+      ).rejects.toThrow();
+      // Without the timeout this never settles and the test times out instead.
+      expect(Date.now() - started, 'abandoned promptly').toBeLessThan(5_000);
+    } finally {
+      await new Promise<void>((resolve) => {
+        server.close(() => {
+          resolve();
+        });
+      });
+    }
   });
 });
