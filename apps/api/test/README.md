@@ -70,6 +70,13 @@ Every test is wrapped in a transaction that is **rolled back** when it finishes:
 
 ## What not to do
 
+- **Do not verify a fixture by counting it.** A count proves rows exist; it
+  does not prove they are usable, and those are different properties. This
+  project shipped a seeded user that satisfied every count — one user, one
+  profile, one business, one membership — and could not log in, because GoTrue
+  could not scan its NULL token columns. Every suite passed for two PRs. Assert
+  the fixture does the thing it exists to do: sign the user in, read the row
+  through the code that will read it, follow the foreign key.
 - **Do not reach for `asAdmin` to make a test pass.** If your code under test
   needs privileges the application role lacks, the answer is a grant in the
   migration that created the table — or a reconsideration of what that code is
