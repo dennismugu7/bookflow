@@ -1,4 +1,9 @@
-import { createLocalJWKSet, decodeProtectedHeader, jwtVerify } from 'jose';
+import {
+  createLocalJWKSet,
+  decodeProtectedHeader,
+  errors,
+  jwtVerify,
+} from 'jose';
 import type { JSONWebKeySet, JWTPayload } from 'jose';
 
 /**
@@ -87,12 +92,16 @@ export interface JwtVerifierOptions {
   readonly fetchJwks?: (uri: string) => Promise<JSONWebKeySet>;
   /** Test seam for the clock. Milliseconds since epoch. */
   readonly now?: () => number;
+  /** Overrides `JWKS_FETCH_TIMEOUT_MS`. Only the default fetcher reads it. */
+  readonly fetchTimeoutMs?: number;
 }
 
 export interface JwtVerifier {
   verify(token: string): Promise<Principal>;
   /** Test seam: how many times the JWKS has actually been fetched. */
   readonly fetchCount: number;
+  /** Test seam: how many unknown `kid`s are currently remembered. */
+  readonly unknownKidCount: number;
 }
 
 /** Long enough that key rotation is picked up; short enough to bound churn. */
@@ -109,13 +118,47 @@ const JWKS_MAX_AGE_MS = 10 * 60 * 1000;
  */
 const UNKNOWN_KID_TTL_MS = 30 * 1000;
 
+/**
+ * The most unknown `kid`s remembered at once.
+ *
+ * The TTL alone bounds how LONG an entry lives, not how MANY exist. Without a
+ * cap, a caller presenting a fresh random `kid` on every request adds an entry
+ * per request and removes none for thirty seconds — which is the same
+ * unauthenticated denial of service the negative cache was added to prevent,
+ * arriving as memory exhaustion instead of fetch amplification. Trading one for
+ * the other is not a fix.
+ *
+ * **The cap is safe because a wrong eviction costs one extra JWKS fetch.** If a
+ * genuinely unknown `kid` is evicted early and presented again, the verifier
+ * refetches once, still fails to find it, and remembers it again. No token is
+ * accepted that would otherwise be rejected; the negative cache is an
+ * optimisation, never a security control. That asymmetry is what makes a crude
+ * eviction policy acceptable here.
+ */
+const UNKNOWN_KID_MAX_ENTRIES = 1_000;
+
+/**
+ * How long the JWKS fetch may take before it is abandoned.
+ *
+ * `fetch` has NO default timeout. Without this, an auth server that accepts the
+ * connection and then stalls holds the request that triggered the refresh open
+ * indefinitely — and, since refreshes are coalesced, every request waiting on
+ * that same refresh with it.
+ */
+const JWKS_FETCH_TIMEOUT_MS = 5_000;
+
 const CLOCK_TOLERANCE_SECONDS = 5;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function defaultFetchJwks(uri: string): Promise<JSONWebKeySet> {
+/** Exported for its own test; not part of the module's intended surface. */
+export async function defaultFetchJwks(
+  uri: string,
+  timeoutMs: number = JWKS_FETCH_TIMEOUT_MS,
+): Promise<JSONWebKeySet> {
   const response = await fetch(uri, {
     headers: { accept: 'application/json' },
+    signal: AbortSignal.timeout(timeoutMs),
   });
   if (!response.ok) {
     throw new Error(`JWKS fetch failed: HTTP ${String(response.status)}`);
@@ -126,29 +169,84 @@ async function defaultFetchJwks(uri: string): Promise<JSONWebKeySet> {
 export function createJwtVerifier(options: JwtVerifierOptions): JwtVerifier {
   const issuer = `${options.supabaseUrl.replace(/\/+$/, '')}/auth/v1`;
   const jwksUri = `${issuer}/.well-known/jwks.json`;
-  const fetchJwks = options.fetchJwks ?? defaultFetchJwks;
+  const fetchTimeoutMs = options.fetchTimeoutMs ?? JWKS_FETCH_TIMEOUT_MS;
+  const fetchJwks =
+    options.fetchJwks ??
+    ((uri: string) => defaultFetchJwks(uri, fetchTimeoutMs));
   const now = options.now ?? Date.now;
 
   let jwks: JSONWebKeySet | undefined;
   let keySet: ReturnType<typeof createLocalJWKSet> | undefined;
   let fetchedAt = 0;
   let fetchCount = 0;
+  let inFlight: Promise<void> | undefined;
   const unknownKids = new Map<string, number>();
 
+  /**
+   * Fetches the JWKS, coalescing concurrent callers onto one request.
+   *
+   * A key rotation makes every in-flight request miss at the same instant.
+   * Without coalescing, fifty concurrent requests produce fifty fetches — a
+   * self-inflicted stampede against the auth server at exactly the moment it is
+   * least wanted. They all need the same answer, so they all wait on the same
+   * promise.
+   *
+   * `inFlight` is cleared in `finally`, so a failed fetch does not poison the
+   * next attempt.
+   */
   async function refresh(): Promise<void> {
-    fetchCount += 1;
-    jwks = await fetchJwks(jwksUri);
-    keySet = createLocalJWKSet(jwks);
-    fetchedAt = now();
+    inFlight ??= (async () => {
+      try {
+        fetchCount += 1;
+        const fetched = await fetchJwks(jwksUri);
+        jwks = fetched;
+        keySet = createLocalJWKSet(fetched);
+        fetchedAt = now();
+      } finally {
+        inFlight = undefined;
+      }
+    })();
+
+    await inFlight;
   }
 
   function known(kid: string): boolean {
     return (jwks?.keys ?? []).some((key) => key.kid === kid);
   }
 
+  /**
+   * Records a `kid` as unknown, sweeping expired entries and capping the total.
+   *
+   * `Map` iterates in insertion order, so the first surviving key is the oldest
+   * — which makes eviction a shift rather than a scan. See
+   * `UNKNOWN_KID_MAX_ENTRIES` for why evicting the wrong one is harmless.
+   */
+  function rememberUnknown(kid: string): void {
+    const cutoff = now() - UNKNOWN_KID_TTL_MS;
+    for (const [candidate, seenAt] of unknownKids) {
+      if (seenAt <= cutoff) {
+        unknownKids.delete(candidate);
+      }
+    }
+
+    while (unknownKids.size >= UNKNOWN_KID_MAX_ENTRIES) {
+      const oldest = unknownKids.keys().next();
+      if (oldest.done === true) {
+        break;
+      }
+      unknownKids.delete(oldest.value);
+    }
+
+    unknownKids.set(kid, now());
+  }
+
   return {
     get fetchCount(): number {
       return fetchCount;
+    },
+
+    get unknownKidCount(): number {
+      return unknownKids.size;
     },
 
     async verify(token: string): Promise<Principal> {
@@ -189,23 +287,45 @@ export function createJwtVerifier(options: JwtVerifierOptions): JwtVerifier {
         unknownKids.delete(kid);
       }
 
+      let justRefreshed = false;
       if (jwks === undefined || now() - fetchedAt > JWKS_MAX_AGE_MS) {
         await refresh();
+        justRefreshed = true;
       }
 
       if (!known(kid)) {
         // Refetch ONCE. Key rotation must not require a deploy, so an unknown
         // kid is first assumed to be a new key rather than an attack.
-        await refresh();
+        //
+        // Unless the cache was populated microseconds ago by the block above:
+        // a cold cache plus an unknown kid would otherwise fetch twice in
+        // immediate succession, and the second fetch cannot tell us anything
+        // the first did not.
+        if (!justRefreshed) {
+          await refresh();
+        }
         if (!known(kid)) {
-          unknownKids.set(kid, now());
+          rememberUnknown(kid);
           throw new JwtError('invalid-token', 'unknown signing key');
         }
       }
 
+      // Not an assertion. `refresh()` populates `keySet` alongside `jwks`, so
+      // reaching here with it undefined should be impossible — but an implicit
+      // invariant on a security path fails closed by accident rather than by
+      // design, and the two are indistinguishable right up until an edit breaks
+      // one of them. This one fails closed on purpose.
+      const keys = keySet;
+      if (keys === undefined) {
+        throw new JwtError(
+          'invalid-token',
+          'no verification keys available after refresh',
+        );
+      }
+
       let payload: JWTPayload;
       try {
-        const result = await jwtVerify(token, keySet!, {
+        const result = await jwtVerify(token, keys, {
           // CHECK 2 of 2 on the algorithm: an allowlist, so the header cannot
           // select the verification algorithm even if the check above were
           // removed.
@@ -217,8 +337,15 @@ export function createJwtVerifier(options: JwtVerifierOptions): JwtVerifier {
         });
         payload = result.payload;
       } catch (error) {
+        // `instanceof` rather than comparing `error.name` to a string. This
+        // decides whether the client sees `expired-token` or `invalid-token`,
+        // and a mobile client branches on that to decide whether to refresh
+        // silently or send the user back to a login screen. A renamed class in
+        // a jose upgrade would turn every expiry into "invalid" — every session
+        // ending in a forced re-login instead of a refresh — and no test that
+        // did not check this specific distinction would notice.
         const code =
-          error instanceof Error && error.name === 'JWTExpired'
+          error instanceof errors.JWTExpired
             ? 'expired-token'
             : 'invalid-token';
         throw new JwtError(

@@ -227,6 +227,26 @@ is the process; it is not restated here. Project-specific deviations and additio
   (ADR-015)
 - **Phase 7** — completion is governed by `DEFINITION_OF_DONE.md`.
 
+### How edits are made
+
+**Do not use scripted or shell-based text replacement to edit source files** — no `sed -i`, no
+`python`/`node` one-liners doing `s.replace(...)`, no heredoc rewrites. Use the file-editing
+tools, which **fail visibly when the target does not match**.
+
+A scripted replacement that finds nothing **exits zero and reports success**. The file is
+unchanged, the command looks like it worked, and the only signal is whatever downstream check
+happens to notice — which may be none.
+
+This project has had two. One rewrote a comment in `.github/workflows/ci.yml` saying a service
+was no longer excluded while silently failing to remove the `-x` line beneath it, and **that one
+shipped**: the file contradicted itself, and CI found it only when the tests that needed the
+service could not reach it.
+
+**This applies especially to edits inside string literals**, where escape handling differs
+between the shell, the scripting language and the file. A `\n` that survives one layer and not
+the next produces a literal newline inside a string — valid-looking in a diff, a syntax error to
+the compiler, and worse if the file is not compiled at all.
+
 ## 8. Where to look things up
 
 | Question | Location |
