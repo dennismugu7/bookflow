@@ -82,6 +82,15 @@ export interface BuildAppOptions {
    * failure would look like a flake. Defaults to `SIGNUP_RATE_LIMIT`.
    */
   readonly signupRateLimit?: SignupRateLimit;
+  /**
+   * Where the logger writes. Injected so a test can ASSERT on a log line.
+   *
+   * Present for one reason: the rate limiter's rejection event is the only
+   * signal that the CGNAT trigger has fired, and an unasserted log line is
+   * exactly the thing that stops working without anyone noticing — which is
+   * the failure this event exists to prevent.
+   */
+  readonly logStream?: NodeJS.WritableStream;
 }
 
 export async function buildApp(
@@ -94,6 +103,7 @@ export async function buildApp(
       // real. ADR-023's three environments, applied to the one thing this
       // skeleton actually has.
       level: config.APP_ENV === 'local' ? 'info' : 'warn',
+      ...(options.logStream === undefined ? {} : { stream: options.logStream }),
     },
   }).withTypeProvider<ZodTypeProvider>();
 

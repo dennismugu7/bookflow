@@ -1,5 +1,6 @@
 import { createServer, type Server } from 'node:http';
 import { createHash, randomUUID } from 'node:crypto';
+import { Writable } from 'node:stream';
 
 import type { FastifyInstance } from 'fastify';
 import { sql } from 'kysely';
@@ -744,12 +745,25 @@ describe('the sign-up throttle', () => {
    * creates no accounts and sends no mail, which leaves the final assertion
    * unambiguous.
    */
-  it('answers 429 as a problem document, and creates nothing', async () => {
+  it('answers 429 as a problem document, logs the trigger event, and creates nothing', async () => {
     const email = newEmail('throttled');
+
+    // Captured so the log line can be ASSERTED. `signup.rate_limited` is the
+    // only thing that would ever tell us the CGNAT trigger has fired — a
+    // throttled owner sees a failure and leaves — so it is verified rather
+    // than assumed, like any other behaviour.
+    const logLines: string[] = [];
+    const logStream = new Writable({
+      write(chunk, _encoding, callback): void {
+        logLines.push(String(chunk));
+        callback();
+      },
+    });
 
     const throttled = await buildApp(config, {
       db: () => appDb,
       breachChecker,
+      logStream,
       // No override: this is the constant the deployed API uses.
     });
     await throttled.ready();
@@ -774,6 +788,7 @@ describe('the sign-up throttle', () => {
         method: 'POST',
         url: '/v1/auth/signup',
         payload: validBody(email),
+        headers: { 'user-agent': 'BookflowOwner/1.0 (integration test)' },
       });
 
       expect(refused.statusCode).toBe(429);
@@ -804,6 +819,29 @@ describe('the sign-up throttle', () => {
         'a rejected request must not have created an account',
       ).toBeUndefined();
       expect(await mailCountTo(email), 'and must not have sent mail').toBe(0);
+
+      // ── THE TRIGGER IS OBSERVABLE ─────────────────────────────────────────
+      const events = logLines
+        .flatMap((line) => line.split('\n'))
+        .filter((line) => line.trim() !== '')
+        .map((line) => JSON.parse(line) as Record<string, unknown>)
+        .filter((entry) => entry['event'] === 'signup.rate_limited');
+
+      expect(
+        events.length,
+        'the rejection must emit signup.rate_limited — nothing else reports it',
+      ).toBeGreaterThan(0);
+
+      const event = events[events.length - 1] ?? {};
+      // WARN, not INFO: this is the line a human is meant to find.
+      expect(event['level']).toBe(40);
+      // The fields the residual-risk note tells a reader to interpret. If one
+      // is dropped, the note is describing a payload that no longer exists.
+      expect(event['ip']).toBeDefined();
+      expect(event['key']).toBeDefined();
+      expect(event['userAgent']).toBe('BookflowOwner/1.0 (integration test)');
+      expect(event['max']).toBe(SIGNUP_RATE_LIMIT.max);
+      expect(event['window']).toBe(SIGNUP_RATE_LIMIT.timeWindow);
     } finally {
       await throttled.close();
     }

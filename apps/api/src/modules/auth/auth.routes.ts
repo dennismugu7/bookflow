@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 
 import type { Executor } from '../../platform/db.ts';
@@ -66,9 +66,27 @@ import { signUp } from './auth.service.ts';
  *     thing that survives both multiple instances and a rotating source IP,
  *     and which also gives the per-address throttle GoTrue is not applying.
  *
- * **Triggers for doing it, whichever comes first:** the API running more than
- * one instance; the first legitimate 429 reported by a real user (which is the
- * CGNAT problem arriving); or the first observed abuse. Until one of those, a
+ * ── HOW THE TRIGGER IS ACTUALLY OBSERVED ────────────────────────────────────
+ *
+ * Every rejection logs **`event: 'signup.rate_limited'`** at WARN. That event
+ * IS the trigger; nothing else would report it. A throttled owner sees a
+ * failure and leaves — they do not file a bug saying "your rate limiter is
+ * mis-sized for carrier NAT" — so a trigger phrased as "the first legitimate
+ * 429 from a real user" would have waited on a signal that never arrives.
+ *
+ * The payload carries what is needed to tell the two cases apart:
+ *
+ *   • **Casual abuse** — many events, one `ip`, seconds apart, `userAgent`
+ *     absent or a generic HTTP client. The limit is working; do nothing.
+ *   • **CGNAT** — a handful of events on one `ip`, spread across the window,
+ *     carrying the Flutter app's user agent, and RECURRING on different days.
+ *     That is real users sharing a carrier address, and it is the trigger:
+ *     move to a per-address attempt table, because raising the per-IP ceiling
+ *     to fit a carrier pool is the same as not having one.
+ *
+ * **Triggers for doing the proper fix, whichever comes first:** the API running
+ * more than one instance; `signup.rate_limited` showing the CGNAT shape above;
+ * or `signup.rate_limited` showing sustained abuse. Until one of those, a
  * shared store is infrastructure bought for a threat this project has not met.
  */
 export const SIGNUP_RATE_LIMIT = {
@@ -103,7 +121,38 @@ export function registerAuthRoutes(
       // error handler in `platform/problem.ts` turns into the RFC 9457
       // `/problems/rate-limited` document — so this endpoint does NOT get a
       // bespoke error body, and the plugin's `Retry-After` header survives.
-      config: { public: true, rateLimit },
+      config: {
+        public: true,
+        rateLimit: {
+          ...rateLimit,
+          /**
+           * Fires before the 429 is sent. This is the observability the
+           * residual-risk note above depends on — see its "how the trigger is
+           * actually observed" section for how to read these fields.
+           */
+          onExceeded: (request: FastifyRequest, key: string): void => {
+            request.log.warn(
+              {
+                // Stable. Alerts and searches key on this string.
+                event: 'signup.rate_limited',
+                // What the limiter counted. Equal to `ip` under the default
+                // key generator, and logged separately so that changing the
+                // key generator does not silently change what this means.
+                key,
+                ip: request.ip,
+                // The strongest single discriminator available here: the
+                // Flutter client sends a consistent agent, most scripts do
+                // not. Truncated — it is attacker-controlled input, and an
+                // unbounded one goes straight into the log pipeline.
+                userAgent: (request.headers['user-agent'] ?? '').slice(0, 120),
+                max: rateLimit.max,
+                window: rateLimit.timeWindow,
+              },
+              'signup: per-IP rate limit exceeded',
+            );
+          },
+        },
+      },
       schema: {
         operationId: 'signUp',
         summary: 'Create an owner account',
