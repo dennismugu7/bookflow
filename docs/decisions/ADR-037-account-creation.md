@@ -137,6 +137,30 @@ the same delete that covers a failed profile insert, applied to a failed resend.
 **This remains a Do-Not-Vibe surface** (`CLAUDE.md` §6: auth). The correction is recorded here,
 before the endpoint is written, so the endpoint does not absorb it silently.
 
+### What the admin path costs, beyond the extra call
+
+**Reaching for a GoTrue admin endpoint means giving up every protection GoTrue applies to its
+public ones.** This is the general lesson and it is written here because the next person to reach
+for an admin endpoint will need it. Two instances are now measured, not assumed:
+
+- **Password policy.** `POST /admin/users` accepts a seven-character password and accepts
+  `password123`, on the local stack and on staging, with `minimum_password_length = 8` set.
+  ADR-030 carries the amendment; the floor and the breach check are now ours to enforce.
+- **Rate limiting.** The same call is not throttled. Seven consecutive creations completed in
+  under a second while `[auth.rate_limit] sign_in_sign_ups = 30` per five minutes was configured
+  — that setting, like `enable_signup`, governs the public endpoints this ADR has closed. The
+  endpoint therefore carries its own per-IP limit, and `auth.routes.ts` records what that does and
+  does not cover.
+
+**The one GoTrue control that survives** is `[auth.email] max_frequency`, ADR-030's sixty-second
+resend cooldown, because it is keyed on the user row rather than on the caller. It throttles
+repeat sends to the same address; it does nothing about creation across many addresses, since
+each new address has no history to throttle against.
+
+**So the rule for any future admin call: assume it enforces nothing.** Whatever the public
+endpoint would have checked — policy, throttle, validation — is now the caller's job, and the
+only way to know which is to measure it.
+
 **On the Consequences above.** `enable_signup = false` was verified on staging on 2026-08-14 —
 anon `POST /signup` returns 422 `signup_disabled`, and the service-role admin path still returns
 200 with it closed (`docs/ENVIRONMENT.md` §3). The no-orphan test is still owed and belongs to the

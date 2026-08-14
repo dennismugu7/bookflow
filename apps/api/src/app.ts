@@ -1,3 +1,4 @@
+import fastifyRateLimit from '@fastify/rate-limit';
 import fastifySwagger from '@fastify/swagger';
 import Fastify, { type FastifyInstance } from 'fastify';
 import {
@@ -16,7 +17,10 @@ import { createGoTrueClient, type GoTrueClient } from './platform/gotrue.ts';
 import { createJwtVerifier, type JwtVerifier } from './platform/jwt.ts';
 import { createBreachChecker, type BreachChecker } from './platform/pwned.ts';
 import { registerProblemHandler } from './platform/problem.ts';
-import { registerAuthRoutes } from './modules/auth/auth.routes.ts';
+import {
+  registerAuthRoutes,
+  type SignupRateLimit,
+} from './modules/auth/auth.routes.ts';
 import { registerBusinessRoutes } from './modules/businesses/businesses.routes.ts';
 import { registerMeRoutes } from './modules/me/me.routes.ts';
 
@@ -71,6 +75,13 @@ export interface BuildAppOptions {
    * The default talks to haveibeenpwned.
    */
   readonly breachChecker?: BreachChecker;
+  /**
+   * Overrides the sign-up throttle. Present because the limiter's store is
+   * in-memory and therefore PER INSTANCE: a test file sharing one app would
+   * otherwise couple unrelated tests together through a hidden counter, and the
+   * failure would look like a flake. Defaults to `SIGNUP_RATE_LIMIT`.
+   */
+  readonly signupRateLimit?: SignupRateLimit;
 }
 
 export async function buildApp(
@@ -106,6 +117,16 @@ export async function buildApp(
     // reading the generated spec, which is why the spec is committed.
     transformObject: jsonSchemaTransformObject,
   });
+
+  // `global: false` — no route is throttled unless it asks. Default-deny is the
+  // right default for AUTHENTICATION (platform/auth.ts); it is the wrong one
+  // here, because a limit applied silently to every route is a limit nobody
+  // sized for any of them. Routes that need one declare it, and say why.
+  //
+  // Registered BEFORE the problem handler is irrelevant to correctness — the
+  // plugin throws a 429 into whatever error handler is installed — but the
+  // handler is what makes the response RFC 9457, so the two belong together.
+  await app.register(fastifyRateLimit, { global: false });
 
   registerProblemHandler(app);
 
@@ -155,6 +176,7 @@ export async function buildApp(
         anonKey: config.SUPABASE_ANON_KEY,
       }),
     options.breachChecker ?? createBreachChecker(),
+    options.signupRateLimit,
   );
   registerMeRoutes(app, options.db);
   registerBusinessRoutes(app, options.db);

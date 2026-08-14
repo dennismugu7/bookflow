@@ -14,6 +14,7 @@ import {
   type BreachChecker,
 } from '../../platform/pwned.ts';
 import { adminConnectionString } from '../../../test/integration/admin-connection.ts';
+import { SIGNUP_RATE_LIMIT } from './auth.routes.ts';
 import { CURRENT_TERMS_VERSION } from './auth.service.ts';
 
 /**
@@ -219,7 +220,16 @@ beforeAll(async () => {
   // A REAL, committing executor — see the note at the top of this file.
   appDb = createDb(config.DATABASE_URL);
   adminDb = createDb(adminConnectionString());
-  app = await buildApp(config, { db: () => appDb, breachChecker });
+  app = await buildApp(config, {
+    db: () => appDb,
+    breachChecker,
+    // Raised deliberately, and this is not the throttle going untested — the
+    // block at the bottom of this file drives the REAL `SIGNUP_RATE_LIMIT` on
+    // its own app. The limiter's store is in-memory and per instance, so
+    // leaving the production ceiling here would let one test's requests exhaust
+    // another's budget, and the failure would present as an unrelated flake.
+    signupRateLimit: { max: 10_000, timeWindow: '1 hour' },
+  });
   await app.ready();
 });
 
@@ -718,6 +728,94 @@ describe('the leaked-password check (ADR-030)', () => {
       ).not.toBeNull();
     } finally {
       await offline.close();
+    }
+  });
+});
+
+describe('the sign-up throttle', () => {
+  /**
+   * Drives the REAL production ceiling — `SIGNUP_RATE_LIMIT`, imported rather
+   * than restated — on an app of its own, because the limiter's store is
+   * in-memory and shared by every request an instance sees.
+   *
+   * The budget is spent on requests that FAIL VALIDATION, for two reasons: the
+   * throttle runs in `onRequest`, before validation, so a malformed request
+   * costs exactly as much budget as a real one; and spending it that way
+   * creates no accounts and sends no mail, which leaves the final assertion
+   * unambiguous.
+   */
+  it('answers 429 as a problem document, and creates nothing', async () => {
+    const email = newEmail('throttled');
+
+    const throttled = await buildApp(config, {
+      db: () => appDb,
+      breachChecker,
+      // No override: this is the constant the deployed API uses.
+    });
+    await throttled.ready();
+
+    try {
+      // Spend the whole budget. Each is a 400 — rejected, but counted.
+      for (let attempt = 0; attempt < SIGNUP_RATE_LIMIT.max; attempt += 1) {
+        const response = await throttled.inject({
+          method: 'POST',
+          url: '/v1/auth/signup',
+          payload: {},
+        });
+        expect(
+          response.statusCode,
+          `attempt ${String(attempt + 1)} should still be within the budget`,
+        ).toBe(400);
+      }
+
+      // One over, and this one is a PERFECTLY VALID sign-up. It must be
+      // refused anyway, and refused without creating anything.
+      const refused = await throttled.inject({
+        method: 'POST',
+        url: '/v1/auth/signup',
+        payload: validBody(email),
+      });
+
+      expect(refused.statusCode).toBe(429);
+
+      // RFC 9457, not the plugin's own body (ADR-014). The plugin throws with
+      // `statusCode: 429` and `platform/problem.ts` renders it, so this route
+      // needs no bespoke error builder — and if someone later gives it one,
+      // this assertion fails.
+      expect(refused.headers['content-type']).toContain(
+        'application/problem+json',
+      );
+      expect(refused.json()).toEqual({
+        type: '/problems/rate-limited',
+        title: 'Too many requests',
+        status: 429,
+      });
+
+      // The plugin's own header survives the translation, so a client knows
+      // when to come back rather than retrying immediately.
+      expect(refused.headers['retry-after']).toBeDefined();
+
+      // ── THE ASSERTION THAT MATTERS ────────────────────────────────────────
+      // A throttled request must be refused BEFORE the account is created, not
+      // after. If the limit were enforced anywhere later than `onRequest`, this
+      // address would exist.
+      expect(
+        await authUser(email),
+        'a rejected request must not have created an account',
+      ).toBeUndefined();
+      expect(await mailCountTo(email), 'and must not have sent mail').toBe(0);
+    } finally {
+      await throttled.close();
+    }
+  });
+
+  it('does not throttle the routes that did not ask for it', async () => {
+    // `global: false` in app.ts. If a future edit turns the plugin global, the
+    // health probe starts failing under any load that matters, and this is
+    // where that shows up.
+    for (let attempt = 0; attempt < SIGNUP_RATE_LIMIT.max + 5; attempt += 1) {
+      const response = await app.inject({ method: 'GET', url: '/health' });
+      expect(response.statusCode).toBe(200);
     }
   });
 });

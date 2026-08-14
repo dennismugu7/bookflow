@@ -259,7 +259,19 @@ enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
-max_frequency = "1s"
+#
+# SIXTY SECONDS, per ADR-030's resend cooldown. The CLI's default of "1s"
+# contradicted it and had gone unnoticed because nothing sent mail until now.
+#
+# This is the ONE throttle that survives ADR-037's admin path, and it is worth
+# being precise about what it does and does not cover. It is keyed on the USER
+# row's `confirmation_sent_at`, so it throttles repeat sends to the SAME
+# address — which is most of single-address mail bombing. It does nothing about
+# creating accounts across MANY addresses, because each new address starts with
+# a null timestamp and no history to throttle against. That gap is what the
+# per-IP limit in `apps/api/src/modules/auth/auth.routes.ts` covers, badly, and
+# what a per-address attempt table would cover properly.
+max_frequency = "60s"
 # Number of characters used in the email OTP.
 otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).

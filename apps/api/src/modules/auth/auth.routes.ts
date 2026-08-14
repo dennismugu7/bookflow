@@ -13,11 +13,80 @@ import { signUp } from './auth.service.ts';
 
 /** Knows HTTP. Parses, calls the service, serialises. No logic. */
 
+/**
+ * ── THROTTLE (per IP) ───────────────────────────────────────────────────────
+ *
+ * This endpoint is **unauthenticated**, it **writes to the database**, and it
+ * **causes email to be sent**. Nothing else in the API is all three, and until
+ * this existed nothing throttled it at all.
+ *
+ * **GoTrue's own rate limiting does not apply.** ADR-037 requires the
+ * service-role admin API, and that path bypasses GoTrue's limits exactly as it
+ * bypasses its password policy — observed while building this slice: seven
+ * consecutive `POST /admin/users` calls in under a second, all HTTP 200, with
+ * `[auth.rate_limit] sign_in_sign_ups = 30` per five minutes configured. That
+ * setting governs the PUBLIC endpoints, which ADR-037 has closed.
+ *
+ * ── WHY TEN PER HOUR ────────────────────────────────────────────────────────
+ *
+ * **A real person signs up once.** The ceiling is not sized for normal use; it
+ * is sized for how wrong a legitimate attempt can go before the person gives
+ * up. Each of these consumes one request and is genuinely common: a typo in the
+ * address, a password under eight characters, a password the breach corpus
+ * rejects, a mistyped confirmation. Ten leaves room for all of that twice over
+ * and still refuses anything that looks like a script.
+ *
+ * **The email quota sets the upper bound.** Resend allows 30 per hour on the
+ * current plan, and burning it means real sign-ups fail silently. Ten per hour
+ * per IP means a single source can consume at most a third of it — and only
+ * with ten SUCCESSFUL creations, since a rejected request sends nothing.
+ *
+ * ── WHAT THIS DOES NOT FIX, STATED PLAINLY ──────────────────────────────────
+ *
+ * **The store is in-memory, so the limit is per INSTANCE, not per deployment.**
+ * ADR-024 runs the API as a Fly.io process group; the moment there is more than
+ * one machine, the effective ceiling is ten times the instance count, and a
+ * restart resets every counter.
+ *
+ * **Per-IP is defeated by distributed sources.** Anyone with a botnet, a proxy
+ * pool or a handful of cloud instances walks around this completely. It raises
+ * the cost of casual abuse from nothing to slightly more than nothing; it is
+ * not a defence against someone who means it.
+ *
+ * **And it can punish the innocent.** ADR-005 puts v1 in Kenya, where mobile
+ * carriers use carrier-grade NAT: a large number of real users share one public
+ * address. Ten per hour is a per-carrier-pool budget, not a per-person one.
+ *
+ * **What would fix it properly**, when it needs fixing:
+ *
+ *   • a SHARED store (Redis) so the limit is per deployment rather than per
+ *     instance — the plugin supports this and it is a configuration change,
+ *     not a rewrite; and/or
+ *   • a **per-address attempt table** in our own database, which is the only
+ *     thing that survives both multiple instances and a rotating source IP,
+ *     and which also gives the per-address throttle GoTrue is not applying.
+ *
+ * **Triggers for doing it, whichever comes first:** the API running more than
+ * one instance; the first legitimate 429 reported by a real user (which is the
+ * CGNAT problem arriving); or the first observed abuse. Until one of those, a
+ * shared store is infrastructure bought for a threat this project has not met.
+ */
+export const SIGNUP_RATE_LIMIT = {
+  max: 10,
+  timeWindow: '1 hour',
+} as const;
+
+export interface SignupRateLimit {
+  readonly max: number;
+  readonly timeWindow: string;
+}
+
 export function registerAuthRoutes(
   app: FastifyInstance,
   db: () => Executor,
   gotrue: GoTrueClient,
   breachChecker: BreachChecker,
+  rateLimit: SignupRateLimit = SIGNUP_RATE_LIMIT,
 ): void {
   app.withTypeProvider<ZodTypeProvider>().post(
     '/v1/auth/signup',
@@ -28,7 +97,13 @@ export function registerAuthRoutes(
       // Sign-up cannot require a token — the caller has no account yet, which
       // is the point — so this is one of the few routes that must opt out, and
       // saying so here is the only way it happens (CLAUDE.md §5).
-      config: { public: true },
+      //
+      // The throttle is declared here, beside the `public: true` that makes it
+      // necessary. A rejection is thrown with `statusCode: 429`, which the one
+      // error handler in `platform/problem.ts` turns into the RFC 9457
+      // `/problems/rate-limited` document — so this endpoint does NOT get a
+      // bespoke error body, and the plugin's `Retry-After` header survives.
+      config: { public: true, rateLimit },
       schema: {
         operationId: 'signUp',
         summary: 'Create an owner account',
