@@ -275,7 +275,17 @@ max_frequency = "60s"
 # Number of characters used in the email OTP.
 otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
-otp_expiry = 3600
+#
+# SIX HUNDRED — ten minutes, per ADR-030. The CLI's default of 3600 contradicted
+# it, and this was the last of the three ADR-030 values that had drifted here
+# (the others were `minimum_password_length` and `max_frequency`). All three had
+# gone unnoticed for the same reason: nothing created a user or sent a mail
+# until the mediated sign-up slice, so no value in this block was load-bearing.
+#
+# ADR-030's reasoning: long enough that a code survives a slow mail hop and the
+# user switching apps to read it, short enough that an intercepted code has a
+# small window.
+otp_expiry = 600
 
 # Use a production-ready SMTP server
 # [auth.email.smtp]
