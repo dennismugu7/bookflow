@@ -8,6 +8,55 @@
   },
   "components": {
     "schemas": {
+      "SignupRequestInput": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$",
+            "description": "Where the activation email is sent."
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "description": "At least 8 characters (ADR-030). No composition rules. May still be refused if it appears in a known breach corpus."
+          },
+          "firstName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Required. Trimmed. Rejected above 100 characters."
+          },
+          "lastName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Required. Trimmed. Rejected above 100 characters."
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "firstName",
+          "lastName"
+        ],
+        "description": "Everything needed to create an owner account."
+      },
+      "SignupAcceptedInput": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "confirmation_required",
+            "description": "The request was accepted. If the address could be registered, an activation email has been sent to it."
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "description": "Sign-up accepted; the address must be confirmed before login."
+      },
       "BusinessInput": {
         "type": "object",
         "properties": {
@@ -75,6 +124,57 @@
           "status"
         ],
         "description": "Liveness response."
+      },
+      "SignupRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?!\\.)(?!.*\\.\\.)([A-Za-z0-9_'+\\-\\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$",
+            "description": "Where the activation email is sent."
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "description": "At least 8 characters (ADR-030). No composition rules. May still be refused if it appears in a known breach corpus."
+          },
+          "firstName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Required. Trimmed. Rejected above 100 characters."
+          },
+          "lastName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Required. Trimmed. Rejected above 100 characters."
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "firstName",
+          "lastName"
+        ],
+        "additionalProperties": false,
+        "description": "Everything needed to create an owner account."
+      },
+      "SignupAccepted": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "confirmation_required",
+            "description": "The request was accepted. If the address could be registered, an activation email has been sent to it."
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "additionalProperties": false,
+        "description": "Sign-up accepted; the address must be confirmed before login."
       },
       "Business": {
         "type": "object",
@@ -165,6 +265,38 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auth/signup": {
+      "post": {
+        "operationId": "signUp",
+        "summary": "Create an owner account",
+        "tags": [
+          "auth"
+        ],
+        "description": "Mediated sign-up (ADR-037). The client never calls GoTrue directly. Creates the account, records terms acceptance with a SERVER-supplied version, and asks GoTrue to send its own activation email. Answers identically whether or not the address already has an account.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignupAccepted"
                 }
               }
             }

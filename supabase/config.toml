@@ -173,13 +173,41 @@ enable_refresh_token_rotation = true
 # Requires enable_refresh_token_rotation = true.
 refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
-enable_signup = true
+#
+# FALSE, and this is the one that matters (ADR-037). Sign-up is mediated by our
+# API: the client never calls GoTrue's signup endpoint, because
+# `raw_user_meta_data` is client-supplied and a consent record the subject
+# controls is not a consent record. Leaving this true makes the mediated path
+# merely the polite one while the direct one stays open.
+#
+# The service-role admin API is unaffected by this flag — verified, not assumed:
+# spike 002 L1/L2 locally and on staging 2026-08-14 (docs/ENVIRONMENT.md §3).
+#
+# NOT to be confused with [auth.email] enable_signup below, which disables the
+# email provider outright — including login. That is spike 002's first trap and
+# it cost a whole run.
+enable_signup = false
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
-minimum_password_length = 6
+#
+# EIGHT, per ADR-030. The CLI's default of 6 contradicted it, which nothing had
+# noticed because nothing created a user through GoTrue until now.
+#
+# READ THIS BEFORE RELYING ON IT. **This value does NOT apply to the sign-up
+# path ADR-037 builds.** Measured 2026-08-14 on this stack and on staging: the
+# service-role `POST /admin/users` accepts a seven-character password, and
+# accepts `password123`, with HTTP 200 in every case. The admin API enforces
+# neither the length floor nor ADR-030's breach check.
+#
+# So this setting governs the paths that are still to come — password reset and
+# password change — and NOT mediated sign-up. For sign-up the only enforcement
+# is the Zod schema in `apps/api/src/modules/auth/auth.schema.ts`, which makes
+# it a single point of failure rather than the second of two. Raised, not
+# resolved: it is a conflict between ADR-030 and ADR-037 that needs a decision.
+minimum_password_length = 8
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
 # are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
 password_requirements = ""
@@ -223,15 +251,41 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+#
+# TRUE. ADR-037's mechanism depends on it: the account is created unconfirmed,
+# and an unconfirmed user cannot log in (spike 002 L3), which is what makes the
+# window between the admin create and the resend hold nothing usable.
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
-max_frequency = "1s"
+#
+# SIXTY SECONDS, per ADR-030's resend cooldown. The CLI's default of "1s"
+# contradicted it and had gone unnoticed because nothing sent mail until now.
+#
+# This is the ONE throttle that survives ADR-037's admin path, and it is worth
+# being precise about what it does and does not cover. It is keyed on the USER
+# row's `confirmation_sent_at`, so it throttles repeat sends to the SAME
+# address — which is most of single-address mail bombing. It does nothing about
+# creating accounts across MANY addresses, because each new address starts with
+# a null timestamp and no history to throttle against. That gap is what the
+# per-IP limit in `apps/api/src/modules/auth/auth.routes.ts` covers, badly, and
+# what a per-address attempt table would cover properly.
+max_frequency = "60s"
 # Number of characters used in the email OTP.
 otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
-otp_expiry = 3600
+#
+# SIX HUNDRED — ten minutes, per ADR-030. The CLI's default of 3600 contradicted
+# it, and this was the last of the three ADR-030 values that had drifted here
+# (the others were `minimum_password_length` and `max_frequency`). All three had
+# gone unnoticed for the same reason: nothing created a user or sent a mail
+# until the mediated sign-up slice, so no value in this block was load-bearing.
+#
+# ADR-030's reasoning: long enough that a code survives a slow mail hop and the
+# user switching apps to read it, short enough that an intercepted code has a
+# small window.
+otp_expiry = 600
 
 # Use a production-ready SMTP server
 # [auth.email.smtp]

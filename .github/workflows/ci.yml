@@ -70,7 +70,6 @@ jobs:
       #   storage-api   ADR-011's buckets are not exercised yet
       #   imgproxy      image transforms, only meaningful with storage
       #   realtime      no subscription is under test
-      #   mailpit       ADR-012 sends via the outbox worker, not in these tests
       #   postgres-meta \
       #   studio         > the dashboard; there is nobody to look at it
       #   edge-runtime  no edge functions in this project
@@ -89,17 +88,25 @@ jobs:
       # those tests fail with a connection error that looks like a bug in the
       # API.
       #
+      # `mailpit` is no longer excluded either, as of the mediated sign-up
+      # slice. It was excluded on the reasoning that ADR-012 sends domain email
+      # through the outbox worker — true, and beside the point: ADR-027 puts
+      # AUTH email inside GoTrue, and ADR-037's mechanism ends in a real
+      # `POST /resend` that GoTrue must actually deliver somewhere. With no SMTP
+      # target that call fails, the endpoint compensates exactly as designed,
+      # and the happy-path test fails for a reason that has nothing to do with
+      # the code under test.
+      #
       # `supabase start` applies everything in supabase/migrations as part of
       # bringing the database up, so the schema is in place before the suite
       # runs. The step after this one asserts that rather than assuming it.
-      - name: Start Supabase (database and auth only)
+      - name: Start Supabase (database, auth and mail)
         run: |
           supabase start \
             -x postgrest \
             -x storage-api \
             -x imgproxy \
             -x realtime \
-            -x mailpit \
             -x postgres-meta \
             -x studio \
             -x edge-runtime \
@@ -137,6 +144,13 @@ jobs:
           # every machine — not a secret, and not a repository secret.
           SUPABASE_URL: http://127.0.0.1:54321
           SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+          # Required as of the mediated sign-up slice (ADR-037): the API creates
+          # and deletes GoTrue users with it. This is the fixed local
+          # development service-role key the CLI prints on every machine — the
+          # same class of value as the anon key above, and equally not a secret.
+          # A hosted service-role key would never appear here; it bypasses RLS
+          # entirely (spike 001/C7) and lives only in Fly/Actions secrets.
+          SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
 
   # ── Mobile ─────────────────────────────────────────────────────────────────
   # Independent of `verify`. Neither job needs the other, so a Dart failure

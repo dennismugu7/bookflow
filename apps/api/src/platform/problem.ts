@@ -31,6 +31,31 @@ export const PROBLEM_TYPES = {
     status: 404,
     title: 'Not found',
   },
+  // The request did not match the route's schema. Carries no field list and no
+  // echo of the input, like every other problem here — the client knows what it
+  // sent, and a reflected value is how an error response becomes a probe.
+  'validation-failed': {
+    status: 400,
+    title: 'Invalid request',
+  },
+  // Distinct from `validation-failed` on purpose. The password satisfied the
+  // schema and the identity provider still refused it — ADR-030 enables
+  // GoTrue's breach check, so this is the one input error the client cannot
+  // predict locally, and the copy for it has to say something different.
+  'password-rejected': {
+    status: 400,
+    title: 'Password rejected',
+  },
+  'rate-limited': {
+    status: 429,
+    title: 'Too many requests',
+  },
+  // The identity provider is unreachable or refused for a reason that is not
+  // the caller's fault. 503 rather than 500: the request may succeed later.
+  'auth-unavailable': {
+    status: 503,
+    title: 'Authentication service unavailable',
+  },
   'internal-error': {
     status: 500,
     title: 'Internal server error',
@@ -82,8 +107,74 @@ export function sendProblem(
  * stack trace — a leaked stack is an information disclosure, and Fastify's
  * default handler will happily send one.
  */
+/**
+ * Did the framework reject the request before the handler ran?
+ *
+ * ── A DEFECT IN ADR-014's ERROR CONTRACT, NOT A DETAIL OF ONE ROUTE ─────────
+ *
+ * Without this, the handler below turned everything it did not recognise into a
+ * 500, so **any malformed request was an internal server error**.
+ * `GET /v1/businesses/not-a-uuid` had answered 500 since PR 2b and nothing
+ * noticed, because no test had ever sent a bad one. ADR-014 promises RFC 9457
+ * problem documents with stable, machine-readable slugs; answering 500 to a
+ * client mistake breaks that promise for every route at once, and tells the
+ * Flutter client to retry something that can never succeed.
+ *
+ * ── WHY THE STATUS CODE, NOT THE ERROR CODE ─────────────────────────────────
+ *
+ * The first version of this matched `FST_ERR_VALIDATION` and a `validation`
+ * array — and that was still wrong, which is why it is written this way now.
+ * Measured against this Fastify version:
+ *
+ *   body fails the schema   FST_ERR_VALIDATION            400  validation[]  ✓
+ *   params fail the schema  FST_ERR_VALIDATION            400  validation[]  ✓
+ *   body is malformed JSON  FST_ERR_CTP_INVALID_JSON_BODY 400  NO validation ✗
+ *
+ * That third row is the whole point: it carries no `validation` array, so a
+ * code-matching check let it through to the 500 branch. Every one of these is
+ * already a well-formed 4xx by the time it reaches here — the framework knows
+ * what it is — so the honest rule is to trust the status the framework set and
+ * translate it into the contract's vocabulary. A future Fastify error code we
+ * have never heard of is then handled correctly by default rather than
+ * incorrectly.
+ */
+function clientErrorSlug(error: unknown): ProblemSlug | undefined {
+  if (typeof error !== 'object' || error === null) return undefined;
+
+  const status = (error as { statusCode?: unknown }).statusCode;
+  if (typeof status !== 'number' || status < 400 || status >= 500) {
+    return undefined;
+  }
+
+  if (status === 404) return 'not-found';
+  if (status === 429) return 'rate-limited';
+  return 'validation-failed';
+}
+
 export function registerProblemHandler(app: FastifyInstance): void {
   app.setErrorHandler((error, request: FastifyRequest, reply) => {
+    // ProblemError first: it is ours, it already names its slug, and it must
+    // not be reinterpreted by a status-code heuristic.
+    if (!(error instanceof ProblemError)) {
+      const slug = clientErrorSlug(error);
+      if (slug !== undefined) {
+        // The message can name a field and its constraint; it is LOGGED, never
+        // sent. `password must contain at least 8 character(s)` in a response
+        // body would be harmless — the same line about an email format is not,
+        // once it starts quoting the value back.
+        request.log.info(
+          {
+            slug,
+            detail:
+              error instanceof Error ? error.message : 'malformed request',
+          },
+          'request refused: malformed',
+        );
+        sendProblem(reply, slug);
+        return;
+      }
+    }
+
     if (error instanceof ProblemError) {
       request.log.info(
         { slug: error.slug, detail: error.message },

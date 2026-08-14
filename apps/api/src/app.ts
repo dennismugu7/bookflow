@@ -1,3 +1,4 @@
+import fastifyRateLimit from '@fastify/rate-limit';
 import fastifySwagger from '@fastify/swagger';
 import Fastify, { type FastifyInstance } from 'fastify';
 import {
@@ -12,8 +13,14 @@ import { z } from 'zod';
 import { auth } from './platform/auth.ts';
 import type { Config } from './platform/config.ts';
 import type { Executor } from './platform/db.ts';
+import { createGoTrueClient, type GoTrueClient } from './platform/gotrue.ts';
 import { createJwtVerifier, type JwtVerifier } from './platform/jwt.ts';
+import { createBreachChecker, type BreachChecker } from './platform/pwned.ts';
 import { registerProblemHandler } from './platform/problem.ts';
+import {
+  registerAuthRoutes,
+  type SignupRateLimit,
+} from './modules/auth/auth.routes.ts';
 import { registerBusinessRoutes } from './modules/businesses/businesses.routes.ts';
 import { registerMeRoutes } from './modules/me/me.routes.ts';
 
@@ -57,6 +64,33 @@ export interface BuildAppOptions {
   readonly db: () => Executor;
   /** Injected so tests can verify against their own keys. */
   readonly verifier?: JwtVerifier;
+  /**
+   * Injected so a test can point sign-up at a GoTrue that fails in a chosen
+   * way. The default talks to the real one.
+   */
+  readonly gotrue?: GoTrueClient;
+  /**
+   * Injected so tests can serve the range API's wire format locally, and so a
+   * test can point it at an unreachable host to prove sign-up fails open.
+   * The default talks to haveibeenpwned.
+   */
+  readonly breachChecker?: BreachChecker;
+  /**
+   * Overrides the sign-up throttle. Present because the limiter's store is
+   * in-memory and therefore PER INSTANCE: a test file sharing one app would
+   * otherwise couple unrelated tests together through a hidden counter, and the
+   * failure would look like a flake. Defaults to `SIGNUP_RATE_LIMIT`.
+   */
+  readonly signupRateLimit?: SignupRateLimit;
+  /**
+   * Where the logger writes. Injected so a test can ASSERT on a log line.
+   *
+   * Present for one reason: the rate limiter's rejection event is the only
+   * signal that the CGNAT trigger has fired, and an unasserted log line is
+   * exactly the thing that stops working without anyone noticing — which is
+   * the failure this event exists to prevent.
+   */
+  readonly logStream?: NodeJS.WritableStream;
 }
 
 export async function buildApp(
@@ -69,6 +103,7 @@ export async function buildApp(
       // real. ADR-023's three environments, applied to the one thing this
       // skeleton actually has.
       level: config.APP_ENV === 'local' ? 'info' : 'warn',
+      ...(options.logStream === undefined ? {} : { stream: options.logStream }),
     },
   }).withTypeProvider<ZodTypeProvider>();
 
@@ -92,6 +127,16 @@ export async function buildApp(
     // reading the generated spec, which is why the spec is committed.
     transformObject: jsonSchemaTransformObject,
   });
+
+  // `global: false` — no route is throttled unless it asks. Default-deny is the
+  // right default for AUTHENTICATION (platform/auth.ts); it is the wrong one
+  // here, because a limit applied silently to every route is a limit nobody
+  // sized for any of them. Routes that need one declare it, and say why.
+  //
+  // Registered BEFORE the problem handler is irrelevant to correctness — the
+  // plugin throws a 429 into whatever error handler is installed — but the
+  // handler is what makes the response RFC 9457, so the two belong together.
+  await app.register(fastifyRateLimit, { global: false });
 
   registerProblemHandler(app);
 
@@ -131,6 +176,18 @@ export async function buildApp(
     },
   );
 
+  registerAuthRoutes(
+    app,
+    options.db,
+    options.gotrue ??
+      createGoTrueClient({
+        baseUrl: config.SUPABASE_URL,
+        serviceRoleKey: config.SUPABASE_SERVICE_ROLE_KEY,
+        anonKey: config.SUPABASE_ANON_KEY,
+      }),
+    options.breachChecker ?? createBreachChecker(),
+    options.signupRateLimit,
+  );
   registerMeRoutes(app, options.db);
   registerBusinessRoutes(app, options.db);
 
