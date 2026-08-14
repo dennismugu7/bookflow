@@ -158,6 +158,110 @@ describe('GET /v1/me', () => {
   });
 });
 
+describe('malformed input is a 400 problem document, on every route shape', () => {
+  /**
+   * ── A CONTRACT TEST, NOT A SIGN-UP TEST ────────────────────────────────────
+   *
+   * ADR-014 promises RFC 9457 for errors. Until this block existed the API
+   * answered **500** to every malformed request, and
+   * `GET /v1/businesses/not-a-uuid` had done so since PR 2b — undetected,
+   * because no test had ever sent a bad request to any route.
+   *
+   * One case per INPUT SHAPE the API has, so that adding a shape without
+   * handling it is a failing test rather than a discovery in production:
+   *
+   *   params        GET  /v1/businesses/:businessId
+   *   body (schema) POST /v1/auth/signup
+   *   body (parse)  POST /v1/auth/signup with JSON that does not parse
+   *
+   * `GET /health` and `GET /v1/me` take no input at all and are therefore not
+   * omissions here — there is nothing to malform.
+   */
+
+  const problem400 = {
+    type: '/problems/validation-failed',
+    title: 'Invalid request',
+    status: 400,
+  };
+
+  it('params: /v1/businesses/not-a-uuid is 400, not 500', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/businesses/not-a-uuid',
+      headers: { authorization: `Bearer ${realToken}` },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.headers['content-type']).toContain(
+      'application/problem+json',
+    );
+    expect(response.json()).toEqual(problem400);
+  });
+
+  it('params: authentication still comes first', async () => {
+    // A malformed id must not become a way to learn that a route exists, or to
+    // reach validation, without a token. 401 beats 400.
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/businesses/not-a-uuid',
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({ type: '/problems/missing-token' });
+  });
+
+  it('body: a signup missing every required field is 400', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/signup',
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual(problem400);
+  });
+
+  it('body: a signup with an unparseable JSON body is 400', async () => {
+    // FST_ERR_CTP_INVALID_JSON_BODY carries no `validation` array, unlike a
+    // schema failure. It answered 500 under the first version of the fix, which
+    // is exactly why this case is its own test.
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/signup',
+      payload: '{"email": "someone@example.com",',
+      headers: { 'content-type': 'application/json' },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual(problem400);
+  });
+
+  it('leaks nothing about what was wrong with the input', async () => {
+    // The body is the slug, the title and the status — never a field name, a
+    // constraint, or an echo of the value. A reflected value is how an error
+    // response becomes a probe.
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/signup',
+      payload: {
+        email: 'not-an-email',
+        password: 'x',
+        firstName: '',
+        lastName: '',
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(Object.keys(response.json()).sort()).toEqual([
+      'status',
+      'title',
+      'type',
+    ]);
+    expect(response.body).not.toContain('not-an-email');
+    expect(response.body).not.toContain('email');
+  });
+});
+
 describe('GET /health stays public', () => {
   it('answers without a token', async () => {
     // The one route that opts out. If default-deny ever inverts, this is not

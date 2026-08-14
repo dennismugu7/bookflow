@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 
 import type { Executor } from '../../platform/db.ts';
 import type { GoTrueClient } from '../../platform/gotrue.ts';
+import type { BreachChecker } from '../../platform/pwned.ts';
 import {
   SIGNUP_ACCEPTED,
   signupAcceptedSchema,
@@ -16,6 +17,7 @@ export function registerAuthRoutes(
   app: FastifyInstance,
   db: () => Executor,
   gotrue: GoTrueClient,
+  breachChecker: BreachChecker,
 ): void {
   app.withTypeProvider<ZodTypeProvider>().post(
     '/v1/auth/signup',
@@ -46,7 +48,10 @@ export function registerAuthRoutes(
       // below has to re-check shape, and a malformed request never reaches
       // GoTrue. A validation failure becomes a 400 problem document in
       // `platform/problem.ts`.
-      await signUp({ gotrue, db: db(), log: request.log }, request.body);
+      await signUp(
+        { gotrue, db: db(), log: request.log, breachChecker },
+        request.body,
+      );
 
       // One frozen body for every outcome that is not an error — see
       // `auth.schema.ts`. Built once so success and duplicate cannot drift

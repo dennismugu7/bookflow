@@ -14,6 +14,7 @@ import type { Config } from './platform/config.ts';
 import type { Executor } from './platform/db.ts';
 import { createGoTrueClient, type GoTrueClient } from './platform/gotrue.ts';
 import { createJwtVerifier, type JwtVerifier } from './platform/jwt.ts';
+import { createBreachChecker, type BreachChecker } from './platform/pwned.ts';
 import { registerProblemHandler } from './platform/problem.ts';
 import { registerAuthRoutes } from './modules/auth/auth.routes.ts';
 import { registerBusinessRoutes } from './modules/businesses/businesses.routes.ts';
@@ -64,6 +65,12 @@ export interface BuildAppOptions {
    * way. The default talks to the real one.
    */
   readonly gotrue?: GoTrueClient;
+  /**
+   * Injected so tests can serve the range API's wire format locally, and so a
+   * test can point it at an unreachable host to prove sign-up fails open.
+   * The default talks to haveibeenpwned.
+   */
+  readonly breachChecker?: BreachChecker;
 }
 
 export async function buildApp(
@@ -147,6 +154,7 @@ export async function buildApp(
         serviceRoleKey: config.SUPABASE_SERVICE_ROLE_KEY,
         anonKey: config.SUPABASE_ANON_KEY,
       }),
+    options.breachChecker ?? createBreachChecker(),
   );
   registerMeRoutes(app, options.db);
   registerBusinessRoutes(app, options.db);

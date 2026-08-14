@@ -1,6 +1,7 @@
 import type { Executor } from '../../platform/db.ts';
 import { GoTrueError, type GoTrueClient } from '../../platform/gotrue.ts';
 import { ProblemError } from '../../platform/problem.ts';
+import type { BreachChecker } from '../../platform/pwned.ts';
 import { deleteProfile, insertProfile } from './auth.repository.ts';
 import { type SignupRequest } from './auth.schema.ts';
 
@@ -67,6 +68,12 @@ export interface SignupDeps {
   readonly gotrue: GoTrueClient;
   readonly db: Executor;
   readonly log: SignupLogger;
+  /**
+   * ADR-030's breach check. NOT optional: GoTrue does not perform it on this
+   * path (see `platform/pwned.ts`), so a caller that forgot to pass one would
+   * silently be running with no password policy beyond the length floor.
+   */
+  readonly breachChecker: BreachChecker;
   readonly termsVersion?: string;
 }
 
@@ -82,6 +89,54 @@ export async function signUp(
   request: SignupRequest,
 ): Promise<void> {
   const termsVersion = deps.termsVersion ?? CURRENT_TERMS_VERSION;
+
+  // ── Step 0: the breach check (ADR-030) ────────────────────────────────────
+  //
+  // BEFORE the account exists, so a rejected password creates nothing and there
+  // is nothing to compensate. That ordering is also what makes the test
+  // "rejected before any account exists" checkable as a table count.
+  //
+  // ── FAIL OPEN, DELIBERATELY ─────────────────────────────────────────────
+  //
+  // If the corpus cannot be consulted, sign-up CONTINUES. This is a decision,
+  // not an oversight, and it is the same trade every implementation of this
+  // check has to make:
+  //
+  //   • Failing closed hands a third party the ability to stop all new owner
+  //     accounts by being down. haveibeenpwned is free, unauthenticated and
+  //     owes us nothing.
+  //   • What is lost by failing open is bounded: during an outage, sign-ups
+  //     revert to the eight-character floor — which is the policy this project
+  //     had five minutes before this code existed, and which every account
+  //     created up to now was held to.
+  //
+  // The loss is bounded and temporary; the alternative failure is total and
+  // caused by someone else. So it fails open, and it says so out loud in the
+  // log with a stable event name so the frequency is countable rather than
+  // guessed at.
+  const verdict = await deps.breachChecker.check(request.password);
+
+  if (verdict === 'breached') {
+    deps.log.info(
+      { event: 'signup.password_breached' },
+      'signup: password appears in the breach corpus; refused before creation',
+    );
+    throw new ProblemError(
+      'password-rejected',
+      'password found in the breach corpus',
+    );
+  }
+
+  if (verdict === 'unavailable') {
+    deps.log.warn(
+      {
+        // Stable and greppable. If this is common, the check is not the control
+        // ADR-030 believes it is, and that is worth finding out from data.
+        event: 'signup.breach_check_unavailable',
+      },
+      'signup: breach corpus unreachable; proceeding on the length floor alone',
+    );
+  }
 
   // ── Step 1 ────────────────────────────────────────────────────────────────
   let userId: string;
