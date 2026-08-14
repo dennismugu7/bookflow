@@ -103,6 +103,9 @@ given here, deliberately, so this table cannot drift from the lockfile.
 | Local stack credentials | — | ADR-023 | **not secrets.** The anon, service-role, publishable, secret and S3 keys the CLI prints are fixed, well-known development values, identical on every machine. They are not in `.env.example` and must never be reused for a hosted project. | `supabase status` reprints them at any time |
 | Supabase organisation | owns the hosted projects | ADR-023 | **exists** — `mugu-labs` (`ggvjgvsymgczpyopnljp`), the only org on the account | `supabase orgs list` |
 | Staging Supabase project | hosted staging (ADR-023) | ADR-023 | **exists — created 2026-08-11.** `bookflow-staging`, ref **`vvborjxraxdeflrllqwh`**, region `eu-central-1`, PostgreSQL 17.6, `ACTIVE_HEALTHY`. Migrations applied, including the `bookflow_api` application role (ADR-038) whose password is set out of band and held only in Actions secrets. The ref is an identifier, not a secret. | `supabase projects list` |
+| Open sign-up on `bookflow-staging` | ADR-037 requires that **only our API** creates accounts | ADR-037 | **closed, and verified behaviourally — 2026-08-14.** Anon `POST /auth/v1/signup` returns **422 `signup_disabled`** ("Signups not allowed for this instance"). The distinction is the whole test: spike 002 (S1) saw **400 `email_address_invalid`** for the same undeliverable address, which *proved the flag was unset*, because address validation is only reached when `signup_disabled` has not already fired. Verified in the same run that the admin path is **not** locked out — see the row below. | `curl -s -o /dev/null -w '%{http_code}' -X POST "https://vvborjxraxdeflrllqwh.supabase.co/auth/v1/signup" -H "apikey: $ANON" -H 'Content-Type: application/json' -d '{"email":"probe@bookflow.test","password":"x"}'` → `422`, body `signup_disabled` |
+| Service-role account creation on `bookflow-staging` | ADR-037's mechanism: our API creates users through the admin API | ADR-037 | **works — verified 2026-08-14.** Service-role `POST /auth/v1/admin/users` returned **200** and created the user while open sign-up was closed. Checked *before* the email test, because a lockout here makes mediated sign-up impossible and everything downstream moot. | `POST {project}/auth/v1/admin/users` with the service-role key → `200` |
+| Custom SMTP on `bookflow-staging` | GoTrue sends auth email (ADR-027); the built-in sender proved unusable | ADR-023, ADR-027 | **configured and verified — 2026-08-14.** Provider **Resend**, sender **`onboarding@resend.dev`**. Verified by delivery, not from the dashboard: admin-created a user, then **one** `POST /auth/v1/resend type=signup` returned **200** and `confirmation_sent_at` moved from absent to `2026-08-14T18:19:03Z`. Spike 002 (S5) got `429 over_email_send_rate_limit` on the *first* attempt from the built-in sender, with `confirmation_sent_at` staying null — so this row records a real change, not a re-test. **The sender is a Resend test address and delivers only to the account owner's own inbox.** That is sufficient for staging and **insufficient for real owners**: the domain-verified sender ADR-027 anticipates is still owed, before the first real owner signs up. | `POST {project}/auth/v1/resend` `{"type":"signup","email":"<existing unconfirmed user>"}` with the anon key → `200`, and that user's `confirmation_sent_at` is non-null |
 | Production Supabase project | hosted production (ADR-023) | ADR-023 | **not yet, and it does not fit.** The org is on the **free plan** — confirmed by the API refusing `--size` with *"Instance size cannot be specified for free plan organizations"* — which allows two active projects. `Dashboard X` and `bookflow-staging` occupy both. Production is a spend decision, not a provisioning step. | `supabase projects list` |
 | `bookflow-spike` Supabase project (`iohxfurykkocqfagdkzy`) | spike 001's throwaway project; held credentials that appeared in a transcript | ADR-023 marks it for deletion | **deleted — verified 2026-08-10.** The ref is absent from the authenticated project list. Deleting it did **not** retire its password, contrary to ADR-023's expectation: that password was reused from other accounts rather than generated for this project, and was rotated separately on discovery. See the spike's Amendments. | `supabase projects list` — `iohxfurykkocqfagdkzy` must not appear |
 | Unrelated project `Dashboard X` (`wpiaoskqljhrkpfzvmrp`) | **not a Bookflow resource.** Recorded because it occupies a hosted-project slot. | — | **exists**, `ACTIVE_HEALTHY`, eu-central-1, created 2026-07-11 | `supabase projects list` |
@@ -113,6 +116,15 @@ given here, deliberately, so this table cannot drift from the lockfile.
 **Every row above is now command-verified.** The Supabase CLI is authenticated, so the three
 hosted-project rows are checked rather than assumed, and `bookflow-spike` is confirmed gone
 rather than reported gone.
+
+**The 2026-08-14 auth verification left no residue.** It created two users on staging — one
+throwaway at `@bookflow.test` for the admin-path check, one at the account owner's own address
+for the delivery check — and **both were deleted**. `DELETE /auth/v1/admin/users/:id` returned
+`200` for each, a subsequent `GET` on each returned `404`, and the project's user list is back to
+**zero users**, which is where it started. The activation link that was delivered belongs to a
+user that no longer exists and is therefore dead. No credential was written to disk or displayed
+at any point: both keys were read from `supabase projects api-keys` into process memory and used
+there (ADR-023 — this is the failure mode that cost `bookflow-spike` its existence).
 
 ### Accepted risk — `main` is unprotected
 
@@ -181,7 +193,8 @@ purchase that is deliberately not being made yet — see the accepted risk in §
 
 | Missing | Needed by | Note |
 |---|---|---|
-| Staging Supabase project | **Phase 3** | ADR-023. `DEFINITION_OF_DONE.md` requires deploy-and-smoke-test on staging, which first binds when a slice is completed. |
+| ~~Staging Supabase project~~ | ~~**Phase 3**~~ | **Provisioned 2026-08-11 — see §3.** Its custom SMTP and closed sign-up were verified 2026-08-14, also §3. |
+| Domain-verified email sender | **before the first real owner signs up** | ADR-027. Staging now sends through Resend, but from `onboarding@resend.dev`, a test address that reaches only the account owner's own inbox. Enough to prove the mechanism; it cannot mail a customer. |
 | Production Supabase project | **Phase 3** (later than staging) | ADR-023. Deploys on a tag only (ADR-024). |
 | Fly.io app + `flyctl` + Fly secrets | **Phase 3** | ADR-024. The Actions workflow can be authored in Phase 2 with its deploy job inert until the target exists. |
 | Confirmation of the hosted-project allowance for `mugu-labs` | **before creating staging** | See the note under §3. One slot is already occupied by an unrelated project. |
