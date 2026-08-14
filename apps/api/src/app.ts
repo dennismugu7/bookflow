@@ -12,8 +12,10 @@ import { z } from 'zod';
 import { auth } from './platform/auth.ts';
 import type { Config } from './platform/config.ts';
 import type { Executor } from './platform/db.ts';
+import { createGoTrueClient, type GoTrueClient } from './platform/gotrue.ts';
 import { createJwtVerifier, type JwtVerifier } from './platform/jwt.ts';
 import { registerProblemHandler } from './platform/problem.ts';
+import { registerAuthRoutes } from './modules/auth/auth.routes.ts';
 import { registerBusinessRoutes } from './modules/businesses/businesses.routes.ts';
 import { registerMeRoutes } from './modules/me/me.routes.ts';
 
@@ -57,6 +59,11 @@ export interface BuildAppOptions {
   readonly db: () => Executor;
   /** Injected so tests can verify against their own keys. */
   readonly verifier?: JwtVerifier;
+  /**
+   * Injected so a test can point sign-up at a GoTrue that fails in a chosen
+   * way. The default talks to the real one.
+   */
+  readonly gotrue?: GoTrueClient;
 }
 
 export async function buildApp(
@@ -131,6 +138,16 @@ export async function buildApp(
     },
   );
 
+  registerAuthRoutes(
+    app,
+    options.db,
+    options.gotrue ??
+      createGoTrueClient({
+        baseUrl: config.SUPABASE_URL,
+        serviceRoleKey: config.SUPABASE_SERVICE_ROLE_KEY,
+        anonKey: config.SUPABASE_ANON_KEY,
+      }),
+  );
   registerMeRoutes(app, options.db);
   registerBusinessRoutes(app, options.db);
 

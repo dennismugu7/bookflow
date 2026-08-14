@@ -47,14 +47,14 @@ Please follow the [installation procedure](#installation--usage) and then run th
 import 'package:bookflow_api/bookflow_api.dart';
 
 
-final api = BookflowApi().getBusinessesApi();
-final String businessId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+final api = BookflowApi().getAuthApi();
+final SignupRequestInput signupRequestInput = ; // SignupRequestInput | 
 
 try {
-    final response = await api.getBusiness(businessId);
+    final response = await api.signUp(signupRequestInput);
     print(response);
 } catch on DioException (e) {
-    print("Exception when calling BusinessesApi->getBusiness: $e\n");
+    print("Exception when calling AuthApi->signUp: $e\n");
 }
 
 ```
@@ -65,6 +65,7 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+[*AuthApi*](doc/AuthApi.md) | [**signUp**](doc/AuthApi.md#signup) | **POST** /v1/auth/signup | Create an owner account
 [*BusinessesApi*](doc/BusinessesApi.md) | [**getBusiness**](doc/BusinessesApi.md#getbusiness) | **GET** /v1/businesses/{businessId} | A business the caller belongs to
 [*HealthApi*](doc/HealthApi.md) | [**getHealth**](doc/HealthApi.md#gethealth) | **GET** /health | Liveness probe
 [*MeApi*](doc/MeApi.md) | [**getMe**](doc/MeApi.md#getme) | **GET** /v1/me | The authenticated owner&#39;s profile
@@ -78,6 +79,10 @@ Class | Method | HTTP request | Description
  - [HealthResponseInput](doc/HealthResponseInput.md)
  - [Profile](doc/Profile.md)
  - [ProfileInput](doc/ProfileInput.md)
+ - [SignupAccepted](doc/SignupAccepted.md)
+ - [SignupAcceptedInput](doc/SignupAcceptedInput.md)
+ - [SignupRequest](doc/SignupRequest.md)
+ - [SignupRequestInput](doc/SignupRequestInput.md)
 
 
 ## Documentation For Authorization

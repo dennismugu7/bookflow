@@ -57,8 +57,19 @@ export const configSchema = z.object({
   // the publishable anon key carries a different audience, which is what stops
   // it being presented as a session.
   SUPABASE_JWT_AUDIENCE: nonEmpty.default('authenticated'),
-  SUPABASE_ANON_KEY: nonEmpty.optional(),
-  SUPABASE_SERVICE_ROLE_KEY: nonEmpty.optional(),
+
+  // Both REQUIRED as of the mediated sign-up slice (ADR-037), where they stop
+  // being optional extras and become the credentials the endpoint cannot work
+  // without. The service-role key creates and deletes users; the anon key sends
+  // the activation email through the public `/resend` endpoint, which is the
+  // credential spike 002 verified that call with (L6).
+  //
+  // Required rather than checked at call time, so a misconfigured deployment
+  // fails at startup instead of on a user's first sign-up — the compensating
+  // delete needs the service-role key too, and discovering it is missing
+  // halfway through the flow is how an orphan gets made.
+  SUPABASE_ANON_KEY: nonEmpty,
+  SUPABASE_SERVICE_ROLE_KEY: nonEmpty,
 
   // ─── Not yet decided ───────────────────────────────────────────────────────
   // Blocked on E1/E2 in docs/analysis/05-triage.md, both S, both answered in

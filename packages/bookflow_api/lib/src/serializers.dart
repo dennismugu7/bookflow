@@ -20,6 +20,10 @@ import 'package:bookflow_api/src/model/health_response.dart';
 import 'package:bookflow_api/src/model/health_response_input.dart';
 import 'package:bookflow_api/src/model/profile.dart';
 import 'package:bookflow_api/src/model/profile_input.dart';
+import 'package:bookflow_api/src/model/signup_accepted.dart';
+import 'package:bookflow_api/src/model/signup_accepted_input.dart';
+import 'package:bookflow_api/src/model/signup_request.dart';
+import 'package:bookflow_api/src/model/signup_request_input.dart';
 
 part 'serializers.g.dart';
 
@@ -30,6 +34,10 @@ part 'serializers.g.dart';
   HealthResponseInput,
   Profile,
   ProfileInput,
+  SignupAccepted,
+  SignupAcceptedInput,
+  SignupRequest,
+  SignupRequestInput,
 ])
 Serializers serializers = (_$serializers.toBuilder()
       ..add(const OneOfSerializer())

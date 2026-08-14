@@ -31,6 +31,31 @@ export const PROBLEM_TYPES = {
     status: 404,
     title: 'Not found',
   },
+  // The request did not match the route's schema. Carries no field list and no
+  // echo of the input, like every other problem here — the client knows what it
+  // sent, and a reflected value is how an error response becomes a probe.
+  'validation-failed': {
+    status: 400,
+    title: 'Invalid request',
+  },
+  // Distinct from `validation-failed` on purpose. The password satisfied the
+  // schema and the identity provider still refused it — ADR-030 enables
+  // GoTrue's breach check, so this is the one input error the client cannot
+  // predict locally, and the copy for it has to say something different.
+  'password-rejected': {
+    status: 400,
+    title: 'Password rejected',
+  },
+  'rate-limited': {
+    status: 429,
+    title: 'Too many requests',
+  },
+  // The identity provider is unreachable or refused for a reason that is not
+  // the caller's fault. 503 rather than 500: the request may succeed later.
+  'auth-unavailable': {
+    status: 503,
+    title: 'Authentication service unavailable',
+  },
   'internal-error': {
     status: 500,
     title: 'Internal server error',
@@ -82,8 +107,45 @@ export function sendProblem(
  * stack trace — a leaked stack is an information disclosure, and Fastify's
  * default handler will happily send one.
  */
+/**
+ * Did Fastify (or the Zod type provider) reject the request before the handler
+ * ran?
+ *
+ * This is checked because the handler below turns anything it does not
+ * recognise into a 500 — so until this existed, ANY malformed request was an
+ * internal server error. `GET /v1/businesses/not-a-uuid` was already a 500
+ * before the sign-up endpoint added a request body, and nothing noticed,
+ * because no test sent a bad one.
+ *
+ * Both shapes are matched deliberately: Fastify's own validation errors carry
+ * `FST_ERR_VALIDATION`, and `fastify-type-provider-zod` throws its own error
+ * type carrying a `validation` array. Matching one and not the other would
+ * leave half the inputs answering 500.
+ */
+function isValidationError(error: unknown): error is { message: string } {
+  if (typeof error !== 'object' || error === null) return false;
+  const candidate = error as { code?: unknown; validation?: unknown };
+  return (
+    candidate.code === 'FST_ERR_VALIDATION' ||
+    Array.isArray(candidate.validation)
+  );
+}
+
 export function registerProblemHandler(app: FastifyInstance): void {
   app.setErrorHandler((error, request: FastifyRequest, reply) => {
+    if (isValidationError(error)) {
+      // The message can name a field and its constraint; it is logged, never
+      // sent. `password must contain at least 8 character(s)` in a response
+      // body is harmless — the same line about an email format is not, once it
+      // starts quoting the value.
+      request.log.info(
+        { detail: error.message },
+        'request refused: failed validation',
+      );
+      sendProblem(reply, 'validation-failed');
+      return;
+    }
+
     if (error instanceof ProblemError) {
       request.log.info(
         { slug: error.slug, detail: error.message },

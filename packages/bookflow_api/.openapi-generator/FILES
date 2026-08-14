@@ -2,6 +2,7 @@
 .openapi-generator-ignore
 README.md
 analysis_options.yaml
+doc/AuthApi.md
 doc/Business.md
 doc/BusinessInput.md
 doc/BusinessesApi.md
@@ -11,8 +12,13 @@ doc/HealthResponseInput.md
 doc/MeApi.md
 doc/Profile.md
 doc/ProfileInput.md
+doc/SignupAccepted.md
+doc/SignupAcceptedInput.md
+doc/SignupRequest.md
+doc/SignupRequestInput.md
 lib/bookflow_api.dart
 lib/src/api.dart
+lib/src/api/auth_api.dart
 lib/src/api/businesses_api.dart
 lib/src/api/health_api.dart
 lib/src/api/me_api.dart
@@ -30,8 +36,13 @@ lib/src/model/health_response.dart
 lib/src/model/health_response_input.dart
 lib/src/model/profile.dart
 lib/src/model/profile_input.dart
+lib/src/model/signup_accepted.dart
+lib/src/model/signup_accepted_input.dart
+lib/src/model/signup_request.dart
+lib/src/model/signup_request_input.dart
 lib/src/serializers.dart
 pubspec.yaml
+test/auth_api_test.dart
 test/business_input_test.dart
 test/business_test.dart
 test/businesses_api_test.dart
@@ -41,3 +52,7 @@ test/health_response_test.dart
 test/me_api_test.dart
 test/profile_input_test.dart
 test/profile_test.dart
+test/signup_accepted_input_test.dart
+test/signup_accepted_test.dart
+test/signup_request_input_test.dart
+test/signup_request_test.dart

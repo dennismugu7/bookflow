@@ -19,6 +19,10 @@ function validEnv(): Record<string, string> {
     // Required as of the auth slice: jwt.ts derives both the JWKS URI and the
     // expected issuer from it (ADR-017).
     SUPABASE_URL: 'https://project.supabase.co',
+    // Both required as of the mediated sign-up slice (ADR-037): the endpoint
+    // creates users with the service-role key and sends the activation email
+    // through the public `/resend` endpoint with the anon key.
+    SUPABASE_ANON_KEY: 'anon-key-not-a-secret',
     SUPABASE_SERVICE_ROLE_KEY: SECRET_SERVICE_KEY,
     MAIL_PROVIDER_API_KEY: SECRET_MAIL_KEY,
   };

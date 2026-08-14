@@ -14,7 +14,13 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(HealthResponseInputStatusEnum.serializer)
       ..add(HealthResponseStatusEnum.serializer)
       ..add(Profile.serializer)
-      ..add(ProfileInput.serializer))
+      ..add(ProfileInput.serializer)
+      ..add(SignupAccepted.serializer)
+      ..add(SignupAcceptedInput.serializer)
+      ..add(SignupAcceptedInputStatusEnum.serializer)
+      ..add(SignupAcceptedStatusEnum.serializer)
+      ..add(SignupRequest.serializer)
+      ..add(SignupRequestInput.serializer))
     .build();
 
 // ignore_for_file: deprecated_member_use_from_same_package,type=lint

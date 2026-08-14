@@ -173,13 +173,41 @@ enable_refresh_token_rotation = true
 # Requires enable_refresh_token_rotation = true.
 refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
-enable_signup = true
+#
+# FALSE, and this is the one that matters (ADR-037). Sign-up is mediated by our
+# API: the client never calls GoTrue's signup endpoint, because
+# `raw_user_meta_data` is client-supplied and a consent record the subject
+# controls is not a consent record. Leaving this true makes the mediated path
+# merely the polite one while the direct one stays open.
+#
+# The service-role admin API is unaffected by this flag — verified, not assumed:
+# spike 002 L1/L2 locally and on staging 2026-08-14 (docs/ENVIRONMENT.md §3).
+#
+# NOT to be confused with [auth.email] enable_signup below, which disables the
+# email provider outright — including login. That is spike 002's first trap and
+# it cost a whole run.
+enable_signup = false
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
-minimum_password_length = 6
+#
+# EIGHT, per ADR-030. The CLI's default of 6 contradicted it, which nothing had
+# noticed because nothing created a user through GoTrue until now.
+#
+# READ THIS BEFORE RELYING ON IT. **This value does NOT apply to the sign-up
+# path ADR-037 builds.** Measured 2026-08-14 on this stack and on staging: the
+# service-role `POST /admin/users` accepts a seven-character password, and
+# accepts `password123`, with HTTP 200 in every case. The admin API enforces
+# neither the length floor nor ADR-030's breach check.
+#
+# So this setting governs the paths that are still to come — password reset and
+# password change — and NOT mediated sign-up. For sign-up the only enforcement
+# is the Zod schema in `apps/api/src/modules/auth/auth.schema.ts`, which makes
+# it a single point of failure rather than the second of two. Raised, not
+# resolved: it is a conflict between ADR-030 and ADR-037 that needs a decision.
+minimum_password_length = 8
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
 # are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
 password_requirements = ""
@@ -223,7 +251,11 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+#
+# TRUE. ADR-037's mechanism depends on it: the account is created unconfirmed,
+# and an unconfirmed user cannot log in (spike 002 L3), which is what makes the
+# window between the admin create and the resend hold nothing usable.
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
