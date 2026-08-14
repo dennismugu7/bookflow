@@ -266,10 +266,11 @@ two the PR 1 migration review raised** — neither of which was visible from the
   `BYPASSRLS` normally needs a superuser and Supabase's `postgres` is not one. It holds
   `BYPASSRLS` and `CREATEROLE`, which is enough. ADR-013's model is unchanged.
 
-**PR 2 may now start.** Its obligations from these two: the no-orphan test for the compensating
-delete, verification that `enable_signup = false` actually applies on staging, a reproducible
-way to provision the application role in every environment, and grants for tables future
-migrations create.
+**PR 2 has since run, and split into three.** Its obligations from these two were the no-orphan
+test for the compensating delete, verification that `enable_signup = false` actually applies on
+staging, a reproducible way to provision the application role in every environment, and grants
+for tables future migrations create. Where each of them landed — and which are still open — is
+"Where Phase 3 stands" below.
 
 ### Provision before starting — infrastructure that does not exist
 
@@ -282,7 +283,7 @@ None of this is repository work. All of it needs an account, a purchase or a dec
 | **A deployable image** | ADR-024 runs the API and the worker as two processes from one image. No Dockerfile or `fly.toml` exists | ADR-013, ADR-024 |
 | **The deploy job in `.github/workflows/ci.yml`** | Staging deploys automatically on merge to `main`. **The migration job now exists** (`migrate-staging`, push to `main` only, gated on `verify` and `contracts`); the deploy job does not | ADR-024, ADR-034 |
 | **Fly.io secrets and GitHub Actions secrets** | **`STAGING_DATABASE_URL` exists**; the Fly.io secrets and the app's own runtime config do not. No hosted credential is on a development machine | ADR-023 |
-| ~~Email provider and verified sending domain~~ | **No longer Phase 3.** ADR-027 puts staging on Supabase's built-in SMTP. Needed before any real owner signs up | ADR-023, ADR-027 |
+| **Custom SMTP for staging** | **Phase 3 after all, and it blocks PR 2c.** ADR-027 put staging on Supabase's built-in SMTP; spike 002 found that sender returns `429 over_email_send_rate_limit` on the *first* activation email, so it is not a usable sender. Being configured now | ADR-023, ADR-027 |
 | ~~A domain name~~ | **No longer Phase 3** for the sender identity. Still needed for `PUBLIC_WEB_ORIGIN` when `apps/web` exists, which is after the owner app | ADR-002, ADR-027 |
 
 **The free-tier constraint bites here.** `docs/ENVIRONMENT.md` §4 records it: ADR-023 chose two
@@ -296,11 +297,42 @@ ADR-024 deploys production on a tag.
 **Budget: free tiers only** (ADR-034). Fly.io's free allowance, staging Supabase on the free
 tier. The first real cost is the custom-SMTP cutover, triggered before any real owner signs up.
 
-### Then
+### Where Phase 3 stands
 
-**Phase 0 is done. Phase 3 may begin**, with PR 1 of ADR-032's four: the data layer and its
-migrations. What remains before the first commit is provisioning, not deciding — the staging
-Supabase project, the Fly.io app, and the deployable image, all listed above.
+Phase 0 is done and Phase 3 is under way. ADR-032 delivers it as four sequential pull requests,
+each leaving the application runnable. **PR 2 split into three parts as it was built** — a
+delivery detail, not a change to ADR-032's decision.
+
+| PR | What | Status |
+|---|---|---|
+| 1 | Data layer — the three tables of ADR-031, migrations applying cleanly | **merged** — `f5df0aa` (#4); review findings in `f750923` |
+| 2a | The `bookflow_api` application role — CRUD, no DDL, no ownership (ADR-038) | **merged** — `c4a7d41` (#5) |
+| 2b | JWT verification, protected routes, the membership scoping rule in the repository layer | **merged** — `785e91e` (#6), hardened by `f3bcb3d` (#7) |
+| 2c | Mediated sign-up — `POST /v1/auth/signup` per ADR-037 | **not started, and blocked.** Two reasons below |
+| 3 | Client — Flutter shell per ADR-028, routing, generated-client wiring, screen #20, the zero-membership stub | not started |
+| 4 | Deploy — the pipeline to staging per ADR-024 and ADR-034 | not started |
+
+**PR 2c is blocked on custom SMTP for staging, which is being configured now.** Spike 002
+established why: mediated sign-up requires GoTrue to send its own activation email, and staging's
+built-in sender returned `429 over_email_send_rate_limit` on the first attempt, leaving
+`confirmation_sent_at` null. Until a real sender exists the endpoint cannot be exercised anywhere
+but locally. ADR-027 anticipated this cutover but placed it "before any real owner signs up"; it
+has arrived earlier, as a prerequisite to the endpoint rather than to the first user.
+
+**Spike 002 also found ADR-037 wrong on a point of fact, and the amendment is not yet written.**
+ADR-037 states that the server-side admin call keeps the activation email flowing from GoTrue. It
+does not — `POST /admin/users` creates the user silently, with `confirmation_sent_at` null and no
+mail sent, with or without `email_confirm`. The working mechanism is **two** GoTrue calls: admin
+create, then `POST /resend type=signup`, which delivers GoTrue's own confirmation template and
+token. ADR-027 is untouched by this; ADR-037's decision stands and only its stated mechanism is
+wrong. **The amendment is written before PR 2c, not alongside it** — otherwise the endpoint
+absorbs a correction that belongs in the record, which is the one outcome the spike's own
+conclusion rules out. `docs/spikes/002-account-creation.md` holds the observations.
+
+A third obligation is open and blocked by nothing: **open sign-up is still enabled on staging**
+(spike 002, S1), which ADR-037 requires to be off. It cannot be closed by pushing this
+repository's `config.toml` — that push is whole-file and would overwrite staging's `site_url`,
+redirect URLs and rate limits with local development values.
 
 `DEFINITION_OF_DONE.md` governs completion of the whole slice at PR 4, including the human gate
 under ADR-032's constraints.
