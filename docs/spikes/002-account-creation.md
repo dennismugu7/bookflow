@@ -133,3 +133,26 @@ targeted change through the dashboard or the Management API is the safe path.
 `supabase/config.toml` holds `enable_signup = false` and `enable_confirmations = true`,
 uncommitted. Those are the values ADR-037 requires, but they belong to the endpoint PR, not to a
 spike. Staging configuration was **not** modified. All users created by this spike were deleted.
+
+## Amendments
+
+### 2026-08-14 — the `config.toml` values above did not survive
+
+The machine crashed and rebooted after this spike was written and before any of it was committed.
+`supabase/config.toml` is now **byte-identical to `HEAD`** — `git diff` reports nothing. The two
+uncommitted edits recorded under "State left behind" are gone:
+
+| Setting | Spike left it at | Reads now |
+|---|---|---|
+| `[auth] enable_signup` | `false` | `true` |
+| `[auth.email] enable_confirmations` | `true` | `false` |
+
+(`[auth.sms]` carries its own pair of both settings, unrelated and untouched.)
+
+**Nothing above is revised.** It was true when written, and the verdicts are observations at a
+moment. This entry records only what has moved on beneath them — the findings themselves are
+unaffected, since the spike's probes ran while those values were live.
+
+**Whoever writes PR 2c sets those flags rather than finding them waiting.** The trap recorded
+above still applies in full: `[auth.email] enable_signup` is a different setting and is not the
+one to change — it disables the email provider outright, including login.
