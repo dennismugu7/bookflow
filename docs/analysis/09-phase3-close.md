@@ -100,7 +100,8 @@ Two differences from what A15 recorded, and both matter:
   rejection would produce.
 - **Every address is affected, not a class of them.** The trigger is not "some addresses are
   unemailable" but "no address except one is emailable", which is a property of the sender and
-  will disappear the moment E1's domain-verified sender is configured.
+  will disappear the moment a domain-verified sender is configured. **Tracked in its own right as
+  E14** — it is a concrete staging defect with a known fix, not a footnote to A15.
 
 ### The compensation itself is verified
 
@@ -306,4 +307,4 @@ Phase 0: either produce acceptance criteria the item can map to, or amend
 | **The e2e suite** | §5.1 | the slice that builds sign-up and login |
 | **The owner's review pass** | §5.2 | outstanding now |
 | **Eight unclassified screenshots** | ADR-039 | as each screen is built |
-| **The domain-verified sender** | E1/E2 | before a real owner signs up — and it will change A15's trigger |
+| **E14** — staging's sender reaches one inbox | triage | before any multi-user testing on staging; fixing it turns the smoke test red on purpose |

@@ -160,10 +160,25 @@ const signup = await get('/v1/auth/signup', {
 });
 
 if (signup.status === 202) {
+  // ── THE PREMISE DIED, AND THIS SAYS SO ────────────────────────────────────
+  //
+  // This assertion proves the database is reachable via a 503 that exists ONLY
+  // because staging's mailer is broken for every address but one (E14). That
+  // coupling is acceptable exactly as long as the test announces it when the
+  // coupling breaks — a check whose premise has quietly evaporated is worse
+  // than no check, because it still reports green.
+  //
+  // So: **fail**, name the cause rather than the symptom, and name the row that
+  // was left behind so it can actually be removed. A message that says "clean
+  // up" without saying what to clean up is an instruction nobody can follow.
   check(
     false,
-    'sign-up reached the mailer and SUCCEEDED — this run left a user in staging',
-    'staging’s sender changed; clean up and rewrite this assertion',
+    'PREMISE GONE: staging’s sender now delivers to arbitrary recipients, so sign-up SUCCEEDS',
+    `this assertion inferred a working database from a FAILING mailer, and the mailer no longer fails — ` +
+      `it must be rewritten to prove database reachability some other way. ` +
+      `This run also created a real account that compensation did NOT remove: ` +
+      `delete the auth.users row for ${probeEmail} (its user_profiles row cascades). ` +
+      `Context: E14 in docs/analysis/05-triage.md and docs/analysis/09-phase3-close.md §3`,
   );
 } else {
   // Status AND body together, in ONE assertion, deliberately.
