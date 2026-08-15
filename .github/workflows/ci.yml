@@ -650,7 +650,15 @@ jobs:
             -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
             -no-snapshot -camera-back none
           working-directory: apps/mobile
+          # `timeout` because a FAILING run does not exit. Measured on run
+          # 31902883567: the test reported "0 tests passed, 1 failed" and then
+          # sat there until the job's own 30-minute limit killed it — so the
+          # gate's verdict was available 17 minutes before anyone could read it.
+          # A gate that takes half an hour to say "red" is a gate people turn
+          # off. `--preserve-status` keeps the test's own exit code when it does
+          # finish, so this bounds the hang without inventing a result.
           script: >-
+            timeout --preserve-status --signal=KILL 12m
             flutter test integration_test/profile_e2e_test.dart
             --dart-define-from-file=${{ steps.defines.outputs.path }}
 
