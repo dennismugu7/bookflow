@@ -186,3 +186,30 @@ did not, because the rule did not exist yet. **PRs 1, 2a and 2b have no such rec
 get one** — writing them now would be reconstruction, and a record assembled after the fact to
 fill a gap is the thing this rule exists to make impossible. Their reviews are real and are
 attested only by the table above.
+
+### 2026-08-15 — when the owner's pass is required, and when it is not
+
+The obligation above ran for the first time on **PR #12**, and its record is at
+<https://github.com/dennismugu7/bookflow/pull/12#issuecomment-5303325013>. It earned its keep
+immediately: it rejected the close-out's premise and sent Phase 3 back for PR 4c, which is an
+outcome no correctness review could have produced.
+
+Left as "a still-open obligation" with no scope, the rule has one predictable failure — it gets
+skipped on something small, silently, and the skip is indistinguishable from the omission this
+whole amendment exists to correct. So the scope is stated:
+
+> **The owner's review pass is required for any PR touching code, schema, CI, or infrastructure
+> configuration. A documentation-only PR carries the session's review record alone.**
+
+The line is drawn at what can behave differently in production. A docs PR cannot, and the owner's
+distinctive contributions — is this the product I want, is this debt I am willing to carry, is the
+premise right — are already exercised on the PR that *made* the change being written down. Asking
+for a second pass over the prose is ceremony, and ceremony is what gets skipped and then quietly
+normalised.
+
+**Skipping it is a decision that must be visible.** A documentation-only PR merged without the
+owner's pass is following this rule; anything else merged without it is not, and the session's
+review record must say which case it is.
+
+**PR #13 is the first PR this applies to** — documentation only, recording the decisions taken at
+the merge of #12. It carries the session's record and no owner's pass, by this rule.

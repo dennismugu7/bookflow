@@ -117,6 +117,22 @@ documentation rather than governing configuration.**
 The API finding itself is unaffected and firm: `branch` is not settable via `PATCH`, so whatever
 fixes this is a dashboard action, not a script.
 
+### PARKED — 2026-08-15, decided by Dennis at the merge of #12
+
+The Blueprint is **parked, not fixed and not forgotten**. It does not block anything: the running
+service reads `main` and has since PR 4a, and CI deploys through the API rather than through a
+Blueprint sync, so the stale pointer changes no behaviour today. Chasing it now would mean a
+dashboard session bought purely to resolve a discrepancy that costs nothing.
+
+**The trigger for un-parking it** — whichever comes first:
+
+- the next time someone is in the Render dashboard **for another reason**, or
+- **before the next change to `render.yaml`.**
+
+The second is the one that matters. A stale pointer is harmless while `render.yaml` is inert; the
+moment the file changes and someone expects that change to reach Render, the pointer decides
+whether it does. The instructions for resolving it are above, unchanged.
+
 ---
 
 ## 2. A15 — the created-but-unemailable compensation path
@@ -263,6 +279,13 @@ only the status — reported success for a service that was not running. Status 
 now a single assertion, because the platform does not emit RFC 9457 and that is what distinguishes
 our 503 from its own. Resumed, re-run, green.
 
+**The count is 10 of 11, and the missing one is the finding.** The test had **11** assertions when
+this ran, and the eleventh did not fail — it **passed, falsely**. That was the status-only database
+check, green against a service that was not running. Collapsing it into the problem-type check took
+the file to **10**, which is what it has run at ever since. So "10 failed" here and "10 assertions"
+in the current file are not the same 10, and only this run predates the collapse — red proof 2 and
+every green run since are post-collapse. Anyone reconciling these numbers later should start there.
+
 **2. Deploy broken** → `APP_ENV=production` was set on the service, which makes the new
 configuration guard refuse to start (staging's `DATABASE_URL` carries `sslmode=no-verify`). The
 deploy finished **`update_failed`**; restoring `APP_ENV=staging` returned it to **`live`**. Render's
@@ -278,6 +301,24 @@ exit=1
 
 That is two properties proven at once: the smoke test detects a broken deployment, and **K76's
 guard blocks a production start on real infrastructure**, not only in unit tests.
+
+### What the review confirmed, and what it did not — 2026-08-15
+
+Dennis's review record (PR #12, comment `5303325013`) went to Render's own Events list rather than
+to this file's account of the runs, and the two proofs came back differently:
+
+- **Red proof 2 — CONFIRMED against Render's record.** Commit `6d5989a`: deploy failed at 6:06 PM
+  ("Exited with status 1 while running your code"), restarted 6:06 PM, live 6:08 PM.
+- **Red proof 1 — accepted as partially confirmed.** The suspend/resume pair was not located in
+  Events. Its *outcome* is in the diff and is not in doubt — the collapsed status-and-problem-type
+  assertion exists, with the comment explaining why — but the **run itself is accepted on the
+  author's word**, not on an artefact.
+
+**Decided: it is not re-run.** The proof's value was the flaw it exposed, and that flaw is fixed
+and visible; a second suspension would buy a log line at the cost of taking staging down again. So
+this stands recorded as **partially confirmed** rather than upgraded to verified — the distinction
+is the point, and softening it later would be a fabrication. A future reader should treat the
+suspended-service behaviour of proof 1 as reported, not as evidenced.
 
 ---
 
@@ -406,6 +447,16 @@ sent Phase 3 back for PR 4c, which is the outcome only that pass could have prod
 It remains outstanding for **PRs #4–#11**, which were merged without it, and that does not get
 retro-fitted for the same reason their review records do not.
 
+**Where that record is, and how it got there.** PR #12, comment
+[`5303325013`](https://github.com/dennismugu7/bookflow/pull/12#issuecomment-5303325013). Dennis
+wrote it and reviewed from it; the session **pasted** it, on his instruction, after checking the PR
+by id and finding the comment he believed he had posted was not there. GitHub attributes it to his
+account regardless — the session posts through his `gh` credential — so the body carries a line
+stating that, because provenance not written into the body is recorded nowhere. The text above that
+line is unaltered, including its item 2, which says red proof 1 was not independently verified. The
+session's correction to that item is comment `5303279363`, kept separate on purpose: the record says
+what was known at review time, and a later finding does not get edited back into it.
+
 ### 5.3 Acceptance criteria mapped to named tests — nothing to map from
 
 The item assumes Phase 0 produced a written list of acceptance criteria per slice. **It did not.**
@@ -444,6 +495,7 @@ blocks it.**
 | **K76** — verify the database certificate | triage | production; the guard blocks a production start until then |
 | **E14** — staging's sender reaches one inbox | triage | before any multi-user testing on staging; fixing it turns the smoke test red on purpose |
 | **Eight unclassified screenshots** | ADR-039 | as each screen is built |
+| **The Blueprint pointer** | §1 | **parked** — the next dashboard visit for another reason, or the next change to `render.yaml`, whichever comes first |
 | **Full sign-up/verification/login e2e** | §5.1 | the slice that builds those screens; the reduced gate is a floor, not a substitute |
 | **Acceptance criteria mapped to tests** | §5.3 | whoever next writes a Phase 0 |
 
@@ -451,6 +503,6 @@ blocks it.**
 
 | Item | Outcome |
 |---|---|
-| **The Blueprint pointer** | **NOT closed — disputed.** Changed by hand on 2026-08-15; the API still reads `feat/deploy-staging` (§1) |
+| **The Blueprint pointer** | **NOT closed — disputed, and PARKED.** Changed by hand on 2026-08-15; the API still reads `feat/deploy-staging`. Harmless today; carried above with a trigger (§1) |
 | **A15** | Corrected in the triage; premise was wrong, compensation verified (§2) |
 | **The owner's review pass** | Ran for the first time on PR #12 (§5.2) — and rejected this file's framing |
