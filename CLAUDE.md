@@ -225,6 +225,13 @@ is the process; it is not restated here. Project-specific deviations and additio
 
 - **Phase 0** — any `S`-classified triage item touching this slice is resolved *here*, before
   design. Not during implementation. Record the answer.
+- **Phase 0** — the slice's **acceptance criteria are written here, before design**, as a list of
+  statements each of which a test can be named after. `DEFINITION_OF_DONE.md` requires every
+  criterion to map to a named test, and that item is unsatisfiable when the criteria do not exist
+  before the tests: criteria written afterwards are derived from the tests and the mapping is green
+  by construction. **Criteria constrain tests; tests never author criteria.** Phase 3 shipped
+  without this and the item could not be ticked — see ADR-040 §3.1, which authorises that miss
+  once and closes this gap so it cannot recur. (K77)
 - **Phase 1** — the API contract is authored as code that generates the spec. The
   Project-Scaffolding manual's Phase 4 "API documentation scaffolding" is promoted to a
   Phase 2 requirement: the generation pipeline exists before the first endpoint. (ADR-014)

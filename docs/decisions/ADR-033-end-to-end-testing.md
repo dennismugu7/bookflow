@@ -88,3 +88,46 @@ harness is what stops that.
 None new in the triage. Two implementation questions are named above — automating email
 verification, and emulator provisioning in CI — and both belong to the PRs that hit them rather
 than to Phase 0.
+
+## Amendments
+
+### 2026-08-15 — Phase 3's critical journey is reduced, and what that gives up
+
+The Decision above sets **Phase 3's e2e** as "sign-up, verification, login, and reaching screen
+#20 as an authenticated user". The Consequences flagged the risk and named it correctly: automating
+email verification "may prove to be the most expensive single piece of Phase 3". It did — and for a
+reason the ADR could not have known. **Staging's sender delivers to exactly one inbox** (Resend's
+test address; E14 in the triage), so no automated run can receive a verification mail at an address
+it controls. The blocker is not tooling; it is the environment, and fixing the environment is a
+separate decision with its own cost.
+
+**Phase 3's critical journey is therefore:**
+
+> **A session is injected, and screen #20 renders real data fetched from deployed staging.**
+
+That is not a smaller version of the original — it is a different cut. It keeps every layer the
+Rationale named as the reason for choosing `integration_test` over an API-level harness: **the
+deployed API, the generated Dart client, the Riverpod graph and the router**, exercised by a real
+build. It drops the part that needs an inbox.
+
+**What it gives up, stated plainly rather than minimised:** it does **not prove a new owner can get
+in.** Sign-up, verification and login remain unexercised end to end, and by this ADR's own
+definition — a journey whose failure prevents an owner taking a booking — **they are critical and
+remain uncovered.** The reduced gate is a floor, not a substitute, and calling it "the e2e" without
+this paragraph would be the exclusivity clause above being quietly defeated by its own author.
+
+**The full journey belongs to the slice that builds those screens** — sign-up, verification and
+login have no UI yet, so there is currently no journey to drive. When that slice arrives it carries
+the full e2e, and E14 is a prerequisite it must resolve rather than inherit.
+
+**The exclusivity clause is unchanged.** `integration_test` driving a real build is still the only
+thing that satisfies the e2e requirement. What this amendment narrows is the journey, not the
+harness — an API-level test is no more an e2e test than it was.
+
+**Session injection, not a login form.** The test acquires a real staging session from a real
+staging account and installs it, rather than typing into a screen that does not exist. That is a
+compromise and it is the one place where the gate is weaker than a user's path: it proves the app
+works *given* a session, not that a session can be obtained. Recorded here so it is not
+rediscovered as a surprise.
+
+Authorised by, and reported in, PR 4c. See `docs/analysis/09-phase3-close.md` §5.1 and ADR-040.
