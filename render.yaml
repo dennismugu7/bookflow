@@ -1,0 +1,151 @@
+# Render Blueprint — staging (ADR-024 as amended 2026-08-15, ADR-034).
+#
+# ══ WHAT THIS FILE IS, AND WHAT IT DELIBERATELY IS NOT ══════════════════════
+#
+# It declares ONE web service: the Bookflow API, on the free instance type,
+# built from apps/api/Dockerfile.
+#
+# ── THERE IS NO WORKER SERVICE, AND THAT IS A DECISION ──────────────────────
+#
+# ADR-013 requires a Node worker for the transactional outbox and booking
+# expiry, running from the same image as the API and sharing its service layer.
+# It is absent here for two independent reasons, either of which alone is
+# sufficient:
+#
+#   1. **It does not exist yet.** ADR-027 resolved K60: the outbox and its
+#      worker do not ship in Phase 3. No domain email exists until the booking
+#      slice, because no domain record exists that anyone needs telling about.
+#
+#   2. **Render's free instance type cannot run it.** Free is available for web
+#      services, Postgres, Key Value and static sites; background workers and
+#      private services are not among them (Render docs, "Deploy for Free",
+#      read 2026-08-15). A worker on Render is a paid instance.
+#
+# **So its absence is a decision with a trigger, not an omission.** The worker
+# arrives with the booking slice, and that is the moment this platform choice is
+# re-examined — see the 2026-08-15 amendment to ADR-024, which names exactly
+# that event as the revisit trigger.
+#
+# ── AUTO-DEPLOY IS OFF, DELIBERATELY. DO NOT TURN IT ON ─────────────────────
+#
+# See the long note on `autoDeployTrigger` below. The short version: deploys are
+# PULLED by CI after migrations have run, not PUSHED by Render on commit.
+
+services:
+  - type: web
+    name: bookflow-api-staging
+    runtime: docker
+
+    # Free: 512MB RAM, 0.1 CPU, sleeps after 15 minutes without inbound traffic
+    # and takes about a minute to wake. ADR-034's "free tiers only" holds, and
+    # the amendment to ADR-024 records what that costs — a smoke test pays the
+    # cold start, and this instance type would be indefensible for production.
+    plan: free
+
+    # Frankfurt. The staging Supabase project is `eu-central-1`
+    # (docs/ENVIRONMENT.md §3), and Frankfurt IS eu-central-1 — so the API sits
+    # in the same region as its database rather than crossing the Atlantic on
+    # every query. Render's five regions are oregon, ohio, virginia, frankfurt
+    # and singapore.
+    #
+    # **Confirm this is offered on the free instance type when you create the
+    # service.** Render's regions documentation does not state that free is
+    # restricted to a subset, and it does not state that it is not — the page
+    # is silent either way, read 2026-08-15. If the dashboard refuses frankfurt
+    # on free, that is a finding worth recording rather than quietly switching
+    # to oregon: it would put every database round trip across an ocean.
+    region: frankfurt
+
+    dockerfilePath: ./apps/api/Dockerfile
+    # The repository root, because the build is an npm-workspace install and
+    # needs the root lockfile and every member's manifest (ADR-022).
+    dockerContext: .
+
+    # `/health` is the one unauthenticated route (ADR-014 amendment: probes sit
+    # outside the versioned surface). It answers without touching the database,
+    # which is what makes it a liveness probe rather than a dependency check.
+    healthCheckPath: /health
+
+    # ── THE PART THAT MATTERS ────────────────────────────────────────────────
+    #
+    # `off` — Render must NOT deploy when a commit lands. The valid values are
+    # `commit`, `checksPass` and `off`; the default is `commit`.
+    #
+    # **Why this is not a preference.** ADR-034 requires migrations to be
+    # applied by CI, on merge to `main`, BEFORE the deploy. Render deploying on
+    # its own commit hook would race that job: the new image would go live
+    # against whatever schema happened to be there, which for anything but an
+    # additive migration is a guaranteed window of errors. The ordering is the
+    # entire point of ADR-034's decision, and it can only be guaranteed by one
+    # system doing both things in sequence.
+    #
+    # `checksPass` is not sufficient either. It waits for CI to be green, but
+    # "green" includes runs on other branches and says nothing about whether
+    # THIS commit's migration reached staging.
+    #
+    # **So the deploy is pulled, not pushed**: `.github/workflows/ci.yml` calls
+    # the deploy hook after `migrate-staging` succeeds, and waits for the result.
+    # If you are here because deploys "stopped working", the fix is in that
+    # workflow, not in this line.
+    #
+    # **Quoted deliberately.** Unquoted `off` is a boolean in YAML 1.1 — it
+    # parses as `false`, not as the string this field expects. Whether Render's
+    # parser is 1.1 or 1.2 decides whether that is an error or a silently wrong
+    # value, and this is not a field to find out the hard way: the wrong answer
+    # is auto-deploy staying on, which is the exact race this setting prevents.
+    autoDeployTrigger: 'off'
+
+    envVars:
+      # ── DECLARED BY NAME, VALUES SET IN THE DASHBOARD ────────────────────
+      #
+      # `sync: false` means Render does not take a value from this file and does
+      # not overwrite what is set in the dashboard. The names are therefore
+      # reviewable in the repository — a reader can see exactly what this
+      # service is given — while no value is ever committed (ADR-023, and
+      # CLAUDE.md §5: no credential is ever committed, including in examples).
+      #
+      # Every name here appears in `.env.example` with its shape and where to
+      # obtain it.
+
+      - key: APP_ENV
+        sync: false # `staging`. Not a secret; kept here for uniformity.
+
+      # ── THE APPLICATION ROLE, NOT postgres (ADR-038) ─────────────────────
+      #
+      # This is the `bookflow_api` connection: CRUD, no DDL, no ownership, with
+      # BYPASSRLS so that RLS-with-no-policies does not lock it out of its own
+      # tables. **It must never be the `postgres` connection string.** The
+      # privileged credential exists in exactly one place — the
+      # `STAGING_DATABASE_URL` Actions secret used by the migrate job — and a
+      # deployed API holding DDL rights over its own schema is the thing ADR-038
+      # was written to prevent.
+      #
+      # Actions already holds this same value as `STAGING_APP_DATABASE_URL`
+      # (docs/ENVIRONMENT.md §3). It is set here separately rather than shared,
+      # because the two systems have no channel between them and should not.
+      - key: DATABASE_URL
+        sync: false
+
+      # NOT SET, deliberately: `ADMIN_DATABASE_URL`. `platform/config.ts` makes
+      # it optional precisely so a deployed API can be without it, and its
+      # absence in staging and production is the point rather than an oversight.
+
+      # ── SUPABASE (ADR-017, ADR-037) ──────────────────────────────────────
+      - key: SUPABASE_URL
+        sync: false # https://vvborjxraxdeflrllqwh.supabase.co — the ref is not a secret
+
+      - key: SUPABASE_ANON_KEY
+        sync: false # publishable; used for the /resend call (spike 002 L6)
+
+      # BYPASSES RLS ENTIRELY (spike 001/C7). Required since ADR-037: the
+      # endpoint creates and deletes GoTrue users with it, and the compensating
+      # delete needs it too. Never in the Flutter app, never in a log.
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+      # ── NOT SET YET ──────────────────────────────────────────────────────
+      # MAIL_PROVIDER_API_KEY and MAIL_FROM_ADDRESS stay unset: ADR-027 puts
+      # auth email inside GoTrue, and the outbox that would need a provider does
+      # not ship in Phase 3. PUBLIC_WEB_ORIGIN stays unset until apps/web
+      # exists (ADR-001). All three are optional in `platform/config.ts`, so the
+      # service starts without them.

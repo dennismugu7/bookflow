@@ -360,3 +360,123 @@ jobs:
         env:
           STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
         run: supabase db push --db-url "$STAGING_DATABASE_URL" --include-all --yes
+
+  # ── Deploy to staging (ADR-024 as amended 2026-08-15, ADR-034) ─────────────
+  #
+  # ══ THE DEPLOY IS PULLED BY CI, NOT PUSHED BY RENDER ══════════════════════
+  #
+  # `render.yaml` sets `autoDeployTrigger: off`, and this job is why. **Do not
+  # "fix" a stalled deploy by turning auto-deploy back on in the dashboard** —
+  # that is not a shortcut to the same outcome, it is a different and worse one.
+  #
+  # ADR-034 requires migrations to be applied before the deploy, by the same
+  # pipeline, in that order. Its reasoning: migrate-first means new code never
+  # runs against an old schema, which for anything but an additive migration is
+  # a guaranteed window of errors. Render's own commit hook cannot honour that
+  # — it fires on the push, in parallel with `migrate-staging`, and whichever
+  # finishes first wins. `checksPass` is no better: it waits for CI to be green
+  # but knows nothing about whether THIS commit's migration reached staging.
+  #
+  # So the ordering is expressed the only way it can be guaranteed: one system
+  # doing both things in sequence, with `needs:` as the guarantee.
+  deploy-staging:
+    name: deploy-staging
+    # Push to `main` only. A pull request must never deploy: ADR-023 makes
+    # staging a shared environment, and a PR deploying over it would take it
+    # away from whatever it was being used for.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # `migrate-staging` is the one that matters. `verify` and `contracts` are
+    # already its own prerequisites, and are named again so this job's
+    # requirements are readable without following the chain.
+    needs: [verify, contracts, migrate-staging]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      # ── Trigger ───────────────────────────────────────────────────────────
+      #
+      # The deploy hook is a URL that is itself the credential — anyone holding
+      # it can deploy — so it is a secret and is never echoed. `--fail-with-body`
+      # makes curl exit non-zero on a 4xx/5xx while still printing the body,
+      # which is the difference between "the deploy failed" and a silent green.
+      - name: Trigger the deploy
+        id: trigger
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          set -euo pipefail
+
+          response=$(curl --silent --show-error --fail-with-body \
+            --request POST "$RENDER_DEPLOY_HOOK_URL")
+
+          # A 200 carries the new deploy's id. A 202 means another deploy was
+          # already running and carries NO id — which is not a failure, but it
+          # does mean this job cannot report on the deploy it asked for.
+          deploy_id=$(printf '%s' "$response" | jq -r '.deploy.id // empty')
+
+          if [ -z "$deploy_id" ]; then
+            echo "::error::The deploy hook returned no deploy id. Render answers 202 with no id when a deploy is already in progress, so this run cannot verify its own deploy. Re-run this job once the in-flight deploy has finished."
+            exit 1
+          fi
+
+          echo "deploy_id=$deploy_id" >> "$GITHUB_OUTPUT"
+          echo "Triggered deploy $deploy_id"
+
+      # ── Wait for the result ───────────────────────────────────────────────
+      #
+      # ══ A JOB THAT FIRES A WEBHOOK AND EXITS IS NOT A DEPLOY GATE ════════
+      #
+      # It reports that a request was accepted, not that anything was deployed.
+      # A build that fails to compile, a container that crashes on boot, a
+      # health check that never passes — every one of those leaves the webhook
+      # call green and staging running the previous image, and the first person
+      # to find out is whoever tries to use it.
+      #
+      # So this polls the deploy to a terminal state and fails on anything that
+      # is not `live`.
+      - name: Wait for the deploy to finish
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+          DEPLOY_ID: ${{ steps.trigger.outputs.deploy_id }}
+        run: |
+          set -euo pipefail
+
+          # Terminal statuses, from Render's API reference (read 2026-08-15).
+          # The full enumeration is: created, queued, build_in_progress,
+          # update_in_progress, live, deactivated, build_failed, update_failed,
+          # canceled, pre_deploy_in_progress, pre_deploy_failed.
+          #
+          # Anything not listed as terminal here is treated as still running,
+          # so a status Render adds later stalls this job until the timeout
+          # rather than being silently read as success.
+          deadline=$(( SECONDS + 900 ))
+
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            status=$(curl --silent --show-error --fail-with-body \
+              --header "Authorization: Bearer $RENDER_API_KEY" \
+              --header 'Accept: application/json' \
+              "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys/$DEPLOY_ID" \
+              | jq -r '.status')
+
+            echo "deploy $DEPLOY_ID: $status"
+
+            case "$status" in
+              live)
+                echo "::notice::Deploy $DEPLOY_ID is live."
+                exit 0
+                ;;
+              build_failed|update_failed|pre_deploy_failed|canceled|deactivated)
+                echo "::error::Deploy $DEPLOY_ID finished as '$status'. Staging is still running the previous image. The build log is in the Render dashboard under this service's Events."
+                exit 1
+                ;;
+            esac
+
+            sleep 10
+          done
+
+          # A timeout is a failure, not an unknown. Fifteen minutes is far
+          # longer than this image takes to build, so reaching here means
+          # something is wrong even if Render has not said so yet.
+          echo "::error::Deploy $DEPLOY_ID did not reach a terminal state within 15 minutes."
+          exit 1
