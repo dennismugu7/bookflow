@@ -277,6 +277,20 @@ between the shell, the scripting language and the file. A `\n` that survives one
 the next produces a literal newline inside a string — valid-looking in a diff, a syntax error to
 the compiler, and worse if the file is not compiled at all.
 
+### How results are reported
+
+**Anything presented as verbatim is copied from the artefact** — the log file, the command
+output, the API response — and is never re-rendered, retyped or reconstructed from memory. If it
+cannot be copied, it is not labelled verbatim; describe it instead, or quote the part that was
+actually read. **The guiding session cannot read this repository.** Every check it makes is
+against text a working session pastes, so a "verbatim" block that has been re-rendered defeats
+that verification while looking precisely like verification passing — which is the worst of the
+two failure modes, because the reviewer's confidence goes *up*. The incident: the PR 4b
+completion report printed the staging smoke output under a **verbatim** heading with an eleventh
+`ok` line appended that exists in neither `scripts/smoke-staging.mjs` nor the CI log. Nothing
+turned on it — it was a duplicate of the tenth — and it still cost a review cycle chasing a
+defect in a file that did not have one.
+
 ## 8. Where to look things up
 
 | Question | Location |

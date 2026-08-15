@@ -52,6 +52,15 @@ an opinion, it is written wrong.
       amendment to ADR-032 for why this is written down: PRs 1, 2a, 2b and 2c were each genuinely
       reviewed and **none of them left a record**, so nothing distinguishes them from PRs that
       were not.
+- [ ] **The owner's own review pass has run and is recorded**, for any PR touching **code,
+      schema, CI, or infrastructure configuration**. It is not the same gate as the one above: a
+      correctness reviewer asks whether the code does what it says, the owner asks whether what it
+      says is what they wanted, and only the owner can reject a premise. **A documentation-only PR
+      carries the session's review record alone** — nothing in it can behave differently in
+      production, and the owner's judgement was already exercised on the PR that made the change
+      being written down. Where it is skipped, the session's record **says so and says why**;
+      skipping it silently is the failure this rule replaces. Scope dated 2026-08-15 in the
+      ADR-032 amendment; **PR #13 is the first PR it applies to**.
 - [ ] Every `S`-classified triage item touching this slice was resolved in **Phase 0**, and
       `docs/analysis/05-triage.md` has been updated to move it to Resolved, citing the ADR or
       recording the decision.
