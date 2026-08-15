@@ -236,18 +236,41 @@ is the process; it is not restated here. Project-specific deviations and additio
 
 ### How edits are made
 
-**Do not use scripted or shell-based text replacement to edit source files** — no `sed -i`, no
-`python`/`node` one-liners doing `s.replace(...)`, no heredoc rewrites. Use the file-editing
-tools, which **fail visibly when the target does not match**.
+**Do not use scripted or shell-based text replacement to edit ANY file in this repository** — no
+`sed -i`, no `python`/`node` scripts doing `s.replace(...)`, no heredoc rewrites. Use the
+file-editing tools, which **fail visibly when the target does not match**.
+
+**"Any file" means any file.** TypeScript, Dart, SQL, YAML, JSON, Markdown, the ADRs, the triage,
+`docs/ENVIRONMENT.md`, and this file. There is no docs exemption and no config exemption. The rule
+previously said "source files", and that wording was read — by a session that then broke it — as
+meaning code, with prose outside its scope. **The reason has nothing to do with what the file
+compiles to**: it is that the edit can silently not happen, and a wrong ADR or a half-applied
+triage entry misleads exactly as effectively as a wrong function.
 
 A scripted replacement that finds nothing **exits zero and reports success**. The file is
 unchanged, the command looks like it worked, and the only signal is whatever downstream check
 happens to notice — which may be none.
 
-This project has had two. One rewrote a comment in `.github/workflows/ci.yml` saying a service
-was no longer excluded while silently failing to remove the `-x` line beneath it, and **that one
-shipped**: the file contradicted itself, and CI found it only when the tests that needed the
-service could not reach it.
+**A guard inside the script is not sufficient either**, and this is the subtle one. A `python`
+heredoc that ends in `assert old in s` does fail loudly — but it is one statement in a shell
+chain, and the `git add && git commit` after it runs anyway. The failure is visible in the output
+and absent from the outcome. The file-editing tools do not have this property: a failed edit fails
+the call, and there is nothing to miss.
+
+**This project has had three, and the first two shipped.**
+
+1. A comment in `.github/workflows/ci.yml` saying a service was no longer excluded, while
+   silently failing to remove the `-x` line beneath it. The file contradicted itself, and CI found
+   it only when the tests that needed the service could not reach it.
+2. The second, recorded when this rule was written.
+3. **PR 4b (2026-08-15).** A `python` heredoc patching `docs/analysis/09-phase3-close.md` found no
+   matching anchor — the text it searched for was a `###` heading — asserted, and the commit that
+   followed it in the same shell invocation ran regardless. The close-out shipped in that commit
+   describing a smoke test without the section recording that its premise-death branch had been
+   forced and observed. Caught by a follow-up check, not by the commit, and repaired in `d110496`.
+
+**The correct response to this rule being inconvenient is not tooling.** No pre-commit hook, no
+wrapper script, no "safe sed". Use the editing tools; they already fail correctly.
 
 **This applies especially to edits inside string literals**, where escape handling differs
 between the shell, the scripting language and the file. A `\n` that survives one layer and not
