@@ -18,7 +18,7 @@ import { z } from 'zod';
 
 const nonEmpty = z.string().trim().min(1);
 
-export const configSchema = z.object({
+const baseConfigSchema = z.object({
   // ─── API process ───────────────────────────────────────────────────────────
   // APP_ENV, not NODE_ENV. ADR-023's three environments are ours; NODE_ENV
   // belongs to the JavaScript tooling, which writes to it without asking —
@@ -79,6 +79,78 @@ export const configSchema = z.object({
   PUBLIC_WEB_ORIGIN: z.url().optional(),
 });
 
+/**
+ * The `sslmode` values that actually verify the server's certificate.
+ *
+ * An ALLOWLIST, not a denylist — the same choice ADR-020 makes for the public
+ * projection, for the same reason: a denylist is wrong the moment someone
+ * invents a new way to be insecure, and `sslmode` has seven values with
+ * shifting meanings.
+ *
+ * `require` is deliberately NOT on this list even though, today, it verifies.
+ * `pg-connection-string` currently maps it to `verify-full` and warns that it
+ * will adopt libpq semantics — encrypt without verifying — in its next major.
+ * A production database URL whose security depends on which version of a
+ * transitive dependency got installed is not a position worth defending, and
+ * `verify-full` says what is meant regardless of version.
+ */
+const VERIFYING_SSL_MODES = ['verify-full', 'verify-ca'];
+
+function sslModeOf(databaseUrl: string): string | undefined {
+  // Parsed rather than string-matched: `?sslmode=no-verify` and
+  // `&sslmode=no-verify` and a percent-encoded one all have to be caught, and
+  // `...&x=sslmode=require` must not be mistaken for the real parameter.
+  try {
+    return (
+      new URL(databaseUrl).searchParams.get('sslmode')?.toLowerCase() ??
+      undefined
+    );
+  } catch {
+    // An unparseable URL is a different failure, and `DATABASE_URL`'s own
+    // `startsWith('postgres')` check does not guarantee parseability. Returning
+    // undefined here means "no verifying mode found", which fails closed.
+    return undefined;
+  }
+}
+
+/**
+ * ══ PRODUCTION CANNOT START WITHOUT A VERIFIED DATABASE CONNECTION ══════════
+ *
+ * Staging runs with `sslmode=no-verify` against Supabase's pooler, which
+ * presents a self-signed chain. That connection is **encrypted but not
+ * authenticated**: an active man-in-the-middle between the API and the database
+ * would not be detected. It is an accepted position for staging and a bad one
+ * for production, and the difference was previously held only by a comment.
+ *
+ * **A comment is not a control.** This is: with `APP_ENV=production`, a
+ * `DATABASE_URL` that does not explicitly verify the server refuses to start,
+ * naming the variable and pointing at the tracked fix. The shortcut cannot
+ * survive into production by being forgotten — it can only be removed
+ * deliberately, from this file, where the removal is visible in a diff.
+ *
+ * Staging and local are untouched.
+ */
+export const configSchema = baseConfigSchema.superRefine((config, ctx) => {
+  if (config.APP_ENV !== 'production') return;
+
+  const mode = sslModeOf(config.DATABASE_URL);
+  if (mode !== undefined && VERIFYING_SSL_MODES.includes(mode)) return;
+
+  ctx.addIssue({
+    code: 'custom',
+    path: ['DATABASE_URL'],
+    // Authored text, never derived from the value — `describeIssue` forwards
+    // this verbatim, and the whole point of that function is that nothing from
+    // the environment reaches a log.
+    message:
+      'must verify the database server in production: set sslmode=verify-full. ' +
+      'Staging connects to Supabase’s pooler with sslmode=no-verify, which is ' +
+      'encrypted but does NOT authenticate the server, and that is a staging-only ' +
+      'position. The proper fix — bundling Supabase’s CA and passing it to the pool ' +
+      '— is tracked as K76 in docs/analysis/05-triage.md',
+  });
+});
+
 export type Config = z.infer<typeof configSchema>;
 
 export class ConfigError extends Error {
@@ -120,6 +192,10 @@ function describeIssue(issue: Issue): string {
       return 'is out of the allowed range';
     case 'invalid_format':
       return `must be a valid ${issue.format}`;
+    case 'custom':
+      // Authored in this file (see the sslmode refinement); never built from
+      // the received value, which is the invariant this function exists for.
+      return issue.message;
     default:
       return 'is invalid';
   }

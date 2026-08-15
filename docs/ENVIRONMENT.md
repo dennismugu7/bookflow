@@ -109,8 +109,15 @@ given here, deliberately, so this table cannot drift from the lockfile.
 | Production Supabase project | hosted production (ADR-023) | ADR-023 | **not yet, and it does not fit.** The org is on the **free plan** — confirmed by the API refusing `--size` with *"Instance size cannot be specified for free plan organizations"* — which allows two active projects. `Dashboard X` and `bookflow-staging` occupy both. Production is a spend decision, not a provisioning step. | `supabase projects list` |
 | `bookflow-spike` Supabase project (`iohxfurykkocqfagdkzy`) | spike 001's throwaway project; held credentials that appeared in a transcript | ADR-023 marks it for deletion | **deleted — verified 2026-08-10.** The ref is absent from the authenticated project list. Deleting it did **not** retire its password, contrary to ADR-023's expectation: that password was reused from other accounts rather than generated for this project, and was rotated separately on discovery. See the spike's Amendments. | `supabase projects list` — `iohxfurykkocqfagdkzy` must not appear |
 | Unrelated project `Dashboard X` (`wpiaoskqljhrkpfzvmrp`) | **not a Bookflow resource.** Recorded because it occupies a hosted-project slot. | — | **exists**, `ACTIVE_HEALTHY`, eu-central-1, created 2026-07-11 | `supabase projects list` |
-| Fly.io app (API + worker, one image, two processes) | deploy target | ADR-024, ADR-013 | **not yet.** `flyctl` is also not installed. | `flyctl apps list` |
-| Fly.io secrets | staging/production runtime secrets | ADR-023 | **not yet** | `flyctl secrets list -a <app>` |
+| ~~Fly.io app~~ | ~~deploy target~~ | ADR-024 | **Not used, and not signed up for.** The 2026-08-15 amendment to ADR-024 moved the deploy target to Render: Fly's free allowance no longer exists, and a card or $25 prepaid is required to deploy. No Fly account exists. | — |
+| Render workspace | owns the staging service | ADR-024 amendment | **exists — 2026-08-15.** `My Workspace`, id `tea-da06ge3l550s73cohmr0`, account `dennismugu7@gmail.com`. Free instance type; no payment method on file. | `curl -H "Authorization: Bearer $RENDER_API_KEY" https://api.render.com/v1/owners` |
+| Render Blueprint `bookflow-staging` | applies `render.yaml` | ADR-024 amendment | **exists — 2026-08-15.** Id **`exs-da06j761egvs73817n70`**. Tracks branch `feat/deploy-staging` until PR 4a merges, then `main`. | Render dashboard → Blueprints |
+| Render web service `bookflow-api-staging` | the deployed staging API | ADR-024 amendment, ADR-034 | **exists and is live — 2026-08-15.** Id **`srv-da06mqvlk1mc73f98qv0`**, region **`frankfurt`** (= `eu-central-1`, same region as the staging database), plan `free`, runtime `docker`, health check `/health`, **`autoDeployTrigger: off`**. URL **`https://bookflow-api-staging-gabm.onrender.com`**. Ids and the URL are identifiers, not secrets. | `curl -H "Authorization: Bearer $RENDER_API_KEY" https://api.render.com/v1/services/srv-da06mqvlk1mc73f98qv0` · `curl -sf https://bookflow-api-staging-gabm.onrender.com/health` |
+| Render service environment variables | the service's runtime configuration | ADR-023, ADR-038 | **five set, by NAME only in the repository** (`render.yaml`, all `sync: false`): `APP_ENV`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`. Four hold correct staging values, verified by comparison against the authenticated Supabase CLI. **`DATABASE_URL` is WRONG — see the row below.** `ADMIN_DATABASE_URL` is deliberately absent (ADR-034: a deployed API must not hold DDL rights). | `curl -H "Authorization: Bearer $RENDER_API_KEY" https://api.render.com/v1/services/srv-da06mqvlk1mc73f98qv0/env-vars` |
+| **`DATABASE_URL` on the staging service** | the application role's connection (ADR-038) | ADR-038, ADR-023 | **correct as of 2026-08-15**, after the `bookflow_api` password was rotated (see the rule below). Connects through **Supavisor session mode** — `bookflow_api.<ref>@aws-0-eu-central-1.pooler.supabase.com:5432` — not the direct host, which is IPv6-only for this project while Render's egress is IPv4. Verified by a database-backed route on the deployed service, not by inspection. | `curl` `/v1/me` on the deployed service with a real token → 200 with a row |
+| **`sslmode=no-verify` on that connection** | how the API reaches staging Postgres | ADR-023 | **A known, staging-only weakening, recorded rather than hidden.** Supabase's pooler presents a self-signed chain, and `sslmode=require` fails with *"self-signed certificate in certificate chain"* because `pg-connection-string` treats `require` as `verify-full`. The connection **is encrypted**; what is given up is authentication of the server — an active man-in-the-middle between Render and Supabase would not be detected. The fix is to bundle Supabase's CA and pass it as `ssl.ca`, which needs a change to `platform/db.ts` and a certificate in the image. **Production cannot start with it** — `platform/config.ts` refuses to boot when `APP_ENV=production` and `DATABASE_URL` does not carry `sslmode=verify-full` or `verify-ca`, naming the variable and citing **K76**, which tracks the proper fix. The position is now a condition rather than a comment. | the value ends `?sslmode=no-verify`; `APP_ENV=production` with it must fail at startup |
+| Render API key | triggering and polling deploys; creating and inspecting the service | ADR-023, ADR-024 amendment | **exists — 2026-08-15.** Held locally as `RENDER_API_KEY` in the gitignored `.env`, **and in Actions secrets** as `RENDER_API_KEY`. **No deploy hook is used**: the deploy job triggers and polls with this one credential, so `RENDER_DEPLOY_HOOK_URL` does not exist and should not be created. | `gh secret list` |
+| Render service id | which service the deploy job deploys | ADR-024 amendment | **in Actions secrets** as `RENDER_SERVICE_ID`. Not a secret in any real sense — it is in this file — but it lives beside the key so the workflow reads both the same way. | `gh secret list` |
 | Apple signing certificate + provisioning profile | iOS builds exist only via CI (ADR-015, ADR-024) | ADR-024 | **not yet** | `gh secret list` |
 
 **Every row above is now command-verified.** The Supabase CLI is authenticated, so the three
@@ -125,6 +132,44 @@ for the delivery check — and **both were deleted**. `DELETE /auth/v1/admin/use
 user that no longer exists and is therefore dead. No credential was written to disk or displayed
 at any point: both keys were read from `supabase projects api-keys` into process memory and used
 there (ADR-023 — this is the failure mode that cost `bookflow-spike` its existence).
+
+### The write-only-secret rule — write a credential to every consumer at the moment you generate it
+
+**Learned the expensive way on 2026-08-15, and it will recur.**
+
+Every secret store this project uses is **write-only**: GitHub Actions secrets, Render environment
+variables and Supabase's generated passwords can all be *set* and none can be *read back*. That
+has a consequence which is obvious afterwards and easy to miss in the moment:
+
+> **A credential that is not written to every consumer at the moment it is generated cannot be
+> added to a new consumer later. The only options are to rotate it, or to be unable to set it.**
+
+What happened: `bookflow_api`'s staging password was generated in an earlier session and piped
+into the Actions secret `STAGING_APP_DATABASE_URL` without ever being displayed — correct
+handling, and exactly what ADR-023 asks for. When Render later became a second consumer of the
+same credential, there was no way to read it back, and the staging service sat with a local
+development connection string in it. **Rotation was the only path**, and it was safe here only
+because nothing consumed the secret yet: `migrate-staging` uses `STAGING_DATABASE_URL`, the
+`postgres` credential, which is a different secret.
+
+**The rule, going forward: when a credential is generated, enumerate its consumers first and write
+it to all of them in one operation.** If a consumer is added afterwards, rotating is not a failure
+— it is the designed path — but it must be done deliberately, with every existing consumer
+updated in the same operation, or the ones that are missed break at a time nobody connects to the
+change.
+
+**Which credentials this now applies to:**
+
+| Credential | Consumers today | If a consumer is added |
+|---|---|---|
+| `bookflow_api` staging password | Actions `STAGING_APP_DATABASE_URL` · Render `DATABASE_URL` | rotate and write to all three |
+| `postgres` staging password | Actions `STAGING_DATABASE_URL` | not readable; rotating it means resetting the project database password in Supabase |
+| Supabase `service_role` / `anon` keys | Render env vars · local `.env` | **exempt** — re-readable at any time via `supabase projects api-keys`, so a new consumer is just another read |
+| Render API key | local `.env` · Actions `RENDER_API_KEY` | re-issue from the Render dashboard; the old one keeps working until deleted |
+| Resend API key | Supabase staging SMTP settings | not readable; a new consumer means a new key |
+
+The Supabase API keys are the useful contrast: they are the one credential here that is **not**
+write-only, which is why nothing above worries about them.
 
 ### Accepted risk — `main` is unprotected
 

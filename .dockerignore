@@ -1,0 +1,43 @@
+# What never enters the build context.
+#
+# This matters more than it looks: the context is uploaded to the build host on
+# every build, and `node_modules` alone is hundreds of megabytes that the image
+# reinstalls from the lockfile anyway. Excluding it is a correctness measure as
+# well as a speed one — a host-built `node_modules` carries binaries compiled
+# for the host's platform, and copying those into a Linux image is how "works
+# locally, crashes in the container" happens.
+
+# Dependencies — reinstalled from package-lock.json inside the image.
+node_modules
+**/node_modules
+
+# Version control and CI.
+.git
+.github
+.gitignore
+.gitattributes
+
+# Secrets. `.env` is gitignored, so it would not normally be here at all — but
+# a build context is assembled from the working directory, not from git, so an
+# untracked `.env` WOULD be sent without this line. That is the whole reason
+# this entry exists (ADR-023).
+.env
+.env.*
+!.env.example
+
+# The other app and the generated client. `apps/api` is the only thing this
+# image runs; the Flutter app and the Dart package would be dead weight.
+apps/mobile
+packages/bookflow_api
+
+# Documentation and design assets — several megabytes of PNGs.
+docs
+
+# Local tooling and outputs.
+supabase/.branches
+supabase/.temp
+coverage
+*.log
+.vscode
+.idea
+.DS_Store
