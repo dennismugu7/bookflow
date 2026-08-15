@@ -40,12 +40,18 @@ export default tseslint.config(
   },
   {
     // Plain Node scripts. Declared explicitly rather than pulling in the
-    // `globals` package for two names.
+    // `globals` package for a handful of names — the four below are the Node 24
+    // web-standard globals the smoke test uses (ADR-022 pins the 24 line, and
+    // `fetch`, `AbortSignal` and `crypto` have been global and stable since 18,
+    // 15 and 19 respectively).
     files: ['scripts/**/*.mjs'],
     languageOptions: {
       globals: {
         console: 'readonly',
         process: 'readonly',
+        fetch: 'readonly',
+        AbortSignal: 'readonly',
+        crypto: 'readonly',
       },
     },
   },

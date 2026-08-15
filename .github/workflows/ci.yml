@@ -482,3 +482,41 @@ jobs:
           # something is wrong even if Render has not said so yet.
           echo "::error::Deploy $DEPLOY_ID did not reach a terminal state within 15 minutes."
           exit 1
+
+  # ── Smoke-test the deployed staging service ───────────────────────────────
+  #
+  # `DEFINITION_OF_DONE.md`: "Deployed to staging and smoke-tested there, not
+  # only locally." This is the only job in the pipeline that touches the
+  # DEPLOYED ARTEFACT rather than the source it was built from — everything
+  # above proves the code is correct; this proves the thing that is running is.
+  #
+  # **It is not the e2e test.** ADR-033 reserves that for Flutter
+  # `integration_test` driving a real build, "and nothing else. An API
+  # integration test is not an e2e test, however end-to-end it feels."
+  # `docs/analysis/09-phase3-close.md` records why that box does not tick in
+  # Phase 3.
+  #
+  # Gated on `deploy-staging`, so it runs against the build this push produced
+  # rather than whatever happened to be live.
+  smoke-staging:
+    name: smoke-staging
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [deploy-staging]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # No credentials. Every assertion uses public endpoints — see the note in
+      # the script about why the sign-up probe proves the database is reachable
+      # without one, and why giving CI a service-role key to do better would be
+      # a poor trade.
+      - name: Smoke-test staging
+        run: node scripts/smoke-staging.mjs
