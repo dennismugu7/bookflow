@@ -42,14 +42,74 @@ class AccessTokenInterceptor extends Interceptor {
   }
 }
 
+/// Called when the API says the session is unusable. See the interceptor below.
+typedef UnauthenticatedHandler = void Function();
+
+/// Ends the session when our API answers **401**.
+///
+/// ══ WHY AN UNCONDITIONAL SIGN-OUT IS SAFE HERE ══════════════════════════════
+///
+/// "Sign the user out on any 401" is a dangerous rule in general, because in
+/// most APIs a 401 can also mean "not this resource, for you" — and signing
+/// someone out because they touched something that was not theirs is a bug that
+/// looks like a session problem.
+///
+/// **It is safe against this API, because of a decision made one layer over.**
+/// `apps/api` emits exactly three 401 slugs — `missing-token`, `invalid-token`
+/// and `expired-token` (`platform/problem.ts`) — and all three mean the same
+/// thing: the credential presented cannot be used. "Not yours" is **not** among
+/// them. PR 2b made not-yours and does-not-exist **byte-identical 404s** so the
+/// endpoint could not be used as an existence oracle, and that choice is what
+/// leaves 401 meaning only one thing here.
+///
+/// **THIS STOPS BEING SAFE THE DAY A 401 MEANS ANYTHING ELSE.** If someone adds
+/// a fourth 401 slug to `PROBLEM_TYPES` that does not mean "your session is
+/// unusable" — an authorisation failure, a step-up-auth challenge, a per-
+/// resource denial — they are changing this client's behaviour from here, and
+/// they will not see this file while doing it. That is the trade for keeping
+/// the check on the status code rather than parsing a slug out of every error
+/// body: it is simpler and it is coupled to a contract, and the coupling is
+/// written down rather than assumed.
+///
+/// Signing out is all this does. The router's redirect already routes a
+/// signed-out session to the welcome shell (`platform/router.dart`), so there
+/// is no navigation here and no screen has to know.
+class UnauthenticatedInterceptor extends Interceptor {
+  UnauthenticatedInterceptor(this._onUnauthenticated);
+
+  final UnauthenticatedHandler _onUnauthenticated;
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    if (err.response?.statusCode == 401) {
+      _onUnauthenticated();
+    }
+    // Passed on regardless: the caller still gets its error, and the repository
+    // still decides what the screen shows. This interceptor observes; it does
+    // not swallow.
+    handler.next(err);
+  }
+}
+
 /// Builds the generated client against our API.
 ///
 /// The timeouts are not defaults: Dio's are unbounded, and an app that hangs on
 /// a dead network shows a spinner forever, which is the worst of the three
 /// `AsyncValue` states to be stuck in.
+///
+/// **`validateStatus` is left at Dio's default (2xx only), deliberately.** An
+/// earlier version accepted everything below 500 so that a repository could read
+/// the RFC 9457 problem document off a normal response. That was wrong twice
+/// over: the generated client would try to deserialise a problem document into
+/// the endpoint's success model and fail with a `built_value` error rather than
+/// a status, and — because a 401 was not an error — no error interceptor could
+/// ever see one. Non-2xx now raises a `DioException` carrying the response, so
+/// the problem document is still readable at `e.response?.data` and 401 is
+/// observable.
 BookflowApi createApiClient({
   required String baseUrl,
   required AccessTokenReader readToken,
+  required UnauthenticatedHandler onUnauthenticated,
   Dio? dio,
 }) {
   final Dio client =
@@ -59,14 +119,13 @@ BookflowApi createApiClient({
           baseUrl: baseUrl,
           connectTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 20),
-          // The API answers `application/problem+json` for errors (ADR-014).
-          // Dio must not treat that as a transport failure before the
-          // repository has had a chance to read the problem document.
-          validateStatus: (int? status) => status != null && status < 500,
         ),
       );
 
-  client.interceptors.add(AccessTokenInterceptor(readToken));
+  client.interceptors.addAll(<Interceptor>[
+    AccessTokenInterceptor(readToken),
+    UnauthenticatedInterceptor(onUnauthenticated),
+  ]);
 
   return BookflowApi(dio: client, serializers: standardSerializers);
 }

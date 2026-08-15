@@ -115,6 +115,10 @@ class _FakeAuthGateway implements AuthGateway {
   Stream<SessionStatus> statusChanges() => _controller.stream;
 
   @override
+  String? currentAccessToken() =>
+      status == SessionStatus.signedIn ? 'fake-token' : null;
+
+  @override
   Future<void> signOut() async {
     status = SessionStatus.signedOut;
     _controller.add(SessionStatus.signedOut);

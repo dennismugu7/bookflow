@@ -46,6 +46,21 @@ abstract interface class AuthGateway {
   /// Emits on sign-in, sign-out, and token refresh.
   Stream<SessionStatus> statusChanges();
 
+  /// The access token to attach to API requests, or null when signed out.
+  ///
+  /// **On the interface, not on the Supabase implementation.** It lived on the
+  /// concrete class, and `providers.dart` reached it through a
+  /// `gateway is SupabaseAuthGateway` test — so any other implementation, the
+  /// fakes in this project's own tests included, silently produced `null` and
+  /// every request went out unauthenticated with nothing logged. That is the
+  /// same silent-failure class as caching the token, and it would have first
+  /// bitten in PR 3b when a real request finally happened.
+  ///
+  /// Read per request, never cached: ADR-017 makes access tokens live one hour
+  /// and `supabase_flutter` refreshes in the background, so a copy goes stale
+  /// exactly when it matters.
+  String? currentAccessToken();
+
   /// Ends the session. ADR-017: this revokes the refresh token, and the access
   /// token already issued stays valid until it expires — at most one hour.
   Future<void> signOut();
@@ -74,8 +89,6 @@ class SupabaseAuthGateway implements AuthGateway {
   @override
   Future<void> signOut() => _client.auth.signOut();
 
-  /// The token the API interceptor attaches. Read on every request rather than
-  /// cached, because `supabase_flutter` refreshes in the background and a cached
-  /// copy would go stale exactly when it matters.
+  @override
   String? currentAccessToken() => _client.auth.currentSession?.accessToken;
 }

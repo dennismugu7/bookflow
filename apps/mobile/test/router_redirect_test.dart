@@ -176,6 +176,13 @@ class _FakeAuthGateway implements AuthGateway {
     _controller.add(next);
   }
 
+  /// Required by the interface as of the PR 3a review. The redirect does not
+  /// use it — but a fake that could omit it is exactly how the real wiring came
+  /// to attach no token at all.
+  @override
+  String? currentAccessToken() =>
+      status == SessionStatus.signedIn ? 'fake-token' : null;
+
   @override
   Stream<SessionStatus> statusChanges() => _controller.stream;
 

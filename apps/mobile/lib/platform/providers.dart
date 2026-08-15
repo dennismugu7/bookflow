@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bookflow/features/membership/membership_repository.dart';
 import 'package:bookflow/platform/api_client.dart';
 import 'package:bookflow/platform/auth_gateway.dart';
@@ -58,8 +60,15 @@ final Provider<BookflowApi> apiClientProvider = Provider<BookflowApi>((
 
   return createApiClient(
     baseUrl: config.apiBaseUrl,
-    readToken: () =>
-        gateway is SupabaseAuthGateway ? gateway.currentAccessToken() : null,
+    // A tear-off of the INTERFACE method. This was a
+    // `gateway is SupabaseAuthGateway ? … : null` test, which silently attached
+    // no token to any request when the gateway was any other implementation.
+    readToken: gateway.currentAccessToken,
+    // The API said the session is unusable. Ending it is enough — the redirect
+    // in `router.dart` watches the session and moves the user to the welcome
+    // shell by itself. See `UnauthenticatedInterceptor` for why an
+    // unconditional sign-out is safe against this particular API.
+    onUnauthenticated: () => unawaited(gateway.signOut()),
   );
 });
 
