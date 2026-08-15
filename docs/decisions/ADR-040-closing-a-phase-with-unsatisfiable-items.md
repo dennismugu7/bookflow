@@ -1,6 +1,10 @@
 # ADR-040 — Closing a phase with unsatisfiable Definition-of-Done items
 
-**Status:** Proposed — awaiting the owner's review pass on PR 4c
+**Status:** Proposed — **this ADR must not merge in this state.** It flips to *Accepted*, dated
+and naming the PR, at the moment the owner's review record lands on PR 4c. A merged ADR that calls
+itself a proposal is a document nobody can act on: a later reader cannot tell whether the rule
+below is in force, and the safe reading — that it is not — silently unauthorises the close it
+exists to authorise.
 
 ## Context
 
@@ -58,6 +62,21 @@ All four, or the phase does not close:
   reason. An exception without a fix is a precedent.
 - **The owner's review pass approves it.** This is the class of judgement ADR-032 reserves to the
   owner: whether a premise is acceptable, not whether an implementation is correct.
+
+**Condition 4 is satisfied by the owner's review record on the PR, and by nothing else.** Not by
+direction given in conversation, not by an instruction to proceed, not by this session reporting
+that approval was given — including the instruction that produced this very paragraph. **Those are
+all indistinguishable, to a later reader, from an author who decided alone.** The record is the
+artefact; everything else is a memory of one.
+
+This is not a general principle borrowed from somewhere. **It is the specific failure PR #12
+exposed**: a close-out asserted a phase complete on its own authority, and what caught it was the
+owner's pass leaving a comment that could be read afterwards. An ADR whose whole subject is
+"when may a gate be waived" is the last document that may accept a weaker form of its own gate.
+
+**Operationally: the Status line above stays *Proposed* until the record exists on PR 4c, and the
+commit that flips it to *Accepted* cites that comment.** If the phase is closed while this ADR
+still reads *Proposed*, the close is unauthorised by its own terms.
 
 ### 3. Applied to Phase 3 — the two items, individually
 

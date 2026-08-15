@@ -520,3 +520,133 @@ jobs:
       # a poor trade.
       - name: Smoke-test staging
         run: node scripts/smoke-staging.mjs
+
+  # ── The e2e gate ───────────────────────────────────────────────────────────
+  #
+  # **This is the job that satisfies DEFINITION_OF_DONE's e2e item**, and the
+  # only one that can: ADR-033 reserves that to Flutter `integration_test`
+  # driving a real build. `smoke-staging` above is an API-level test and does
+  # not tick the box, however end-to-end it feels.
+  #
+  # Phase 3's critical journey, per ADR-033's 2026-08-15 amendment: a session is
+  # injected and screen #20 renders real data from deployed staging.
+  #
+  # ── WHY IT RUNS WHERE IT DOES ──────────────────────────────────────────────
+  #
+  # `needs: [deploy-staging]` — the same gate as `smoke-staging`, for the same
+  # reason: it must exercise the build THIS push produced, not whatever happened
+  # to be live. A PR must never reach staging (ADR-023: shared environment).
+  #
+  # `workflow_dispatch` is the exception, and it is deliberate. The gate needs to
+  # be runnable against a branch — a red proof cannot be performed on `main`, and
+  # a change to the test itself cannot be validated by merging it first. On a
+  # dispatch run `deploy-staging` is skipped, so this runs against whatever is
+  # currently live, which is correct for that purpose and stated here so nobody
+  # reads a dispatch result as proof of the branch's deploy.
+  e2e-staging:
+    name: e2e-staging
+    needs: [deploy-staging]
+    if: |
+      always()
+      && (github.event_name == 'workflow_dispatch'
+          || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+      && (needs.deploy-staging.result == 'success'
+          || needs.deploy-staging.result == 'skipped')
+    runs-on: ubuntu-latest
+    # The emulator boot dominates: roughly 4 minutes to a usable device, then
+    # the run itself. 30 is generous rather than optimistic — a timeout here
+    # reads as a flake and gets ignored, which is worse than a slow job.
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+
+      # ── The credential, never as a process argument ──────────────────────
+      #
+      # `--dart-define=E2E_PASSWORD=…` would place the password in the command
+      # line of `flutter`, of the Gradle daemon it spawns, and of anything that
+      # echoes a command — visible to `ps` for the life of the run. A defines
+      # FILE keeps the value out of every argv.
+      #
+      # `jq -n` reads the values from the ENVIRONMENT (`env.NAME`), so they are
+      # not in jq's argv either — `--arg pw "$PASSWORD"` would have re-introduced
+      # exactly the problem this step exists to avoid.
+      #
+      # The file is written to the runner's temp directory, never the workspace,
+      # so no path under `apps/mobile` can pick it up and no `actions/upload-*`
+      # step can sweep it into an artifact.
+      - name: Compose the defines file
+        id: defines
+        env:
+          E2E_EMAIL: ${{ secrets.E2E_STAGING_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_STAGING_PASSWORD }}
+          SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+          API_BASE_URL: https://bookflow-api-staging-gabm.onrender.com
+        run: |
+          set -euo pipefail
+          for name in E2E_EMAIL E2E_PASSWORD SUPABASE_URL SUPABASE_ANON_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::secret $name is empty — see docs/ENVIRONMENT.md §3"
+              exit 1
+            fi
+          done
+          jq -n '{
+            E2E_EMAIL: env.E2E_EMAIL,
+            E2E_PASSWORD: env.E2E_PASSWORD,
+            SUPABASE_URL: env.SUPABASE_URL,
+            SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY,
+            API_BASE_URL: env.API_BASE_URL
+          }' > "$RUNNER_TEMP/e2e-defines.json"
+          chmod 600 "$RUNNER_TEMP/e2e-defines.json"
+          echo "path=$RUNNER_TEMP/e2e-defines.json" >> "$GITHUB_OUTPUT"
+
+      # The emulator needs KVM, and the runner's default udev rules do not grant
+      # it to the unprivileged user the action runs as.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run the e2e gate on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          # `-no-snapshot` keeps the boot deterministic: a restored snapshot can
+          # carry a stale session in the app's secure storage, and this test's
+          # first act is to establish one.
+          emulator-options: >-
+            -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+            -no-snapshot -camera-back none
+          working-directory: apps/mobile
+          script: >-
+            flutter test integration_test/profile_e2e_test.dart
+            --dart-define-from-file=${{ steps.defines.outputs.path }}
+
+      # Runs whether the gate passed or failed. A credential left on a runner
+      # image is not made safe by the job having succeeded.
+      - name: Remove the defines file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/e2e-defines.json"
