@@ -6,7 +6,24 @@ plugins {
 
 android {
     namespace = "com.mugulabs.bookflow"
-    compileSdk = flutter.compileSdkVersion
+
+    // Pinned, NOT `flutter.compileSdkVersion`, as of PR 3a.
+    //
+    // `flutter_secure_storage` — which holds the session refresh token in the
+    // Android Keystore rather than in SharedPreferences — declares a minimum
+    // compileSdk of 37, above the Flutter SDK's current default. Building
+    // against the default fails at `:app:checkDebugAarMetadata`:
+    //
+    //   Dependency ':flutter_secure_storage' requires libraries and
+    //   applications that compileSdk of at least 37.
+    //
+    // compileSdk is the API level the app is COMPILED against; it is not
+    // minSdk and does not change which devices can install the app. `minSdk`
+    // below still tracks the Flutter default, so device support is unchanged.
+    //
+    // Raise this when a plugin demands it, and say which plugin — a bare
+    // version bump here is indistinguishable from someone chasing a number.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
