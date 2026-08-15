@@ -116,3 +116,44 @@ loading / empty / error conventions every screen inherits). It was `F`.
 ## Items created
 
 None.
+
+## Amendments
+
+### 2026-08-15 — `lib/ui/` joins the module layout
+
+The layout above names `features/`, `platform/` and `app.dart`, and **has no home for a widget
+that two features share.** PR 3a hit that immediately: the exhaustive-`AsyncValue` rule this ADR
+makes non-negotiable is only cheap if there is one loading state and one error state, and the
+widget that renders them belongs to no feature and is not platform integration.
+
+Both available answers were wrong. Putting shared widgets in `platform/` — which holds the API
+client, auth, storage, config and the router — would mean that directory contained both "how we
+reach GoTrue" and "what a spinner looks like". Duplicating them per feature would produce the
+twelve slightly different spinners the rule exists to prevent.
+
+**So the layout gains a fourth entry:**
+
+```
+apps/mobile/lib/
+├─ features/<feature>/   as above
+├─ ui/                   shared presentation used by TWO OR MORE features
+├─ platform/             api client construction · auth · storage · config · router
+└─ app.dart
+```
+
+**`ui/` holds presentation and nothing else.** No business logic. No knowledge of the wire format
+— `test/design_system_test.dart` enforces that `ui/` may not import `package:bookflow_api`, on the
+same terms as `features/`. No feature-specific state: a widget that knows what a booking is
+belongs to the booking feature, however reusable it looks.
+
+**The test for putting something here is that two features already need it** — not that two
+features might. A widget used once lives in the feature that uses it, and moves here when the
+second caller appears. Otherwise `ui/` becomes the junk drawer that `features/` was designed to
+prevent, which is the failure mode of every shared-widgets directory.
+
+`AsyncValueView`, `LoadingView`, `ErrorView` and `EmptyStateView` live here. They were created by
+PR 3a, which is what surfaced the gap.
+
+**This is an addition, not a change.** The vertical-feature rule, the repository-per-feature rule,
+the exhaustive-`AsyncValue` rule and the prohibition on screens importing the generated client are
+all unaffected.

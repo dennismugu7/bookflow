@@ -164,6 +164,13 @@ injection — one concept, no service locator.
 - Every asynchronous UI state in Flutter flows through `AsyncValue` and is handled
   exhaustively — loading, error and data, all three, always. A missing branch is a compile
   error, which is the point. (ADR-028)
+- **No widget names a colour, radius, spacing or font size literally.** Every value comes from
+  `apps/mobile/lib/theme/` through `ThemeData` or a `Bookflow*` token class. A `Color(0xFF…)`
+  outside `theme/` has forked the design system: the token can be changed and that widget will
+  not move, and nothing will report it. Enforced by `apps/mobile/test/design_system_test.dart`,
+  which fails with the file and line. The tokens are derived from the Generation A screenshots
+  only — ADR-039 decides which those are, and the Generation B screenshots are structural
+  references whose colour is never copied. (ADR-028, ADR-039, `docs/source/Styles-Reference.md`)
 - The OpenAPI 3.1 spec is generated from code, never hand-written. The Dart client is
   generated from that spec in CI. Hand-written Dart request/response models are prohibited.
   (ADR-014)

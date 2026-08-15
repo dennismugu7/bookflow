@@ -197,8 +197,21 @@ jobs:
       - name: Format check
         run: dart format --set-exit-if-changed lib test
 
+      # `--exclude-tags golden` is deliberate and is not a gap in coverage.
+      #
+      # The one tagged test renders screen #20 to a PNG under
+      # docs/designs/built/ so it can be compared BY EYE against its design. It
+      # is an artefact, not an assertion: font hinting and subpixel positioning
+      # differ between the Windows development machine and this runner, so a
+      # byte comparison of rendered text fails here for reasons that have
+      # nothing to do with the screen. The predictable response to that is
+      # `--update-goldens` until the build is green, which teaches people to
+      # regenerate the reference instead of looking at it.
+      #
+      # The screen's behaviour IS covered here — test/profile_screen_test.dart
+      # asserts on widgets and text and runs in this job.
       - name: Test
-        run: flutter test
+        run: flutter test --exclude-tags golden
 
       - name: Build Android (debug)
         run: flutter build apk --debug

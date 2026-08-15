@@ -1,5 +1,5 @@
-import 'package:bookflow/features/home/home_screen.dart';
 import 'package:bookflow/features/membership/membership_repository.dart';
+import 'package:bookflow/features/profile/profile_screen.dart';
 import 'package:bookflow/features/setup/setup_required_screen.dart';
 import 'package:bookflow/features/signed_out/signed_out_screen.dart';
 import 'package:bookflow/features/startup/startup_screen.dart';
@@ -31,7 +31,7 @@ import 'package:go_router/go_router.dart';
 ///                  a user who is signed in.
 ///   /welcome       SIGNED OUT.                                    (ADR-032, 1)
 ///   /setup         SIGNED IN, NO MEMBERSHIP — the stub.           (ADR-032, 2)
-///   /home          SIGNED IN, WITH A MEMBERSHIP.                  (ADR-032, 3)
+///   /home          SIGNED IN, WITH A MEMBERSHIP — screen #20.     (ADR-032, 3)
 ///   /unavailable   ERROR. Membership could not be determined.
 ///
 /// **`/unavailable` is the one worth arguing about.** The alternative is to send
@@ -150,7 +150,7 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
       GoRoute(
         path: AppDestination.home.path,
         builder: (BuildContext context, GoRouterState state) =>
-            const HomeScreen(),
+            const ProfileScreen(),
       ),
       GoRoute(
         path: AppDestination.unavailable.path,

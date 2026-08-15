@@ -194,6 +194,9 @@ class _FakeAuthGateway implements AuthGateway {
   String? currentAccessToken() => token;
 
   @override
+  String? currentEmail() => 'owner@bookflow.test';
+
+  @override
   Stream<SessionStatus> statusChanges() => _controller.stream;
 
   @override

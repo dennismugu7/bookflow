@@ -61,6 +61,17 @@ abstract interface class AuthGateway {
   /// exactly when it matters.
   String? currentAccessToken();
 
+  /// The signed-in owner's email address, or null when signed out.
+  ///
+  /// **From the session, because GoTrue owns it.** ADR-027 puts the `auth.users`
+  /// row inside Supabase Auth, and `user_profiles` deliberately does not mirror
+  /// the email — so `GET /v1/me` does not return one and screen #20 could not
+  /// show the address the design puts on it without reading the session.
+  ///
+  /// Read live rather than cached, for the same reason as the token: an email
+  /// change would leave a copy stale.
+  String? currentEmail();
+
   /// Ends the session. ADR-017: this revokes the refresh token, and the access
   /// token already issued stays valid until it expires — at most one hour.
   Future<void> signOut();
@@ -91,4 +102,7 @@ class SupabaseAuthGateway implements AuthGateway {
 
   @override
   String? currentAccessToken() => _client.auth.currentSession?.accessToken;
+
+  @override
+  String? currentEmail() => _client.auth.currentUser?.email;
 }

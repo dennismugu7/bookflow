@@ -104,10 +104,26 @@ abstract final class BookflowColors {
 
   /// DOCUMENTED §2 — "Secondary/body text: medium gray (#6B7280–#8A8F98)".
   ///
-  /// **NOT CORROBORATED, and this is worth a reviewer's attention.** The screens
-  /// sampled use `textPrimary` for body copy as well as headings; no distinct
-  /// mid-gray body tone was found. The low (darker) end is taken because it is
-  /// the only one that reaches WCAG AA on white for small text. Deviation 5.
+  /// **NOT CORROBORATED.** The screens sampled use `textPrimary` for body copy
+  /// as well as headings; no distinct mid-gray body tone was found anywhere.
+  /// The low (darker) end is taken because it is the only one that reaches WCAG
+  /// AA on white for small text. Deviation 5.
+  ///
+  /// ── USE IT FOR HELPER TEXT, CAPTIONS AND PLACEHOLDERS. NOT FOR BODY COPY ──
+  ///
+  /// The constraint is the whole reason this token survived at all. §2 describes
+  /// a two-tier text ramp — charcoal headings over medium-gray body — and
+  /// **the designs do not have one**: body copy is set in `textPrimary`, the
+  /// same tone as the heading above it.
+  ///
+  /// So an unconstrained secondary tone is an invitation to build the ramp the
+  /// document describes and the screens never had, one screen at a time, until
+  /// half the app's paragraphs are grey and nobody decided that. If a paragraph
+  /// is the content of the screen, it is `textPrimary`. This is for the line
+  /// *underneath* the content — a caption, a hint, a field's helper.
+  ///
+  /// `app_theme.dart` wires it to `bodySmall` only, which is the mechanical
+  /// version of the same rule.
   static const Color textSecondary = Color(0xFF6B7280);
 
   /// MEASURED — #AEAEAE, the third-most-common tone in `native-02`'s form band,
@@ -174,23 +190,63 @@ abstract final class BookflowRadii {
 
 /// Spacing.
 ///
-/// **ENTIRELY INVENTED.** Styles-Reference.md §9 offers "generous whitespace",
-/// "consistent vertical spacing" and "internal padding is generous" — three
-/// statements of intent with no measurement anywhere in the document, and
-/// spacing cannot be sampled from a screenshot with any honesty because the
-/// layout is not on a visible grid.
+/// Proposed as INVENTED by PR 3a — Styles-Reference.md §9 offers "generous
+/// whitespace" and no number anywhere — and **checked against `native-20` by
+/// measurement in PR 3b.** The ramp survived. What the measurement actually
+/// supports, and what it cannot, is below, because the difference matters more
+/// than the numbers.
 ///
-/// A 4-point base is proposed because it is the common denominator of both
-/// platforms' own guidance and divides cleanly at every step. **A reviewer
-/// should treat these six numbers as a proposal to accept or replace**, not as
-/// a reading of the design.
+/// ── WHAT WAS MEASURED ───────────────────────────────────────────────────────
+///
+/// `native-20` is 1080px wide and a 360dp frame at devicePixelRatio 3, so
+/// px ÷ 3 = dp exactly. Ink was counted per column to find real edges:
+///
+///   page padding → card edge      97px  = **32.3dp**  → 32, `xl`      ✓
+///   card edge → content           66px  = **22.0dp**  → nearest 24, `lg`  ✗ 2dp
+///   card edge → divider end       65px  = **21.6dp**  → same           ✗ 2dp
+///   avatar diameter              324px  = **107.7dp** → not a spacing value
+///
+/// **The 22dp is real and I am not adopting it.** It is 2dp from `lg`, it comes
+/// from a generated mock whose card is also 6dp off-centre horizontally (left
+/// margin 32.3dp, right 38.3dp), and a system that encodes one screenshot's
+/// arbitrariness stops being a system. `lg` is used for card padding and the
+/// difference is 6 device pixels. Recorded here rather than smoothed over, so
+/// the next person measuring gets the same number and knows why it was not
+/// taken.
+///
+/// ── WHAT CANNOT BE MEASURED THIS WAY, AND WAS NOT ───────────────────────────
+///
+/// **Vertical spacing.** Every vertical gap in that screenshot is between two
+/// pieces of TEXT, and the distance between glyph ink includes the font's
+/// leading above and below. Measured ink gaps run 19–38dp, but decomposing one
+/// into "a 16dp box plus leading" needs the mock's line height, and the mock is
+/// not set in our font. Reporting those as spacing constants would be inventing
+/// precision. The vertical values below remain INVENTED, and the screen matches
+/// the drawn rhythm by eye rather than by claim.
 abstract final class BookflowSpacing {
   static const double xs = 4;
   static const double sm = 8;
   static const double md = 16;
+
+  /// Card padding. MEASURED at 22dp in `native-20`; see the note above for why
+  /// this is 24.
   static const double lg = 24;
+
+  /// Page padding. MEASURED at 32.3dp in `native-20`.
   static const double xl = 32;
+
   static const double xxl = 48;
+}
+
+/// Component dimensions the spacing ramp does not describe.
+abstract final class BookflowSizes {
+  /// MEASURED — `native-20`, 324×324px = 108dp, centred in the card to within
+  /// half a dp. The profile avatar (§7: "enlarged on the profile page").
+  static const double avatarLarge = 108;
+
+  /// INVENTED — the dashboard's top-right avatar (§7). Not measured: it is not
+  /// on any screen this slice builds.
+  static const double avatarSmall = 40;
 }
 
 /// Type scale.

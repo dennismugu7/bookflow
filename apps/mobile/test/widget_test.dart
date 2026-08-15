@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:bookflow/app.dart';
 import 'package:bookflow/features/membership/membership_repository.dart';
+import 'package:bookflow/features/profile/profile_models.dart';
+import 'package:bookflow/features/profile/profile_providers.dart';
+import 'package:bookflow/features/profile/profile_repository.dart';
 import 'package:bookflow/platform/auth_gateway.dart';
 import 'package:bookflow/platform/providers.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +33,10 @@ void main() {
         membershipRepositoryProvider.overrideWithValue(
           _FakeMembershipRepository(membership),
         ),
+        // The signed-in shell is screen #20 as of PR 3b, and it fetches. Stubbed
+        // so these shell tests stay about ROUTING — without it they would fail
+        // on a socket, which says nothing about which shell was chosen.
+        profileRepositoryProvider.overrideWithValue(const _StubProfile()),
       ],
       child: const BookflowApp(),
     );
@@ -77,7 +84,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Signed in'), findsOneWidget);
+    // The one true page (ADR-032), not a placeholder, as of PR 3b.
+    expect(find.text('My profile'), findsOneWidget);
+    expect(find.text('Ada Lovelace'), findsOneWidget);
     expect(find.text('Finish setting up'), findsNothing);
   });
 
@@ -119,10 +128,25 @@ class _FakeAuthGateway implements AuthGateway {
       status == SessionStatus.signedIn ? 'fake-token' : null;
 
   @override
+  String? currentEmail() =>
+      status == SessionStatus.signedIn ? 'owner@bookflow.test' : null;
+
+  @override
   Future<void> signOut() async {
     status = SessionStatus.signedOut;
     _controller.add(SessionStatus.signedOut);
   }
+}
+
+class _StubProfile implements ProfileRepository {
+  const _StubProfile();
+
+  @override
+  Future<OwnerProfile> fetchMine() async => const OwnerProfile(
+    id: '00000000-0000-4000-8000-000000000001',
+    firstName: 'Ada',
+    lastName: 'Lovelace',
+  );
 }
 
 class _FakeMembershipRepository implements MembershipRepository {
