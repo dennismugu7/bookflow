@@ -151,6 +151,21 @@ fails at `resend`. A 503 therefore proves the insert succeeded — if Postgres w
 insert would fail first and the answer would be 500 `internal-error`. The compensation removes both
 rows, so the probe leaves nothing behind.
 
+### The coupling is declared, and the test announces its own obsolescence
+
+This assertion infers a working database from a **failing** mailer (**E14**). That is acceptable
+only because it fails loudly the moment the premise dies: when staging's sender is fixed, sign-up
+returns 202, and the check reports
+
+> `PREMISE GONE: staging's sender now delivers to arbitrary recipients, so sign-up SUCCEEDS`
+
+names the address of the account the run left behind — **compensation does not remove it on the
+success path** — says the assertion must be rewritten rather than re-run, and exits 1.
+
+**Forced and observed**, against a stub returning 202 while every other endpoint answered exactly
+what the real service answers: nine assertions green, that one red, exit 1. **Fixing E14 turning
+this red is the intended proof that the fix landed.**
+
 ### Proven red, twice
 
 **1. Service suspended** → 10 assertions failed, exit 1. **This found a real flaw in the test**: a
