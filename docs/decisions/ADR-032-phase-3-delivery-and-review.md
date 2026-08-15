@@ -177,3 +177,12 @@ when it happens rather than assumed to have happened because the code was review
 
 `DEFINITION_OF_DONE.md` now requires the review record to exist as an artifact on the PR, so that
 a merged PR without one is visibly missing something rather than silently missing it.
+
+**The first record written under that rule is PR 2c's**, posted at
+<https://github.com/dennismugu7/bookflow/pull/8#issuecomment-5301663835>. It is worth reading as
+the worked example of what this rule asks for, including the part that is uncomfortable: it says
+in its own second paragraph that the review it describes happened before the merge and the record
+did not, because the rule did not exist yet. **PRs 1, 2a and 2b have no such record and will not
+get one** — writing them now would be reconstruction, and a record assembled after the fact to
+fill a gap is the thing this rule exists to make impossible. Their reviews are real and are
+attested only by the table above.
