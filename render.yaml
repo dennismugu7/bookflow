@@ -83,8 +83,11 @@ services:
     # "green" includes runs on other branches and says nothing about whether
     # THIS commit's migration reached staging.
     #
-    # **So the deploy is pulled, not pushed**: `.github/workflows/ci.yml` calls
-    # the deploy hook after `migrate-staging` succeeds, and waits for the result.
+    # **So the deploy is pulled, not pushed**: `.github/workflows/ci.yml` posts
+    # to Render's deploys API after `migrate-staging` succeeds, then polls the
+    # same API until the deploy is `live` or has failed. **No deploy hook is
+    # used** — the API key it must hold anyway to read the outcome can also
+    # trigger, so a hook would be a second bearer credential doing half a job.
     # If you are here because deploys "stopped working", the fix is in that
     # workflow, not in this line.
     #
