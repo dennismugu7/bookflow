@@ -111,3 +111,69 @@ named constraints, and explicitly weaker than a second reviewer.
 ## Items created
 
 None.
+
+## Amendments
+
+### 2026-08-15 — the review protocol above has never run, and something else has
+
+**PRs 1, 2a, 2b and 2c are all merged. None of them went through the gate this ADR
+specifies.** There was no separate sitting, no written checklist naming the Do-Not-Vibe surfaces
+before reading, and no review recorded as a PR comment. The Consequences section predicted that
+nothing would enforce the protocol and called it "at least legible discipline". It was not
+followed once, and this amendment exists so that the record stops describing a practice that has
+never happened.
+
+**What happened instead is not nothing, and it is stronger.** Every Do-Not-Vibe surface was read
+line by line before merge **by a second reader** — the guiding session (`docs/GUIDE_HANDOFF.md`),
+which directs the work and checks what comes back. It did not rubber-stamp: it returned findings
+that changed the code in **every one of the four PRs**.
+
+| PR | What the second reader found | Effect |
+|---|---|---|
+| 1 | Comments in the migration claiming things the SQL did not do | Rewritten; and two `F` items nobody had asked — K72, K73 — surfaced, becoming ADR-037 and ADR-038 |
+| 2a | The integration harness connecting as `postgres`, so every test ran with privileges the API does not have | Harness switched to the application role; ADR-038's grants became checkable |
+| 2b | An unbounded unknown-`kid` map in the JWKS verifier, and a non-null assertion | Bounded and hardened in `f3bcb3d` |
+| 2c | No rate limit on an unauthenticated endpoint that writes rows and sends mail | Per-IP throttle, and the observability that makes its trigger visible |
+
+**Two readers is a different control from the one this ADR designed, and a better one.** The
+Rationale says self-review is "weaker than a second reviewer and it is not close", because the
+author reads what they meant rather than what is there. That objection does not apply to a reader
+who did not write the code and holds no memory of intending it. K66 asked whether a sole owner
+self-reviewing satisfies the human gate; the answer recorded above is now beside the point,
+because the sole-reviewer premise turned out to be false in practice.
+
+**What the project is actually relying on: the second reader.** Not the protocol in the Decision.
+Anyone auditing these four PRs against this ADR will find the gate unticked, and this is the
+explanation.
+
+### The gap that remains, stated without softening
+
+**The second reader is not a second contributor**, so **ADR-026's trigger still stands
+unsatisfied** — when a second *person* commits, real review replaces this, and that has not
+happened.
+
+**And the owner's own pass is still missing.** It is not a duplicate of what the second reader
+does, and treating it as one is the mistake this amendment is trying to prevent. A reviewer of
+correctness asks whether the code does what it says. **Someone who has to live with the product
+asks whether what it says is the thing they wanted**, and notices a different class of problem:
+
+- **Copy and behaviour a user meets.** "A confirmation email has been sent if the address could
+  be registered" is defensible security and may still be the wrong sentence to show a salon owner
+  who has simply forgotten they already signed up. No correctness review flags that.
+- **Debt they will personally carry.** The orphaned-account risk, the fail-open breach check and
+  the per-instance rate limit are each recorded with a named trigger. Whether those triggers are
+  acceptable is a judgement about how much risk the owner wants to hold, not a fact about the
+  code.
+- **Premises, not just implementations.** A reviewer takes the design as given and checks the work
+  against it. The owner can say the design is wrong — that a step does not belong, or that a
+  screen should not exist. Nobody else in this loop has standing to do that.
+- **Accumulated shape.** Four merged PRs have a combined feel that no single diff shows, and the
+  person who will build on it for the next year is the one who should notice if it is going
+  somewhere they do not want.
+
+**So the honest position:** the Do-Not-Vibe gate is being met by a second reader and is genuinely
+being met. The owner's pass is a **separate, still-open obligation**, and it should be recorded
+when it happens rather than assumed to have happened because the code was reviewed by someone.
+
+`DEFINITION_OF_DONE.md` now requires the review record to exist as an artifact on the PR, so that
+a merged PR without one is visibly missing something rather than silently missing it.

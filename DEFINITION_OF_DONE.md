@@ -44,6 +44,14 @@ an opinion, it is written wrong.
       "none" explicitly. The list is in `CLAUDE.md` §6.
 - [ ] Each named Do-Not-Vibe surface has been reviewed **line by line by a human**, and that
       review is recorded on the PR.
+- [ ] **That record exists as a comment on the pull request, posted before merge**, naming each
+      Do-Not-Vibe surface read, **who read it**, and every finding with its outcome — fixed,
+      accepted, or deferred to a tracked item. One comment, on the PR, not a memory of having
+      looked. **A merged PR carrying no such comment did not have this gate**, and the absence
+      is then visible on the PR itself instead of being invisible everywhere. See the 2026-08-15
+      amendment to ADR-032 for why this is written down: PRs 1, 2a, 2b and 2c were each genuinely
+      reviewed and **none of them left a record**, so nothing distinguishes them from PRs that
+      were not.
 - [ ] Every `S`-classified triage item touching this slice was resolved in **Phase 0**, and
       `docs/analysis/05-triage.md` has been updated to move it to Resolved, citing the ADR or
       recording the decision.
