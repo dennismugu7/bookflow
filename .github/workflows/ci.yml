@@ -630,10 +630,19 @@ jobs:
       - name: Run the e2e gate on an emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
-          target: google_apis
+          # API 30 on the `default` image, chosen by measurement rather than by
+          # picking the newest. The first attempt — API 34, `google_apis` —
+          # **never finished booting inside 600s** on the 2-core runner
+          # (run 31902042324), which fails the job for a reason that has nothing
+          # to do with the app. `default` carries no Play services, which this
+          # app does not use, and boots in a fraction of the time.
+          api-level: 30
+          target: default
           arch: x86_64
           profile: pixel_6
+          # Generous: a boot timeout reads as a flake and gets ignored, and the
+          # cost of waiting is far lower than the cost of a gate nobody trusts.
+          emulator-boot-timeout: 900
           # `-no-snapshot` keeps the boot deterministic: a restored snapshot can
           # carry a stale session in the app's secure storage, and this test's
           # first act is to establish one.
