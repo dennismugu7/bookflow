@@ -44,7 +44,10 @@ class ApiProfileRepository implements ProfileRepository {
 
     return OwnerProfile(
       id: profile.id,
-      firstName: profile.firstName,
+      // RED PROOF, PR 4c — reverted in the next commit. Ignores the fetched
+      // field and renders a constant, which is exactly the failure the e2e
+      // exists to catch: the screen no longer shows what staging holds.
+      firstName: 'Fixture',
       lastName: profile.lastName,
       avatarPath: profile.avatarPath,
     );
