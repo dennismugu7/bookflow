@@ -184,6 +184,10 @@ class _FakeAuthGateway implements AuthGateway {
       status == SessionStatus.signedIn ? 'fake-token' : null;
 
   @override
+  String? currentEmail() =>
+      status == SessionStatus.signedIn ? 'owner@bookflow.test' : null;
+
+  @override
   Stream<SessionStatus> statusChanges() => _controller.stream;
 
   @override

@@ -48,6 +48,16 @@ final StreamProvider<SessionStatus> sessionStatusProvider =
       yield* gateway.statusChanges();
     });
 
+/// The signed-in owner's email, from the session.
+///
+/// Watches `sessionStatusProvider` so it re-reads when the session changes —
+/// otherwise a sign-out would leave the previous user's address on screen until
+/// something else happened to rebuild.
+final Provider<String?> sessionEmailProvider = Provider<String?>((Ref ref) {
+  ref.watch(sessionStatusProvider);
+  return ref.watch(authGatewayProvider).currentEmail();
+});
+
 /// Our API's client, with the token interceptor already attached.
 ///
 /// Depends on the auth gateway only for the token reader — a function, so the
