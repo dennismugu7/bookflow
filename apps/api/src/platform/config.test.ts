@@ -112,3 +112,117 @@ function captureConfigError(env: Record<string, string>): ConfigError {
   }
   throw new Error('expected loadConfig to throw a ConfigError');
 }
+
+describe('production refuses an unverified database connection', () => {
+  /**
+   * The staging position — `sslmode=no-verify` against Supabase's pooler — is
+   * encrypted but does not authenticate the server. It was previously held in
+   * place by a comment saying "do not carry into production". This asserts the
+   * comment became a condition.
+   */
+  const noVerify =
+    'postgresql://bookflow_api.ref:pw@aws-0-eu-central-1.pooler.supabase.com:5432/postgres?sslmode=no-verify';
+
+  it('refuses to start in production', () => {
+    const env = {
+      ...validEnv(),
+      APP_ENV: 'production',
+      DATABASE_URL: noVerify,
+    };
+
+    expect(() => loadConfig(env)).toThrow(ConfigError);
+  });
+
+  it('names DATABASE_URL and points at the tracked fix', () => {
+    const env = {
+      ...validEnv(),
+      APP_ENV: 'production',
+      DATABASE_URL: noVerify,
+    };
+
+    try {
+      loadConfig(env);
+      expect.unreachable(
+        'production must not start with an unverified connection',
+      );
+    } catch (error) {
+      const problems = (error as ConfigError).problems.join('\n');
+      expect(problems).toContain('DATABASE_URL');
+      expect(problems).toContain('verify-full');
+      // The fix is tracked, and the message says where — otherwise whoever
+      // hits this at deploy time will simply add the flag back.
+      expect(problems).toContain('K76');
+    }
+  });
+
+  it('never puts the connection string in the failure message', () => {
+    // The same invariant the rest of this file enforces: a config error is
+    // exactly the moment a careless implementation echoes a credential.
+    const env = {
+      ...validEnv(),
+      APP_ENV: 'production',
+      DATABASE_URL: noVerify,
+    };
+
+    try {
+      loadConfig(env);
+      expect.unreachable('should have thrown');
+    } catch (error) {
+      const message = (error as ConfigError).message;
+      expect(message).not.toContain('pw@');
+      expect(message).not.toContain('pooler.supabase.com');
+    }
+  });
+
+  it.each([
+    ['sslmode=disable', 'disable'],
+    ['sslmode=allow', 'allow'],
+    ['sslmode=prefer', 'prefer'],
+    // `require` verifies TODAY, because pg-connection-string maps it to
+    // verify-full — and it is warned to adopt libpq semantics, which do not
+    // verify, in its next major. Production must not depend on which version
+    // of a transitive dependency got installed.
+    ['sslmode=require', 'require'],
+    ['no sslmode at all', undefined],
+  ])('rejects %s in production', (_label, mode) => {
+    const base =
+      'postgresql://bookflow_api.ref:pw@aws-0-eu-central-1.pooler.supabase.com:5432/postgres';
+    const env = {
+      ...validEnv(),
+      APP_ENV: 'production',
+      DATABASE_URL: mode === undefined ? base : `${base}?sslmode=${mode}`,
+    };
+
+    expect(() => loadConfig(env)).toThrow(ConfigError);
+  });
+
+  it.each([['verify-full'], ['verify-ca']])(
+    'accepts sslmode=%s in production',
+    (mode) => {
+      const env = {
+        ...validEnv(),
+        APP_ENV: 'production',
+        DATABASE_URL: `postgresql://bookflow_api.ref:pw@host:5432/postgres?sslmode=${mode}`,
+      };
+
+      expect(loadConfig(env).APP_ENV).toBe('production');
+    },
+  );
+
+  it('leaves staging alone — the same URL starts', () => {
+    // The point of the guard is that it is production-only. Staging keeps the
+    // position deliberately, and this is what stops someone "fixing" the guard
+    // by widening it until staging cannot boot either.
+    const env = { ...validEnv(), APP_ENV: 'staging', DATABASE_URL: noVerify };
+
+    const config = loadConfig(env);
+    expect(config.APP_ENV).toBe('staging');
+    expect(config.DATABASE_URL).toBe(noVerify);
+  });
+
+  it('leaves local alone too', () => {
+    const env = { ...validEnv(), APP_ENV: 'local', DATABASE_URL: noVerify };
+
+    expect(loadConfig(env).APP_ENV).toBe('local');
+  });
+});
