@@ -24,22 +24,36 @@ for cases where the design *does* say something and the build does something els
 | 6 | §2: borders are "pale gray-blue (#D6E0F0–#E2E8F0), thin (1px) hairlines". | **Input borders at #8BBEFD**; card hairlines keep the documented #E2E8F0. | The resting border of the verification input in `native-03` is a distinctly blue #8BBEFD/#8FC1FE, far more saturated than the documented pale gray-blue. Card borders could not be sampled honestly — they are sub-pixel at this resolution — so those keep the documented value and are marked unverified in `tokens.dart`. | PR 3a |
 | 7 | §3: the wordmark is "a rounded, geometric, extra-bold sans-serif … similar in spirit to **Poppins ExtraBold or Baloo**". | **The platform default font**, at weight 800. | The app ships no font assets. Meeting this means licensing and bundling a face, which is a decision with a size cost and a licence attached, not an implementation detail. It is a real visible difference on the splash and welcome screens — the two that are pure brand. **Open**: revisit before any public release. | PR 3a |
 
-## The design corpus contradicts itself, and that is not a deviation
+## The design corpus contains two visual languages — resolved by ADR-039
 
-Entries 2–7 are all cases where `Styles-Reference.md` and the screenshots disagree, and the
-screenshot wins. There is a **separate** problem, recorded here because it is where a reader will
-look for it, and it is not a deviation because nothing has been built against it yet.
+Entries 2–7 are cases where `Styles-Reference.md` and the screenshots disagree, and the screenshot
+wins. Entry 8 is a different kind of thing: a case where **two screenshots disagree with each
+other.**
 
-**Screens 23–27 are drawn in a different visual language from screens 00–22.** `native-24`
-(Change password) has a **black** pill submit button, **violet** links and a **violet** input
-focus border. `Styles-Reference.md` §2 and §4 are unambiguous that the primary functional button
-is blue, that links are blue, and that focus intensifies to blue. Both cannot be the system.
+**ADR-039 decides it. Generation A is Bookflow's design system; Generation B is not.**
 
-This is not resolved here. Whoever builds the settings, change-password and delete-account
-screens has to decide whether those five screenshots are a newer direction that supersedes the
-style reference, or a stray generation to be ignored — and that is a decision with an ADR behind
-it, not something to infer from whichever file was opened first. **PR 3a builds none of those
-screens**, so nothing was decided by default.
+| | Screens | Treatment |
+|---|---|---|
+| **Generation A** — the system | `native-00`–`native-11`: splash, auth gateway, sign-up, verification, all four onboarding steps, login, both password-reset steps, dashboard | Blue actions `#0278FF`, green CTA `#2DE27E`, indigo hero, green initials avatars. **This is what the tokens are derived from.** |
+| **Generation B** — structural reference only | `native-16`, `native-19`, **`native-20`**, `native-23`, `native-24`, `native-25`, `native-26`, `native-27`: profile & account menu, log-out modal, **my profile details**, settings, change password, the three deletion screens | Violet accents `~#5A40D8`, black pill buttons, pink avatar `#EC407A`, pure black text. **Layout, hierarchy and content stand; colour and treatment come from the tokens.** |
+| **Unclassified** | `native-12`–`native-15`, `native-17`, `native-18`, `native-21`, `native-22` | No coloured action, so neither discriminator fires. Classified when each is built, not guessed at now. |
+
+**An earlier version of this section said "screens 23–27".** That was drawn from one opened
+screenshot and a colour search, and it was wrong in the way that mattered: it omitted `native-16`,
+`native-19` and above all **`native-20` — which is screen #20, ADR-032's one true page and PR 3b's
+entire job.** ADR-039 carries the per-screen measurements.
+
+**Why Generation A wins:** it is the only one with a written specification. `Styles-Reference.md`
+states a system — what the blue is for, why the green stays rare, how radii scale. Generation B is
+described nowhere, so adopting it would mean inferring a system from eight images and writing the
+rules afterwards. ADR-039 also records the strongest evidence that the corpus was assembled from
+more than one design pass: §2, §7 and §8 all describe a profile screen with an **indigo banner**
+and an **enlarged green avatar**, which `native-20` is not — so the document was written about a
+profile screen the corpus no longer contains.
+
+| # | Design says | Build does | Why | Decided by |
+|---|---|---|---|---|
+| 8 | `native-20` (screen #20, My Profile Details) shows a **violet** "Edit" link, a **pink** avatar with one lowercase initial, and **pure black** headings. | **A blue `#0278FF` Edit link, a green `#5FBF3F` avatar with two-letter initials, and `#3A3A3A` text.** Layout, field order, the read-only-with-Edit-toggle behaviour and the copy are taken from the screenshot unchanged. | `native-20` is Generation B, which ADR-039 rules is not the design system. Four independent signals place it there: zero pixels of action blue, a `#5A40D8` link, a `#000000` heading, and a `#EC407A` avatar that appears in no other screenshot in the corpus. **The built screen will not match its own screenshot, and that is expected** — a reviewer comparing the two should not raise it as a defect. | ADR-039 |
 
 ## How to add an entry
 
