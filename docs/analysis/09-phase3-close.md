@@ -1,23 +1,59 @@
-> Derived record, not source. Written at PR 4b, the last PR of Phase 3. Records what was
-> verified, what was not, and which `DEFINITION_OF_DONE.md` items do not hold.
+> Derived record, not source. Started at PR 4b. Records what was verified, what was not, and which
+> `DEFINITION_OF_DONE.md` items do not hold.
 
 # Phase 3 — close-out
 
-**Date:** 2026-08-15 · **Slice:** ADR-032's Phase 3, PRs 1 → 4b
+**Started:** 2026-08-15 · **Slice:** ADR-032's Phase 3 · **Status: OPEN — Phase 3 has not closed**
+
+## PR 4b DOES NOT CLOSE PHASE 3
+
+**`DEFINITION_OF_DONE.md` is not satisfied, and nothing authorises closing anyway.** That document
+opens with *"A slice is complete when every box below is ticked."* Three are not ticked (§5).
+ADR-032 says the pass happens at PR 4; it says nothing about what happens when it fails, and no ADR
+sanctions an exception.
+
+An earlier draft of this file recorded the three failures honestly and then read as though the
+phase closed regardless. **That was the defect**: it reframed an unsatisfied binary gate as an
+accepted state, on this file's own authority. It was raised in PR #12's reviewer brief as the
+weakest part of the PR, and the owner's review agreed and rejected it.
+
+### The decision — 2026-08-15, made by Dennis
+
+**Phase 3 closes at PR 4c, when a reduced end-to-end gate is green.** Specifically:
+
+1. **Build a reduced Phase-3 e2e**: inject a session and assert that **screen #20 renders real data
+   from deployed staging** — exercising the deployed API, the generated client, the Riverpod graph
+   and the router. It skips sign-up, verification and login, which have no user interface (§5.1).
+2. **Amend ADR-033** so that Phase 3's critical journey is defined as *that*, rather than the full
+   sign-up flow it currently names. The definition of a critical journey —
+   *"one whose failure prevents an owner from taking a booking, or a client from making one"* — is
+   unchanged; what changes is which journey Phase 3 is required to cover, given the client the
+   phase actually delivers.
+3. **Phase 3 closes when that gate is green**, and this file is updated then.
+
+Neither the amendment nor the test is written yet. **They are PR 4c**, and this PR is not it.
+
+**What this means for the two other failing items.** The review record is now being satisfied for
+the first time — the owner's pass ran on PR #12 (§5.2). The acceptance-criteria item is unchanged
+and still does not hold (§5.3); it is a defect in how Phase 0 was run, not something PR 4c fixes.
+
+---
 
 This file exists because `DEFINITION_OF_DONE.md` is satisfied **once, for the whole slice, at the
 end** (ADR-032), and a checklist ticked in a commit message is not a record anybody can audit.
 Every item below carries either its evidence or an explicit statement that it does not hold.
 
-**Three items do not hold.** They are listed in full in §4 rather than buried: the e2e test, the
+**Three items do not hold.** They are listed in full in §5 rather than buried: the e2e test, the
 review-record requirement, and the acceptance-criteria mapping.
 
 ---
 
 ## 1. The Blueprint pointer
 
-**Outcome: it cannot be repointed through the API. It is a dashboard-only change, and it has not
-been made.**
+**Outcome: it cannot be repointed through the API — that part is settled. Whether it has been
+repointed at all is not.** Dennis reports changing it to `main` by hand in the dashboard on
+2026-08-15; **a read of the API immediately afterwards still shows `feat/deploy-staging`.** See the
+unresolved note at the end of this section.
 
 `render.yaml` is applied to Render through a **Blueprint** — `bookflow-staging`,
 `exs-da06j761egvs73817n70` — which tracks a branch and a path (`render.yaml`) and re-applies the
@@ -57,8 +93,29 @@ navigation, not a claim about a control that was observed:
    Blueprint file, or if you disconnect your Blueprint from Render entirely."* The running service
    and its environment variables survive.
 
-**Until then, `render.yaml` is documentation rather than governing configuration** — the file and
-the live service agree today, and nothing enforces that they continue to.
+### Unresolved — the dashboard change is not visible
+
+Dennis repointed the Blueprint to `main` by hand on 2026-08-15. **The API does not show it.**
+Read immediately afterwards:
+
+```
+count: 1
+exs-da06j761egvs73817n70 | bookflow-staging | branch: feat/deploy-staging
+                         | autoSync: true | lastSync: 2026-08-15T13:37:45.956784Z
+```
+
+Three things that reading rules out: it is **not a second Blueprint** being read (there is one);
+it is **not the service** (that reads `main`, and has since PR 4a); and there has been **no sync
+since creation** — `lastSync` is unchanged, so nothing has re-applied `render.yaml` from either
+branch.
+
+**So either the dashboard change did not take, or the API does not reflect it, and this session
+cannot tell which.** It is recorded as disputed rather than done, in this file and in
+`docs/ENVIRONMENT.md` §3. **Until a read returns `main`, `render.yaml` should be treated as
+documentation rather than governing configuration.**
+
+The API finding itself is unaffected and firm: `branch` is not settable via `PATCH`, so whatever
+fixes this is a dashboard action, not a script.
 
 ---
 
@@ -129,6 +186,38 @@ gap than A15 described, and it should be re-checked when the sender changes.
 
 **A15 can be closed with a correction**, not with a clean pass. The compensation works; the
 premise was wrong.
+
+### Why `auth.users` is empty, and how we know the reading is real
+
+`select count(*) from auth.users` on staging returns **0**. That is consistent with compensation —
+and it is *also* what a query against the wrong database returns, so it is not evidence on its own.
+
+**First, the accounting.** Compensation is not the only reason the table is empty. **Every probe
+account was deleted explicitly by the scripts that made them**, including the one that did *not*
+compensate:
+
+| Account | Fate |
+|---|---|
+| The eight A15 probe addresses | Deleted by the probe script immediately after each `/resend`, in the same loop |
+| **`dennismugu7@gmail.com`** — the owner-address control, which **succeeded** (`/resend` 200, `confirmation_sent_at` set) and so triggered **no** compensation | **Deleted by the control script**, ~15:00 UTC on 2026-08-15, in the same run that created it. This is the row that would otherwise have survived, and it is gone because the script removed it — not because anything compensated |
+| The A15 compensation signup | Removed by the endpoint's own compensation |
+| The PR 4a `/v1/me` probe | Deleted by that script; profile cascaded |
+| Each smoke-test signup | Removed by compensation |
+
+**Second, the instrument.** A count of zero was not accepted on its own — this project has already
+been bitten by verifying a fixture by counting it, when the seeded owner was counted as present and
+could not actually log in. So the counter was shown returning something other than zero:
+
+```
+STATIC   our three tables: 3 ✓   our migrations: 3 ✓
+         bookflow_api role: 1 ✓  GoTrue's migrations: 77 ✓
+DYNAMIC  auth.users before: 0 → created one user → during: 1 ✓ → deleted → after: 0 ✓
+```
+
+The dynamic control is the one that matters: **the same query returned 1 while a row existed.** A
+counter that has only ever returned zero has not measured anything. The static controls establish
+that this is our database and not an empty one — our tables, our migrations, our role, and GoTrue's
+own 77 migrations.
 
 ---
 
@@ -202,7 +291,7 @@ guard blocks a production start on real infrastructure**, not only in unit tests
 | The integration suite ran | **yes** | 7 integration files; the suite fails rather than skipping when the database is unreachable, and that behaviour was observed on 2026-08-12 when Docker's port proxy was down |
 | Every acceptance criterion maps to a named test | **NO — see §5** | Phase 0 produced ADRs, not a written acceptance-criteria list, so there is nothing to map from |
 | Dart: `flutter analyze`, `dart format`, `flutter test` | **yes** | CI `mobile` job, green; 27 tests |
-| e2e test for critical journeys | **NO — see §5** | The journey cannot be driven: the client has no sign-up or login UI |
+| e2e test for critical journeys | **NO — the gate is PR 4c** | ADR-033's journey cannot be driven: the client has no sign-up or login UI. The reduced gate decided on 2026-08-15 is not built yet — see the decision above and §5.1 |
 | Migration applies to a **fresh** database | **yes** | `supabase db reset` locally on every stack restart; CI runs `supabase start` from empty on every push |
 | Migration applies to a **copy of the current** schema | **yes** | `migrate-staging` applies to the live staging database on every push to `main`; last run reported `Remote database is up to date` |
 | OpenAPI spec regenerated, no uncommitted diff | **yes** | CI `contracts` job fails on drift; green |
@@ -268,8 +357,28 @@ Phase 3"* — but not that the client would lack the screens entirely.
 **What was built instead**, and named honestly as not being the same thing: the staging smoke test
 in §3. It ticks the *staging* box and does not tick the *e2e* box.
 
-**This item cannot be satisfied until the sign-up and login screens exist.** It belongs to whichever
-slice builds them, and the e2e suite should land with them rather than being retro-fitted.
+### The conclusion this file first drew was too quick
+
+The first draft ended here, with "this item cannot be satisfied until the sign-up and login screens
+exist" — and treated that as the end of the matter. **It was not.** "The specified journey cannot be
+driven" is true; "therefore Phase 3 has no e2e gate" does not follow. A third option was available
+and was not put forward: **build a smaller gate and amend the ADR that defines the journey.**
+
+**Decided 2026-08-15 by Dennis** (see the decision at the top of this file):
+
+- **Inject a session and assert screen #20 renders real data from deployed staging.** That
+  exercises the deployed API, the generated client, the Riverpod graph and the router — the layers
+  ADR-033's rationale actually names as *"the most likely to break in ways unit tests cannot see"*.
+- **Amend ADR-033** so Phase 3's critical journey is that, rather than the full sign-up flow.
+- **Phase 3 closes when the gate is green, in PR 4c.**
+
+**What the reduced gate gives up, stated plainly so the amendment can weigh it:** it does not prove
+a new owner can get in. Sign-up, verification and login remain unexercised end to end, and ADR-033's
+own definition — a journey whose failure prevents an owner taking a booking — covers them. That
+coverage arrives with the slice that builds those screens; the reduced gate is a floor, not a
+substitute.
+
+Neither the amendment nor the test exists yet. **This item still does not hold.**
 
 ### 5.2 The review record — a standing exception, stated as one
 
@@ -288,10 +397,14 @@ rule requiring a record was created *after* them (`442e138`), and reconstructing
 be exactly the after-the-fact artefact the rule exists to prevent. PRs #8, #9, #10 and #11 each
 carry one.
 
-**And the owner's own pass has not happened on any PR.** It is not a duplicate of the second
-reader's: a correctness reviewer asks whether the code does what it says; the owner asks whether
-what it says is what they wanted, and can reject a premise rather than an implementation. It is
-outstanding for the whole of Phase 3.
+**The owner's own pass ran for the first time on PR #12**, against a reviewer's brief written for
+it. It is not a duplicate of the second reader's: a correctness reviewer asks whether the code does
+what it says; the owner asks whether what it says is what they wanted, and can reject a premise
+rather than an implementation. **It did exactly that** — it rejected this file's own framing and
+sent Phase 3 back for PR 4c, which is the outcome only that pass could have produced.
+
+It remains outstanding for **PRs #4–#11**, which were merged without it, and that does not get
+retro-fitted for the same reason their review records do not.
 
 ### 5.3 Acceptance criteria mapped to named tests — nothing to map from
 
@@ -311,15 +424,33 @@ Phase 0: either produce acceptance criteria the item can map to, or amend
 
 ---
 
-## 6. What Phase 3 leaves behind
+## 6. What is still open
+
+### Before Phase 3 can close — PR 4c
+
+| Item | Where |
+|---|---|
+| **The reduced e2e gate** — inject a session, assert screen #20 renders real data from deployed staging | §5.1 |
+| **The ADR-033 amendment** defining Phase 3's critical journey as that | §5.1 |
+
+Phase 3 closes when that gate is green, and this file is updated then. **Nothing else on this list
+blocks it.**
+
+### Carried past Phase 3
 
 | Item | Where | Trigger |
 |---|---|---|
 | **K75** — profile editing | triage | the profile-editing slice |
 | **K76** — verify the database certificate | triage | production; the guard blocks a production start until then |
-| **A15** — needs correcting, not closing clean | triage | this document |
-| **The Blueprint pointer** | §1 | a dashboard visit; before the next `render.yaml` change |
-| **The e2e suite** | §5.1 | the slice that builds sign-up and login |
-| **The owner's review pass** | §5.2 | outstanding now |
-| **Eight unclassified screenshots** | ADR-039 | as each screen is built |
 | **E14** — staging's sender reaches one inbox | triage | before any multi-user testing on staging; fixing it turns the smoke test red on purpose |
+| **Eight unclassified screenshots** | ADR-039 | as each screen is built |
+| **Full sign-up/verification/login e2e** | §5.1 | the slice that builds those screens; the reduced gate is a floor, not a substitute |
+| **Acceptance criteria mapped to tests** | §5.3 | whoever next writes a Phase 0 |
+
+### Closed since this file was started
+
+| Item | Outcome |
+|---|---|
+| **The Blueprint pointer** | **NOT closed — disputed.** Changed by hand on 2026-08-15; the API still reads `feat/deploy-staging` (§1) |
+| **A15** | Corrected in the triage; premise was wrong, compensation verified (§2) |
+| **The owner's review pass** | Ran for the first time on PR #12 (§5.2) — and rejected this file's framing |
