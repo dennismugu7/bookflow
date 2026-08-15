@@ -279,6 +279,13 @@ only the status — reported success for a service that was not running. Status 
 now a single assertion, because the platform does not emit RFC 9457 and that is what distinguishes
 our 503 from its own. Resumed, re-run, green.
 
+**The count is 10 of 11, and the missing one is the finding.** The test had **11** assertions when
+this ran, and the eleventh did not fail — it **passed, falsely**. That was the status-only database
+check, green against a service that was not running. Collapsing it into the problem-type check took
+the file to **10**, which is what it has run at ever since. So "10 failed" here and "10 assertions"
+in the current file are not the same 10, and only this run predates the collapse — red proof 2 and
+every green run since are post-collapse. Anyone reconciling these numbers later should start there.
+
 **2. Deploy broken** → `APP_ENV=production` was set on the service, which makes the new
 configuration guard refuse to start (staging's `DATABASE_URL` carries `sslmode=no-verify`). The
 deploy finished **`update_failed`**; restoring `APP_ENV=staging` returned it to **`live`**. Render's
