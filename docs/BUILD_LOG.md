@@ -336,3 +336,50 @@ redirect URLs and rate limits with local development values.
 
 `DEFINITION_OF_DONE.md` governs completion of the whole slice at PR 4, including the human gate
 under ADR-032's constraints.
+
+---
+
+## 8. Blocked on the Actions allowance — merge queue for the 2026-08-31 reset
+
+**Nothing can merge until then.** GitHub's included Actions minutes were exhausted on 2026-08-16
+and the budget is $0 with stop-usage on, so runs are refused rather than billed
+(`docs/ENVIRONMENT.md` §3). `DEFINITION_OF_DONE.md` requires a green CI run end to end, and one
+cannot be produced. **The gate is not weakened to get a merge** — a green that cannot be produced
+is a reason to wait, not a reason to lower the bar. This section exists so nothing below is lost
+in the fortnight.
+
+**Everything merges on a genuinely green run, or not at all.**
+
+### In order
+
+**1. PR #14 — `feat/phase3-e2e`, which closes Phase 3.** Approved by the owner's review pass
+already; the work is done and the branch is green on its last real run (`31936132670` on
+`5a73007`, and the e2e on dispatch `31936130639`). What remains is procedural, and the order
+matters:
+
+1. **Post Dennis's review record verbatim** as a comment on #14, with the provenance line above
+   the heading: *"Posted by the Claude Code session on Dennis's instruction; text unaltered."*
+   He wrote it and reviewed from it; GitHub attributes the comment to his account either way,
+   because the session posts through his `gh` credential, so provenance stated in the body is the
+   only place it is recorded. **This is not optional and not a formality** — ADR-040 §2 condition 4
+   is satisfied by the record on the PR and by nothing else, explicitly including direction given
+   in conversation.
+2. **Verify by comment id that it landed.** At PR #12 the record was believed posted and was not;
+   check, do not assume.
+3. **Flip ADR-040's Status from `Proposed` to `Accepted`**, dated, citing that comment id. The ADR
+   says in terms that it must not merge as a proposal, and `09-phase3-close.md` §7.6 says that a
+   close performed while it reads `Proposed` is unauthorised by its own terms.
+4. **Re-run CI and require a genuine green**, including `e2e-staging`.
+5. **Merge, delete the branch, prune. Phase 3 closes at that commit.**
+
+**2. `ci/ios-build-cadence` — the iOS job moves to a weekly schedule.** Written on 2026-08-16 and
+deliberately not merged. Moves `ios-build` off pull requests **and off every push to `main`**, onto
+a Monday `schedule` plus `workflow_dispatch` plus the existing `ios` label. At 10× billing an
+8-minute build costs ~80 minutes, which capped the month at roughly thirteen merges; weekly costs
+~320 minutes and roughly trebles that. Arithmetic and what it gives up: ADR-024's 2026-08-16
+amendment. Branches from `main`, so it will need `main` refreshed after #14 merges.
+
+### Carried, not queued
+
+- **K78** — the e2e credential's residual window (triage). No action pending.
+- **The Blueprint pointer** — parked with its trigger (`09-phase3-close.md` §1).

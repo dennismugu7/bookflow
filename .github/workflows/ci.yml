@@ -15,8 +15,14 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  # Lets the iOS job be run on demand against a branch, without paying for it
-  # on every push. See the `ios` job's `if:` below.
+  # The iOS build's only automatic trigger. Monday 04:00 UTC — 07:00 in
+  # Africa/Nairobi (ADR-005), so a broken iOS target is waiting at the start of
+  # the week rather than discovered mid-afternoon. Every other job ignores this
+  # event; see each job's `if:`.
+  schedule:
+    - cron: '0 4 * * 1'
+  # Lets the iOS job be run on demand against a branch, without waiting a week.
+  # See the `ios` job's `if:` below.
   workflow_dispatch:
 
 # One run per ref. Pushing twice in quick succession cancels the first, so the
@@ -31,6 +37,10 @@ permissions:
 jobs:
   verify:
     name: verify
+    # The weekly `schedule` exists for `ios-build` alone. Without this guard
+    # every Linux job would also run every Monday, spending the allowance the
+    # schedule was introduced to protect.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -157,6 +167,8 @@ jobs:
   # does not hide a TypeScript failure, and both results arrive on the PR.
   mobile:
     name: mobile
+    # See `verify`: the schedule is the iOS job's trigger, not a weekly full CI.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -221,17 +233,31 @@ jobs:
   # Apple Developer account, so --no-codesign is the ceiling and signing stays
   # open as K53 in docs/analysis/05-triage.md.
   #
-  # COST. macOS runners bill at 10x the Linux rate against this private
-  # repository's included allowance, so this job is deliberately NOT run on
-  # every push:
-  #   - always on push to main, where the result matters;
-  #   - on demand via workflow_dispatch;
-  #   - on a pull request ONLY when it carries the `ios` label, so a PR that
-  #     touches iOS can opt in and everything else pays nothing.
+  # COST, and why this now runs on a SCHEDULE rather than on merges.
+  #
+  # macOS bills at **10x the Linux rate** against this private repository's
+  # 2,000-minute allowance. An 8-minute iOS build therefore costs about **80
+  # minutes** — on every merge to `main` it was the single largest item in the
+  # pipeline, and it alone capped the month at roughly **thirteen merges**.
+  # The allowance was exhausted on 2026-08-16 (docs/ENVIRONMENT.md §3).
+  #
+  # Weekly costs about **320 minutes a month** and roughly **trebles** how many
+  # merges the allowance supports.
+  #
+  # **What the job is for survives that change.** Its purpose is knowing, within
+  # days, whether iOS still compiles — from a machine that cannot compile it
+  # (ADR-015: the dev machine is Windows). "Within days" is what a weekly
+  # cadence delivers; what is given up is knowing which specific commit broke
+  # it, which is a bisect over at most a week of merges rather than a lost
+  # answer. `workflow_dispatch` covers wanting the answer sooner, and the `ios`
+  # label still opts a specific PR in.
+  #
+  # ADR-024's 2026-08-16 amendment carries the arithmetic and the trigger to
+  # revisit.
   ios:
     name: ios-build
     if: >-
-      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
       contains(github.event.pull_request.labels.*.name, 'ios')
     runs-on: macos-latest
@@ -274,6 +300,8 @@ jobs:
   # than guarantees.
   contracts:
     name: contracts
+    # See `verify`: the schedule is the iOS job's trigger, not a weekly full CI.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
