@@ -130,14 +130,24 @@ debug.
 
 ## 5. The immediate queue
 
-Nothing can merge until Actions minutes reset (~2026-08-31). In order, recorded in
-`BUILD_LOG.md` §8:
+Nothing can merge until Actions minutes reset (~2026-08-31). In order:
 
 1. **PR #14 (4c)** — post Dennis's review record verbatim with its provenance line,
    verify by id, flip ADR-040 from *Proposed* to *Accepted* citing that id, merge on a
    genuinely green run, and Phase 3 closes.
 2. **Branch `ci/ios-build-cadence`** — moves `ios-build` to a weekly schedule plus
    `workflow_dispatch`. Written and pushed, no PR opened. Will need rebasing after #14.
+   It also carries `BUILD_LOG.md` §8 and a fix folding a stray ADR-024 amendment back
+   into the real file.
+3. **Branch `docs/guide-handoff-refresh`** — this document. Written and pushed, no PR
+   opened. Branches from `main` and touches one file, so it can merge at any point in
+   the sequence.
+
+**`BUILD_LOG.md` §8 lists only the first two, and must be reconciled against this list
+when #14 merges.** §8 was written on branch 2 before this branch existed, and a queue
+that omits one of its own items is the failure mode both lists exist to prevent. Whoever
+merges #14 owns that reconciliation. **Neither list is authoritative over the other** —
+if they disagree, the open branches on the remote are the truth: `git branch -r`.
 
 ## 6. Standing constraints
 
