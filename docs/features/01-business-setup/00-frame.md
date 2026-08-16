@@ -90,6 +90,16 @@ All six questions this frame raised are answered. Each carries its reason.
 6. **What is behind screen #5's back arrow? — THERE IS NO BACK ARROW** for an owner arriving
    from sign-up, there being no previous onboarding step to return to.
    *Engineering default taken by the session, 2026-08-16; open to Dennis's veto.*
+7. **Must a business name be unique? — NO.** Real salon names repeat, and refusing a name
+   because a stranger already used it would be a defect, not a safeguard. ADR-021's handle is
+   the identifier intended to be unique, and it arrives in a later slice; nothing public is
+   reachable here, so a collision has no visible consequence today.
+   **This is the schema's status quo, not a change to it** — `ck_businesses_name_present`
+   constrains length only (1–200 characters after trimming) and there is no unique index on
+   `businesses.name`. Recording it is what makes it a decision rather than an accident: it was
+   previously true because nobody had asked, which is the state in which a later slice adds a
+   unique index without noticing it is reversing something.
+   *Decided by Dennis, 2026-08-16, guiding session.*
 
 ### Consequence — the design and the build now disagree, on purpose
 
