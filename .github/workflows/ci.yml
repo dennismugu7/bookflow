@@ -667,3 +667,34 @@ jobs:
       - name: Remove the defines file
         if: always()
         run: rm -f "$RUNNER_TEMP/e2e-defines.json"
+
+      # ══ DO NOT ADD AN ARTIFACT UPLOAD BELOW THIS LINE ═══════════════════════
+      #
+      # If you are here to upload a screenshot, a log bundle, an APK or a
+      # failure diagnostic from this job — **stop.**
+      #
+      # `--dart-define-from-file` COMPILES the values into the built binary.
+      # E2E_STAGING_PASSWORD is inside the test APK, in plain text, next to the
+      # email. Verified, not assumed — a throwaway value was built locally and
+      # extracted with `grep -a` from:
+      #
+      #   build/app/intermediates/assets/debug/mergeDebugAssets/flutter_assets/kernel_blob.bin
+      #   build/app/intermediates/flutter/debug/flutter_assets/kernel_blob.bin
+      #
+      # (`strings` does not find it; `grep -a` does. That is worse than either,
+      # because a casual scan comes back clean.)
+      #
+      # So `actions/upload-artifact` with a path under `apps/mobile/build/`
+      # publishes the credential to anyone who can read the run — and the job
+      # would still be green, so nothing would say so.
+      #
+      # **Nothing today uploads anything, and that absence is the only thing
+      # protecting the value.** This comment is here because the protection is
+      # "no such step exists" rather than "the value is safe".
+      #
+      # If you need diagnostics: upload nothing from `build/`, or rotate the
+      # credential afterwards and treat every prior build as spent. Adding an
+      # upload is trigger 1 in docs/analysis/10-e2e-credential-in-artefact.md §4
+      # (K78), which also records why the account is contained — one profile
+      # row, no membership, no business, staging only — and the one rule that
+      # must not be broken: **this account must never be given a membership.**
