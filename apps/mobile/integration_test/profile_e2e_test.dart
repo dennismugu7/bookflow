@@ -77,13 +77,29 @@
 /// — rather than the base URL. Pointing the client at a dead host proves only
 /// that the test can fail. See `docs/analysis/09-phase3-close.md` §7.
 ///
-/// ── CREDENTIALS ────────────────────────────────────────────────────────────
+/// ── CREDENTIALS: A TOKEN, NEVER THE PASSWORD ───────────────────────────────
 ///
-/// Supplied by `--dart-define-from-file`, whose contents CI writes from Actions
-/// secrets. **Never a process argument** — `--dart-define=PASSWORD=…` would put
-/// the value in the command line of every `flutter` and `gradle` child process
-/// and into any log that echoes a command. The file is written from the job's
-/// environment and removed in the same step.
+/// **`--dart-define-from-file` compiles its values into the binary.** Verified,
+/// not assumed: a throwaway value was built locally and recovered from
+/// `kernel_blob.bin` with `grep -a`, alongside the email
+/// (`docs/analysis/10-e2e-credential-in-artefact.md`). Protecting the defines
+/// *file* protects the file, not the value.
+///
+/// So the password never reaches a build. **CI performs the password grant
+/// itself**, against staging GoTrue, and passes only the resulting
+/// `access_token`. What is compiled into the artefact is a bearer token that
+/// **expires in one hour** (ADR-017), not a credential that works forever.
+///
+/// **No refresh token is compiled in either.** `setSession` requires a
+/// non-empty refresh token but never uses it when the supplied access token is
+/// unexpired — it calls `getUser(accessToken)` and builds the session directly.
+/// So a literal placeholder is passed. That is not a trick to satisfy a
+/// signature: it means this build **cannot** mint a new token, and if anything
+/// ever tried to refresh, it would fail loudly rather than silently extending
+/// the artefact's reach.
+///
+/// The token is still a real credential for up to an hour, and the file is still
+/// kept out of argv and out of the workspace. What changed is the horizon.
 library;
 
 import 'package:bookflow/app.dart';
@@ -113,7 +129,15 @@ void main() {
     apiBaseUrl: String.fromEnvironment('API_BASE_URL'),
   );
   const String email = String.fromEnvironment('E2E_EMAIL');
-  const String password = String.fromEnvironment('E2E_PASSWORD');
+
+  /// Minted by CI's password grant, one hour of life. See the header.
+  const String accessToken = String.fromEnvironment('E2E_ACCESS_TOKEN');
+
+  /// Deliberately not a token. `setSession` rejects an empty refresh token but
+  /// never uses this one — the access token above is unexpired, so it takes the
+  /// `getUser` path. Naming it in full means a leaked build carries a sentence
+  /// explaining itself rather than an opaque string somebody might try.
+  const String noRefreshToken = 'no-refresh-token-is-compiled-into-this-build';
 
   testWidgets(
     'screen #20 renders the profile that deployed staging holds for this session',
@@ -127,12 +151,15 @@ void main() {
             '--dart-define-from-file, never --dart-define for the credential',
       );
       expect(
-        <String>[email, password],
+        <String>[email, accessToken],
         everyElement(isNotEmpty),
-        reason: 'E2E_EMAIL and E2E_PASSWORD must come from the defines file',
+        reason:
+            'E2E_EMAIL and E2E_ACCESS_TOKEN must come from the defines file. '
+            'E2E_PASSWORD is deliberately NOT among them — CI performs the '
+            'grant so the password never reaches a build artefact.',
       );
 
-      // ── 1. A real session, from real staging GoTrue ─────────────────────
+      // ── 1. A real session, installed from a token CI minted ─────────────
       await Supabase.initialize(
         url: config.supabaseUrl,
         publishableKey: config.supabaseAnonKey,
@@ -142,19 +169,25 @@ void main() {
       );
       final SupabaseClient supabase = Supabase.instance.client;
 
-      final AuthResponse auth = await supabase.auth.signInWithPassword(
-        email: email,
-        password: password,
+      // `setSession` with an unexpired access token does NOT refresh: it calls
+      // `getUser(accessToken)` against staging GoTrue and builds the session
+      // from the response. So this is still a real round trip to real GoTrue
+      // from the device — the token was minted elsewhere, the session is not.
+      final AuthResponse auth = await supabase.auth.setSession(
+        noRefreshToken,
+        accessToken: accessToken,
       );
       final Session? session = auth.session;
       expect(
         session,
         isNotNull,
         reason:
-            'the staging e2e account could not sign in. It is created CONFIRMED '
-            'through the admin path precisely so this cannot be an unverified-email '
-            'failure (docs/ENVIRONMENT.md §3). If the password is wrong, rotate it — '
-            'the secret cannot be read back by design.',
+            'the token CI minted did not produce a session. The likely causes, '
+            'in order: the token expired between the grant and this line (it '
+            'lives one hour and the build takes about ten minutes, so this '
+            'means something stalled); staging GoTrue rejected it; or the '
+            'account was deleted. It is NOT an unverified-email failure — the '
+            'account is created confirmed (docs/ENVIRONMENT.md §3).',
       );
 
       // ── 2. The expectation, fetched independently ───────────────────────
@@ -226,8 +259,10 @@ void main() {
       // ── 6. Leave staging as it was found ────────────────────────────────
       //
       // The account is permanent and shared (docs/ENVIRONMENT.md §3); the
-      // SESSION is not. Signing out revokes the refresh token (ADR-017) so a
-      // failed run does not leave a live one behind on the emulator image.
+      // SESSION is not. This does more than tidy the emulator: it revokes the
+      // session server-side, which kills the token compiled into THIS build —
+      // so the artefact's one-hour credential is usually dead in under a
+      // minute. The refresh token CI holds dies with it.
       await supabase.auth.signOut();
     },
     timeout: const Timeout(Duration(minutes: 4)),

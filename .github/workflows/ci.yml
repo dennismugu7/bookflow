@@ -578,21 +578,34 @@ jobs:
         working-directory: apps/mobile
         run: flutter pub get
 
-      # ── The credential, never as a process argument ──────────────────────
+      # ── The session, minted here so the password never reaches a build ────
       #
-      # `--dart-define=E2E_PASSWORD=…` would place the password in the command
-      # line of `flutter`, of the Gradle daemon it spawns, and of anything that
-      # echoes a command — visible to `ps` for the life of the run. A defines
-      # FILE keeps the value out of every argv.
+      # **`--dart-define-from-file` COMPILES its values into the binary.**
+      # Verified rather than assumed: a throwaway password was built locally and
+      # recovered from `kernel_blob.bin` with `grep -a`
+      # (`docs/analysis/10-e2e-credential-in-artefact.md`). So protecting the
+      # file protects the file, not the value.
       #
-      # `jq -n` reads the values from the ENVIRONMENT (`env.NAME`), so they are
-      # not in jq's argv either — `--arg pw "$PASSWORD"` would have re-introduced
-      # exactly the problem this step exists to avoid.
+      # This job therefore performs the password grant ITSELF and passes only
+      # the resulting `access_token`, which **expires in one hour** (ADR-017).
+      # `E2E_STAGING_PASSWORD` stays in Actions secrets and never enters a
+      # build artefact at all.
       #
-      # The file is written to the runner's temp directory, never the workspace,
-      # so no path under `apps/mobile` can pick it up and no `actions/upload-*`
-      # step can sweep it into an artifact.
-      - name: Compose the defines file
+      # **No refresh token is passed either.** `setSession` needs a non-empty
+      # refresh token but never uses it when the access token is unexpired, so
+      # the test passes a literal placeholder — meaning the artefact cannot mint
+      # itself a new token when the hour is up.
+      #
+      # Two properties preserved from the earlier arrangement, both still
+      # necessary: nothing lands in argv (`jq -n` reads `env.NAME`; `--arg`
+      # would have put the value in jq's own command line), and the file is
+      # written to `RUNNER_TEMP` rather than the workspace, where no
+      # `actions/upload-*` glob can reach it.
+      #
+      # `--fail-with-body` so a rejected grant is an error rather than a JSON
+      # error document quietly written into the defines file, and `-s -S` so
+      # curl reports the failure without drawing a progress bar over it.
+      - name: Mint a session and compose the defines file
         id: defines
         env:
           E2E_EMAIL: ${{ secrets.E2E_STAGING_EMAIL }}
@@ -608,9 +621,33 @@ jobs:
               exit 1
             fi
           done
-          jq -n '{
+
+          # The password reaches curl through a FILE on stdin, not through -d
+          # on the command line, for the same argv reason as everything else.
+          jq -n '{email: env.E2E_EMAIL, password: env.E2E_PASSWORD}' \
+            > "$RUNNER_TEMP/grant.json"
+          chmod 600 "$RUNNER_TEMP/grant.json"
+
+          curl -s -S --fail-with-body \
+            -X POST "$SUPABASE_URL/auth/v1/token?grant_type=password" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H 'content-type: application/json' \
+            --data-binary "@$RUNNER_TEMP/grant.json" \
+            -o "$RUNNER_TEMP/session.json"
+          rm -f "$RUNNER_TEMP/grant.json"
+
+          ACCESS_TOKEN="$(jq -r '.access_token // empty' "$RUNNER_TEMP/session.json")"
+          rm -f "$RUNNER_TEMP/session.json"
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "::error::the password grant returned no access_token — rotate E2E_STAGING_PASSWORD (docs/ENVIRONMENT.md §3)"
+            exit 1
+          fi
+          # Masked so no later step can print it, deliberately or by accident.
+          echo "::add-mask::$ACCESS_TOKEN"
+
+          ACCESS_TOKEN="$ACCESS_TOKEN" jq -n '{
             E2E_EMAIL: env.E2E_EMAIL,
-            E2E_PASSWORD: env.E2E_PASSWORD,
+            E2E_ACCESS_TOKEN: env.ACCESS_TOKEN,
             SUPABASE_URL: env.SUPABASE_URL,
             SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY,
             API_BASE_URL: env.API_BASE_URL
