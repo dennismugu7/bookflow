@@ -4,9 +4,11 @@
 
 **A Kenyan salon or barbershop owner can create an account and then cannot do anything with it.**
 
-Today an owner can sign up (`POST /v1/auth/signup`), sign in, and view their own profile
-(`GET /v1/me`, screen #20). That is the whole product surface. There is no path — through any
-screen, any endpoint, or any manual step — by which they come to have a business.
+Today an owner can sign up (`POST /v1/auth/signup`), sign in — against **GoTrue directly**, via
+`supabase_flutter`; our API serves no login route, and never has (`auth_gateway.dart`, ADR-017,
+ADR-037) — and view their own profile (`GET /v1/me`, screen #20). Those three things are the
+whole of what an owner can do. There is no path — through any screen or any endpoint — by which
+they come to have a business.
 
 The app already models this state honestly rather than hiding it.
 `apps/mobile/lib/features/membership/membership_repository.dart` returns `MembershipStatus.none`
@@ -53,7 +55,10 @@ Deliberately excluded. Each is a slice of its own or an already-tracked item.
 - **The other three onboarding steps** — team members (#6), portfolio (#7), opening hours and
   location (#8).
 - **Services and pricing** (#21, #22).
-- **Editing or deleting a business after creation** (K12). Creation only.
+- **Editing any field other than the name, and deleting a business at all** (K12). Renaming
+  **is** in scope — decision 4 — so **this slice partially opens K12** rather than leaving it
+  untouched: it settles that the business name is editable and on which surface, and leaves the
+  team-roster, portfolio, opening-hours and handle editing surfaces open.
 - **A second business, a second member, or any role but `owner`.** ADR-003 is one business per
   account; `uq_memberships_user_business` and `ck_memberships_role check (role in ('owner'))`
   already hold that line. I9's role vocabulary stays closed.
@@ -62,21 +67,41 @@ Deliberately excluded. Each is a slice of its own or an already-tracked item.
 - **The dashboard (#12)** beyond whatever routing past the setup stub requires.
 - **Profile editing (K75)**, which is already deferred and separate.
 
-## 4. Open questions — product decisions for Dennis
+## 4. Decisions
 
-Listed, not answered.
+All six questions this frame raised are answered. Each carries its reason.
 
-1. **Is business name alone enough to create a business?** Screen #5 collects four fields, one
-   required. Shipping name-only is the smallest honest slice; shipping all four means new
-   columns and the upload path, and drags F2 and ADR-011 in with it.
-2. **When is the business row actually written — at the end of step one, or at the end of the
-   four-step onboarding?** The design presents #5→#8 as sequential sheets and says "nothing has
-   been published yet at this point". The data model permits committing after step one.
-3. **What is a half-finished owner?** If someone abandons onboarding after entering a name, is a
-   name-only business a real business, or must onboarding complete before the row exists? This
-   decides what I10's "no membership" state means from now on.
-4. **Can the owner change the business name after creating it** — in this slice, or later (K12)?
-5. **Is a salon category collected at creation?** K16 asks where category, address text and the
-   owner's public contact email are collected, and none has a home yet.
-6. **What is behind screen #5's back arrow for a brand-new owner?** It returns to "the previous
-   onboarding step", and for a user arriving straight from sign-up there is not obviously one.
+1. **Which fields does creation collect? — NAME ONLY.** Tagline, About and the banner image stay
+   non-goals, so `public.businesses` needs no new column and **this slice ships no migration**.
+   *Decided by Dennis, 2026-08-16, guiding session.*
+2. **When is the business row written? — AT THE END OF STEP ONE.** Not a free choice: screens
+   #6–#8 are non-goals, so there is no later onboarding step left to defer the write to.
+   *Decided by Dennis, 2026-08-16, guiding session.*
+3. **Is a name-only business a real business? — YES.** Forced by decision 2: if the row is
+   written at the end of step one, a business holding nothing but a name is the ordinary
+   outcome of onboarding, not an abandoned half-state.
+   *Decided by Dennis, 2026-08-16, guiding session.*
+4. **Can the owner rename the business? — YES, IN THIS SLICE.** The name field only: no other
+   field is editable and there is no delete. This is what partially opens K12.
+   *Decided by Dennis, 2026-08-16, guiding session.*
+5. **Is a salon category collected at creation? — NO.** K16 stays open, and category acquires a
+   home in the slice that needs it.
+   *Decided by Dennis, 2026-08-16, guiding session.*
+6. **What is behind screen #5's back arrow? — THERE IS NO BACK ARROW** for an owner arriving
+   from sign-up, there being no previous onboarding step to return to.
+   *Engineering default taken by the session, 2026-08-16; open to Dennis's veto.*
+
+### Consequence — the design and the build now disagree, on purpose
+
+Screen #5 draws **four** fields (`DD-Bookflow-Native.md:181-189`); decision 1 ships **one**.
+Anyone reading the design against the running app will find three specified fields absent, and
+the back arrow of decision 6 missing as well.
+
+**This is a recorded deviation, not an oversight.** It belongs in
+`docs/analysis/08-design-deviations.md` — the same register that carries the deferred profile
+Edit control as deviation 9 — written in the slice that ships the code, not here.
+
+**What closes it:** the later branding slice that adds Tagline, About and the business banner.
+That is a migration for the two text columns, plus ADR-011's bucket choice and F2's formats and
+size limits for the banner upload. Nothing in this slice closes it, and nothing in this slice
+should.
