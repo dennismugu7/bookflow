@@ -705,33 +705,31 @@ jobs:
         if: always()
         run: rm -f "$RUNNER_TEMP/e2e-defines.json"
 
-      # ══ DO NOT ADD AN ARTIFACT UPLOAD BELOW THIS LINE ═══════════════════════
+      # ══ BEFORE ADDING AN ARTIFACT UPLOAD BELOW THIS LINE ════════════════════
       #
       # If you are here to upload a screenshot, a log bundle, an APK or a
-      # failure diagnostic from this job — **stop.**
+      # failure diagnostic — know what is inside the binary first.
       #
-      # `--dart-define-from-file` COMPILES the values into the built binary.
-      # E2E_STAGING_PASSWORD is inside the test APK, in plain text, next to the
-      # email. Verified, not assumed — a throwaway value was built locally and
-      # extracted with `grep -a` from:
+      # `--dart-define-from-file` COMPILES its values into the build. Verified,
+      # not assumed: a throwaway value was built locally and extracted with
+      # `grep -a` (not `strings`, which misses it — a casual scan comes back
+      # clean) from:
       #
       #   build/app/intermediates/assets/debug/mergeDebugAssets/flutter_assets/kernel_blob.bin
       #   build/app/intermediates/flutter/debug/flutter_assets/kernel_blob.bin
       #
-      # (`strings` does not find it; `grep -a` does. That is worse than either,
-      # because a casual scan comes back clean.)
+      # **What is in there now is an access token, not the password.** The step
+      # above mints it, it expires in an hour (ADR-017), the test revokes it by
+      # signing out, and no refresh token is compiled in — so the artefact
+      # cannot renew itself. `E2E_STAGING_PASSWORD` is not in the build at all.
       #
-      # So `actions/upload-artifact` with a path under `apps/mobile/build/`
-      # publishes the credential to anyone who can read the run — and the job
-      # would still be green, so nothing would say so.
+      # That is a bounded exposure rather than no exposure. An artifact uploaded
+      # from a run whose test failed BEFORE the sign-out carries a live token
+      # for up to an hour, and the job would be green about it.
       #
-      # **Nothing today uploads anything, and that absence is the only thing
-      # protecting the value.** This comment is here because the protection is
-      # "no such step exists" rather than "the value is safe".
-      #
-      # If you need diagnostics: upload nothing from `build/`, or rotate the
-      # credential afterwards and treat every prior build as spent. Adding an
-      # upload is trigger 1 in docs/analysis/10-e2e-credential-in-artefact.md §4
-      # (K78), which also records why the account is contained — one profile
-      # row, no membership, no business, staging only — and the one rule that
-      # must not be broken: **this account must never be given a membership.**
+      # So: uploading from `apps/mobile/build/` is not catastrophic and is still
+      # not free. If you need it, prefer a path outside `build/`, and read
+      # docs/analysis/10-e2e-credential-in-artefact.md §4 (K78) — which also
+      # records why the account is contained (one profile row, no membership, no
+      # business, staging only) and the rule that outlives all of this:
+      # **this account must never be given a membership.**
