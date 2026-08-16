@@ -117,3 +117,87 @@ than by whichever reading the first slice happened to take.
 ## Items created
 
 None. It changes how existing items are dispositioned, not what is open.
+
+## Amendments
+
+**2026-08-16 — The negative half of the test, a near-miss worked example, and the two ways the
+test was misapplied on the day it was written.**
+
+This sharpens how the created-condition test is applied. **It does not reverse the decision
+above** — the rule stands, and so do the K54 and K27 examples. What it adds is the half the
+original omitted, and the record of what that omission cost within a day.
+
+### The negative half
+
+The Decision says when the test bites. It never says what *cannot* be a created condition, and
+that is the gap:
+
+> **A state is a condition of the data, or of what a user is shown. A placement, a limit, a
+> format, an allowlist or a build strategy is not a state — nothing can bring one into
+> existence — so an item whose subject is one of those is never caught, however directly the
+> slice touches the surface it names.**
+
+### K16 — the near miss, and the example that was missing
+
+K54 and K27 are the easy poles: one slice cannot reach the state at all, the other manufactures
+it as its ordinary output. **K16 is the hard case, and it is the one that was got wrong.**
+
+K16 asks *where the native app collects salon category, team member role, business address text
+and the owner's public contact email.* It names screen #5 — the exact screen business setup
+builds. It was classified **caught**, on this reasoning: *"the slice creates the state: it builds
+screen #5, and K16 is a question about screen #5."*
+
+**That is a screen-based reading, which is the test this ADR replaced.** The classification was
+reached by the discarded method and then presented as an application of the new one.
+
+**K16 is clear.** Its subject is *where a field is collected* — a placement question, and by the
+negative half above, not a state. The structural check settles it independently: K16 and F2 are
+the same shape — no column in `businesses`, not collected by this slice, a migration owed in
+whichever later slice wants the field. F2 was ruled clear. Either both are caught or neither is.
+
+Note what would have changed the answer. **Had K16 instead asked what the system does with a
+business that has no category, it would be caught** — that is K27's shape. It does not ask that.
+
+### The two failure shapes
+
+Both occurred within a day of this ADR being written, with the file available. Named here
+because the abstract rule prevented neither.
+
+1. **Reading by screen** — *"the slice builds that screen, so the item is caught."* This is the
+   pre-ADR test wearing the new one's vocabulary. The surface an item names is not evidence
+   about the state it asks about.
+2. **Substituting a capability the row will later have for a state the slice creates.** K48 asks
+   what happens when a published business is unpublished. It was hedged as arguably caught, on
+   the grounds that this slice creates businesses whose publication state *can later change*.
+   That is not a created condition; it is a future one. This slice cannot publish, so it cannot
+   reach the state, and K48 is clear for the same reason K54 is.
+
+### The test operates clause by clause, not per item
+
+An item carrying several questions does not get one verdict. Each clause is tested on its own
+subject.
+
+**K47 is the worked example.** The clauses asking *what the publish action is* and *where it
+lives* are placement questions, and are clear. The clause asking **what the dashboard shows
+while unpublished** is a state — this slice creates unpublished businesses and routes the owner
+to that screen — and is caught.
+
+**Cite that clause by its text, never by its position.** It has already been referred to under
+two different ordinal numbers, and a numbered citation will be read against a different count by
+whoever reads it next.
+
+### Revised list for the business-setup slice
+
+**Two caught:**
+
+- **K27** — a zero-services, zero-team, zero-portfolio salon is the ordinary output of the slice.
+- **K47's what-is-shown-while-unpublished clause**, and that clause only.
+
+**Reclassified clear:** **K48**, by failure shape 2 above, and **K16**, by failure shape 1.
+
+**Also clear:** K54, K55, K71, F2, F4 — each is either not a state, or not reachable from this
+slice.
+
+**K12 is neither caught nor excluded — it is partially resolved by an answer.** Frame decision 4
+settles that the business name is editable, and on which surface. That is a decision recorded
+rather than a descoping, and it is the only one of the ten disposed of that way.
