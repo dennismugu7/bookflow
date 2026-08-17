@@ -166,12 +166,11 @@ The dashboard's *empty* state is not a separate screen state here: for a busines
 under it, the setup-continuation state **is** what empty renders as, which is why criterion 47
 pins it and criterion 46 forbids falling back to it when the truth is unknown.
 
-**A rename surface is not on this list, because none is specified.** `00-frame.md` §3 says
-decision 4 *"settles that the business name is editable and on which surface"* — but no surface
-is named in §3, §4 or anywhere else in that document, and criteria 13–16 and 39 are all
-API-observable. That claim is unsupported as written. Either renaming is API-only in this slice,
-or a screen is owed and its three states with it; Phase 1 must settle which, and criteria are
-appended then rather than guessed at now.
+**A rename surface is owed and not yet on this list.** Decision 4 implies one exists — an owner
+who mistypes the name must be able to fix it, and an owner does not issue API requests — but no
+design names which screen it is. That is a Phase 1 decision, tracked in `00-frame.md` §5.3.
+Criteria 13–16 and 39 pin the behaviour; the screen's loading and error criteria are appended
+once it has an identity, and its empty state is inapplicable for the same reason screen #5's is.
 
 ## Deliberately not covered
 
@@ -222,11 +221,15 @@ not because it was overlooked.
   volume that could degrade. There is no quantity here for a threshold to be about. Recorded so
   the absence reads as a decision rather than an omission; the first slice that returns a
   collection — bookings, contacts, services — is where a threshold starts meaning something.
-- **Loading, empty and error states for a rename surface.** **No rename screen is named
-  anywhere.** Decision 4 settles that the name is editable, and criteria 13–16, 39 pin renaming
-  as behaviour observable through the API — but no screen is specified for it in `00-frame.md`
-  or here. If a rename surface is added, its three states need criteria appended at that point.
-  See the note below.
+- **Loading and error states for the rename surface — OWED, not excluded.** This is the one
+  entry on this list that is **not** a decision to leave something out. Decision 4's reason is
+  that an owner who mistypes their business name must be able to fix it, which an API-only
+  rename cannot satisfy — so **an owner-facing rename surface exists in this slice**. Which
+  screen it is has never been named in any design, and that is a Phase 1 design decision,
+  tracked as an outstanding obligation in `00-frame.md` §5.3. Criteria 13–16 and 39 pin the
+  behaviour and are API-observable only. The screen's loading and error criteria are **appended
+  when the surface is named** — append-only, so new numbers, never a renumber. Its empty state
+  is inapplicable for the same reason screen #5's is.
 
 ## Blocked
 

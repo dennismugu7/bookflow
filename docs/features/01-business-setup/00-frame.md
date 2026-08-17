@@ -63,8 +63,10 @@ Deliberately excluded. Each is a slice of its own or an already-tracked item.
 - **Services and pricing** (#21, #22).
 - **Editing any field other than the name, and deleting a business at all** (K12). Renaming
   **is** in scope — decision 4 — so **this slice partially opens K12** rather than leaving it
-  untouched: it settles that the business name is editable and on which surface, and leaves the
-  team-roster, portfolio, opening-hours and handle editing surfaces open.
+  untouched: it settles **that** the business name is editable, and that the surface for editing
+  it is owner-facing. It does **not** settle **which screen** that is, and no design document
+  names one — see §5.3. It leaves the team-roster, portfolio, opening-hours and handle editing
+  surfaces open.
 - **A second business, a second member, or any role but `owner`.** ADR-003 is one business per
   account; `uq_memberships_user_business` and `ck_memberships_role check (role in ('owner'))`
   already hold that line. I9's role vocabulary stays closed.
@@ -233,6 +235,32 @@ still a change to a contract two clients read.
 **Status: OUTSTANDING.** Nothing in this document adds the slug. Criterion 35 pins the behaviour
 the slug must carry; the slug itself is the first thing the implementation owes, and it is a
 Do-Not-Vibe-adjacent edit to a shared contract rather than a line in a route.
+
+### 5.3 Outstanding obligation — Phase 1 must name the rename surface
+
+**Decision 4's reason is that an owner who mistypes their business name must be able to fix it.
+An API-only rename does not satisfy that** — an owner does not hold a token and does not issue
+requests. So decision 4 **does** imply an owner-facing rename surface exists in this slice.
+
+**What it does not settle is which screen.** No design document names one: screen #5 is the
+onboarding sheet an owner passes through once, screen #17 is the account menu, and K12 records
+that the editing screens do not exist at all. Choosing between them is a **Phase 1 design
+decision**, and inventing one here would be exactly the invention this frame otherwise refuses.
+
+**What is blocked until it is named.** Criteria 13–16 and 39 are **API-observable only** — they
+pin what a rename does, not where an owner performs it. `DEFINITION_OF_DONE.md` line 32 requires
+loading and error states for every new screen, and those criteria **cannot be written for a
+screen that has no identity**. They are appended when the surface is named; criteria are
+append-only, so that costs new numbers and never a renumber.
+
+**How this was found, because the manner matters more than the defect.** It was found by
+**listing this slice's screens against the Definition of Done**, not by reading decision 4. The
+decision reads as settled — it says renaming is in scope, names the field, and bounds what else
+may change — and §3 asserted for a day that it had settled the surface too. Nothing in reading it
+surfaced the gap. **A mechanical sweep against an external checklist did**, which is the argument
+for running such sweeps rather than trusting a careful reading of one's own document.
+
+**Status: OUTSTANDING.**
 
 ## 6. Unknowns and spikes
 
