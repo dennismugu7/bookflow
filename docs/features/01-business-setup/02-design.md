@@ -873,3 +873,52 @@ membership, and E14 means a replacement must be admin-created with `email_confir
 **So: T1 through T11 can be built and locally verified before the reset. What cannot happen is
 merging any of it** — `DEFINITION_OF_DONE.md` wants CI green end to end, and PR #14 is already
 waiting on the same wall. The work is not blocked; only the merge is.
+
+### E.4 The first vertical pierce — and where §E and the manual disagree
+
+**§E's ordering constraints stand. What follows changes the granularity of the first pass, not
+the order.**
+
+**The disagreement, stated plainly.** The manual's Phase 3 demands *"a thin vertical slice that
+pierces every layer and works end to end — one field, one row, one button"* **before any layer is
+complete.** §E's tasks are **complete-in-layer**: T4 is the whole API vertical — three routes,
+full validation, the regenerated client — and building it as written puts every route in place
+before a single screen exists. **That is a horizontal layer wearing a vertical name**, and the
+manual warns about exactly it: *"nothing actually runs until the very end, and integration
+problems all hit you at once, late."*
+
+**THE FIRST PIERCE: screen #20's business section.** Reading `GET /v1/me/business`, and renaming
+through `PATCH /v1/businesses/{businessId}`. One field — the business name. One row — the
+caller's business. One button — the rename.
+
+**Why #20 and not #12**, which is the more obvious "home" candidate: **#12 needs the routing
+change**, and the routing change drags in the whole T7+T8 atomic bundle — the avatar, the account
+menu, the sign-out relocation, the first push route. **#20 is at `/home` and reachable today**,
+so the pierce needs no navigation work at all. The thinnest pierce is the one that borrows an
+existing route rather than inventing one.
+
+**Why rename is in the pierce and not deferred.** The manual's exit condition is *"click →
+request → service → query → database → back up the stack → rendered on screen."* **A read on load
+has no click.** Rename supplies it, and it is one field and one button — the manual's own
+measure. Without it the pierce proves the read path and stops short of the sentence the phase is
+defined by.
+
+**Why this ordering defers a decision rather than forcing one.** **Screen #20 is already
+classified under ADR-039**, in PR 3b, and decision 11's widening inherits that classification.
+So the classification owed for **#5, #12 and #17** — see §C.8 — **is not due until thickening**,
+which is where those screens are built. Piercing through #20 buys that time honestly rather than
+by postponing an obligation that has come due.
+
+**What the pierce does NOT include.** Named so its absence reads as sequencing rather than
+oversight — **every one is thickening, in §E's existing order**:
+
+- **Creating a business** (`POST /v1/businesses`) — T4's remainder and T6's screen #5.
+- **The conflict slug** `business-already-exists` — T3. Nothing in the pierce can conflict:
+  it reads and renames a business that already exists.
+- **Decision 10's migration** — T2. The pierce adds no constraint and needs none.
+- **The dashboard and the account menu** — T7+T8, atomic, and deliberately untouched.
+- **The membership-status replacement** — T9. The pierce reads the business directly; it does
+  not yet change what `membership_repository.dart` reports.
+
+**After the pierce, everything is thickening rather than construction**, which is the manual's own
+test for having finished this phase.
