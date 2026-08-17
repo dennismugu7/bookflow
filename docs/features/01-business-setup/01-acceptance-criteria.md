@@ -7,6 +7,23 @@ Each statement below is observable from outside the implementation — an API re
 state, or something on screen — and each can fail. No test name, file name or framework detail
 appears here, deliberately.
 
+> ## The numbering rule — append-only, never renumbered
+>
+> **Criteria are cited by number, here and in every document, test and review that follows. A
+> criterion's number is therefore permanent.**
+>
+> - **New criteria take the next free number.** Never insert, never reflow.
+> - **Never renumber, never reorder, never reuse a number**, including one whose criterion has
+>   been withdrawn.
+> - **To withdraw one, mark it withdrawn in place with the reason**, and leave its number
+>   standing. A gap is readable; a silently reassigned number makes every prior citation point
+>   at something else.
+> - Correcting a typo in a statement is fine. Changing what it *asserts* is a withdrawal plus a
+>   new number.
+>
+> This rule exists in the file rather than in a person's memory because renumbering is the
+> tidiest-looking way to break every citation at once.
+
 ## Criteria
 
 ### Creating a business, and what exists afterwards
@@ -86,6 +103,43 @@ appears here, deliberately.
 33. A failed business-creation request surfaces an error to the owner and does not leave the
     screen in a permanent loading state.
 
+### The conflict on a second business (decision 8)
+
+34. A creation attempt by an account that already has a business is refused, and no second
+    business and no second membership is created.
+35. That refusal is an RFC 9457 problem document whose `type` names a conflict, distinct from
+    every problem type the API returned before this slice.
+36. A refused second attempt that submitted a *different* name leaves the existing business's
+    name unchanged, and the submitted name is stored nowhere.
+
+### Names are stored trimmed (decision 9)
+
+37. A name submitted with leading or trailing whitespace is stored without it: a subsequent read
+    returns the trimmed name.
+38. A name of exactly 200 non-whitespace characters submitted with surrounding whitespace is
+    accepted, and the name afterwards readable is exactly those 200 characters.
+39. A rename trims identically to creation: a new name submitted with surrounding whitespace is
+    stored without it.
+40. Two names differing only in leading or trailing whitespace are stored identically.
+
+### The membership stub stops lying
+
+41. After creating a business, the account's membership status reports that business rather than
+    reporting that the account has none.
+42. That status survives a restart: an owner who reopens the app on a valid session is still
+    recognised as having a business, and is not returned to the "finish setting up" screen.
+
+## Notes on individual criteria
+
+**Criterion 32 — where the no-echo rule comes from.** It is not introduced here. It restates a
+convention `apps/api/src/platform/problem.ts` already holds and states twice. Beside
+`validation-failed`: *"Carries no field list and no echo of the input, like every other problem
+here — the client knows what it sent, and a reflected value is how an error response becomes a
+probe."* And above `problemBody`, which builds every problem body in the API: *"Deliberately
+carries NO `detail` and NO `instance`. A detail string is where an error response leaks: 'no
+membership for user X on business Y' is a helpful message and an oracle."* Criterion 32 pins the
+existing behaviour so this slice does not become the first route to break it.
+
 ## Deliberately not covered
 
 Each of these is excluded because `00-frame.md` §3 makes it a non-goal or §4 decides it away —
@@ -112,23 +166,36 @@ not because it was overlooked.
 - **Salon category** (decision 5, K16 stays open).
 - **Enforcing name uniqueness.** Decision 7 rules names are not unique; criterion 24 asserts the
   opposite of enforcement, deliberately.
+- **Whether the conflict response names or links the existing business.** Decision 8 settles
+  that the attempt is refused; whether the refusal identifies what already exists is screen copy,
+  not a Phase 0 decision. Note it raises no oracle either way — the caller is that business's
+  owner — so criterion 32's no-echo reasoning does not decide it.
+- **Internal whitespace and Unicode normalisation in names.** Decision 9 trims leading and
+  trailing whitespace and nothing else. Collapsing runs of spaces inside a name, or normalising
+  Unicode forms so two byte-different spellings compare equal, is neither decided nor covered,
+  and criteria 37–40 assert only what trimming the ends produces.
+- **The `PROBLEM_TYPES` entry decision 8 requires.** Criterion 35 pins the response the slug must
+  carry; appending the slug is a change to ADR-014's error contract, tracked as an outstanding
+  obligation in `00-frame.md` §5.2 rather than as a criterion.
 
 ## Blocked
 
-**Three.** Each is a criterion that could not be written because a decision does not exist. None
-has been invented.
+**EMPTY. Nothing is blocked.** The list is kept rather than deleted, because an absent list and
+an empty one read identically to someone looking for what is missing, and only one of them is a
+statement.
 
-1. **What the API returns on a second creation attempt.** Criterion 22 pins the part that is
-   certain — no second business results — and stops there. Undecided: whether the request fails
-   or returns the existing business idempotently, and if it fails, with which status and slug.
-   No existing entry in the API's problem-type table covers a conflict, and adding one is a
-   change to ADR-014's error contract rather than a detail of this slice.
-2. **Whether the name is trimmed before it is stored.** `ck_businesses_name_present` checks
-   `length(btrim(name))`, but the column stores the value as submitted — so `"  Salon  "` is
-   accepted today and stored with its padding, and a 200-character name carrying padding is
-   stored longer than 200 characters. Criteria 8–12 assert acceptance and rejection only; none
-   asserts the stored form, because the stored form is undecided.
-3. **What the setup-continuation state enumerates.** §5 decides that the state exists and what
-   it must not show. It does not decide which remaining steps it lists. Criterion 26 asserts
-   only that it names where the owner is and what remains, which is as precise as the decision
-   allows.
+All three entries closed on 2026-08-17:
+
+1. **What the API returns on a second creation attempt — DECIDED.** Decision 8: refused with a
+   conflict, not silently satisfied by returning the existing business. Criteria 34–36 replace
+   the gap; the slug the response needs is an outstanding obligation in `00-frame.md` §5.2, not
+   a blocked criterion — the behaviour is decided, only the contract edit is pending.
+2. **Whether the name is trimmed before it is stored — DECIDED.** Decision 9: stored trimmed of
+   leading and trailing whitespace. Criteria 37–40 replace the gap.
+3. **What the setup-continuation state enumerates — RULED NOT BLOCKED**, by the guiding session
+   on 2026-08-17. Which remaining steps the state lists is **design, not a Phase 0 decision**:
+   Phase 0 fixes what must be true, and §5's K47 answer already fixes both halves that bind —
+   that the state exists and names where the owner is, and that the bookings empty state and
+   share-link prompt do not appear. Criterion 26 is therefore **correctly** as precise as §5
+   allows, and was never under-specified. It was listed as blocked by mistaking a design
+   question for a missing decision.

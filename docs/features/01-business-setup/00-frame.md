@@ -110,6 +110,27 @@ All six questions this frame raised are answered. Each carries its reason.
    previously true because nobody had asked, which is the state in which a later slice adds a
    unique index without noticing it is reversing something.
    *Decided by Dennis, 2026-08-16, guiding session.*
+8. **What happens when an account that already has a business creates another? — REFUSED WITH A
+   CONFLICT.** Not silently satisfied by returning the existing business.
+   **Reason:** `uq_memberships_user_business` enforces this in the database regardless, so two
+   simultaneous requests hit that constraint whatever the contract says — the contract must
+   therefore name that failure rather than leave it to surface as an unhandled error. And
+   returning the existing business would **silently discard a differently-named second
+   attempt**: the owner asks for "Vera's Salon", receives "Vera Salon", and nothing tells them
+   their input was ignored.
+   **OBLIGATION:** no entry in `apps/api/src/platform/problem.ts`'s `PROBLEM_TYPES` covers a
+   conflict. One must be appended, which touches **ADR-014's error contract** — that table is
+   the contract the Flutter client branches on, and adding a slug is a contract change, not a
+   detail of this slice. **Nothing here implements it.** Recorded as outstanding in §5.2.
+   *Decided by Dennis, 2026-08-17, guiding session.*
+9. **Is a submitted name stored as typed, or trimmed? — STORED TRIMMED** of leading and trailing
+   whitespace.
+   **Reason:** `ck_businesses_name_present` measures `length(btrim(name))`, but the column
+   stores what was submitted. Today that means a padded 200-character name is **stored longer
+   than 200**, and two names a person would call identical can differ in the database by
+   invisible characters. Trimming makes the stored value match what a person would call the
+   name, and makes the 200-character limit mean what it appears to mean.
+   *Decided by Dennis, 2026-08-17, guiding session.*
 
 ### Consequence — the design and the build now disagree, on purpose
 
@@ -196,3 +217,19 @@ ADR-041.
 
 **Status: OUTSTANDING.** This slice's Definition of Done cannot be satisfied until it is done,
 and K27's obligation on the publishing slice travels on it.
+
+### 5.2 Outstanding obligation — the conflict slug does not exist
+
+Decision 8 refuses a second creation attempt **with a conflict**, and there is no conflict in
+`PROBLEM_TYPES`. The nine slugs that exist are `missing-token`, `invalid-token`, `expired-token`,
+`not-found`, `validation-failed`, `password-rejected`, `rate-limited`, `auth-unavailable` and
+`internal-error`. None means "you already have one".
+
+**Why this is not a detail of this slice.** That table is ADR-014's error contract, and the
+Flutter client branches on `type` rather than on a message. The file says a slug *"may be added
+to, but an existing slug never changes meaning"* — so appending is the sanctioned move, and it is
+still a change to a contract two clients read.
+
+**Status: OUTSTANDING.** Nothing in this document adds the slug. Criterion 35 pins the behaviour
+the slug must carry; the slug itself is the first thing the implementation owes, and it is a
+Do-Not-Vibe-adjacent edit to a shared contract rather than a line in a route.
