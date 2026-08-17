@@ -12,27 +12,34 @@ part 'health_response_input.g.dart';
 /// Liveness response.
 ///
 /// Properties:
-/// * [status] 
+/// * [status]
 @BuiltValue()
-abstract class HealthResponseInput implements Built<HealthResponseInput, HealthResponseInputBuilder> {
+abstract class HealthResponseInput
+    implements Built<HealthResponseInput, HealthResponseInputBuilder> {
   @BuiltValueField(wireName: r'status')
   HealthResponseInputStatusEnum get status;
   // enum statusEnum {  ok,  };
 
   HealthResponseInput._();
 
-  factory HealthResponseInput([void updates(HealthResponseInputBuilder b)]) = _$HealthResponseInput;
+  factory HealthResponseInput([void updates(HealthResponseInputBuilder b)]) =
+      _$HealthResponseInput;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(HealthResponseInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<HealthResponseInput> get serializer => _$HealthResponseInputSerializer();
+  static Serializer<HealthResponseInput> get serializer =>
+      _$HealthResponseInputSerializer();
 }
 
-class _$HealthResponseInputSerializer implements PrimitiveSerializer<HealthResponseInput> {
+class _$HealthResponseInputSerializer
+    implements PrimitiveSerializer<HealthResponseInput> {
   @override
-  final Iterable<Type> types = const [HealthResponseInput, _$HealthResponseInput];
+  final Iterable<Type> types = const [
+    HealthResponseInput,
+    _$HealthResponseInput
+  ];
 
   @override
   final String wireName = r'HealthResponseInput';
@@ -55,7 +62,9 @@ class _$HealthResponseInputSerializer implements PrimitiveSerializer<HealthRespo
     HealthResponseInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -107,15 +116,17 @@ class _$HealthResponseInputSerializer implements PrimitiveSerializer<HealthRespo
 }
 
 class HealthResponseInputStatusEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'ok')
-  static const HealthResponseInputStatusEnum ok = _$healthResponseInputStatusEnum_ok;
+  static const HealthResponseInputStatusEnum ok =
+      _$healthResponseInputStatusEnum_ok;
 
-  static Serializer<HealthResponseInputStatusEnum> get serializer => _$healthResponseInputStatusEnumSerializer;
+  static Serializer<HealthResponseInputStatusEnum> get serializer =>
+      _$healthResponseInputStatusEnumSerializer;
 
-  const HealthResponseInputStatusEnum._(String name): super(name);
+  const HealthResponseInputStatusEnum._(String name) : super(name);
 
-  static BuiltSet<HealthResponseInputStatusEnum> get values => _$healthResponseInputStatusEnumValues;
-  static HealthResponseInputStatusEnum valueOf(String name) => _$healthResponseInputStatusEnumValueOf(name);
+  static BuiltSet<HealthResponseInputStatusEnum> get values =>
+      _$healthResponseInputStatusEnumValues;
+  static HealthResponseInputStatusEnum valueOf(String name) =>
+      _$healthResponseInputStatusEnumValueOf(name);
 }
-

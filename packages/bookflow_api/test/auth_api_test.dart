@@ -1,7 +1,6 @@
 import 'package:test/test.dart';
 import 'package:bookflow_api/bookflow_api.dart';
 
-
 /// tests for AuthApi
 void main() {
   final instance = BookflowApi().getAuthApi();
@@ -15,6 +14,5 @@ void main() {
     test('test signUp', () async {
       // TODO
     });
-
   });
 }

@@ -12,7 +12,6 @@ import 'package:bookflow_api/src/model/business.dart';
 import 'package:bookflow_api/src/model/profile.dart';
 
 class MeApi {
-
   final Dio _dio;
 
   final Serializers _serializers;
@@ -32,7 +31,7 @@ class MeApi {
   ///
   /// Returns a [Future] containing a [Response] with a [Profile] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<Profile>> getMe({ 
+  Future<Response<Profile>> getMe({
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -65,11 +64,12 @@ class MeApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(Profile),
-      ) as Profile;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(Profile),
+            ) as Profile;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -105,7 +105,7 @@ class MeApi {
   ///
   /// Returns a [Future] containing a [Response] with a [Business] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<Business>> getMyBusiness({ 
+  Future<Response<Business>> getMyBusiness({
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -138,11 +138,12 @@ class MeApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(Business),
-      ) as Business;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(Business),
+            ) as Business;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -164,5 +165,4 @@ class MeApi {
       extra: _response.extra,
     );
   }
-
 }

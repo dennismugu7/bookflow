@@ -13,25 +13,34 @@ part 'rename_business_request_input.g.dart';
 /// Properties:
 /// * [name] - Required. Trimmed. 1–200 characters after trimming.
 @BuiltValue()
-abstract class RenameBusinessRequestInput implements Built<RenameBusinessRequestInput, RenameBusinessRequestInputBuilder> {
+abstract class RenameBusinessRequestInput
+    implements
+        Built<RenameBusinessRequestInput, RenameBusinessRequestInputBuilder> {
   /// Required. Trimmed. 1–200 characters after trimming.
   @BuiltValueField(wireName: r'name')
   String get name;
 
   RenameBusinessRequestInput._();
 
-  factory RenameBusinessRequestInput([void updates(RenameBusinessRequestInputBuilder b)]) = _$RenameBusinessRequestInput;
+  factory RenameBusinessRequestInput(
+          [void updates(RenameBusinessRequestInputBuilder b)]) =
+      _$RenameBusinessRequestInput;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(RenameBusinessRequestInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<RenameBusinessRequestInput> get serializer => _$RenameBusinessRequestInputSerializer();
+  static Serializer<RenameBusinessRequestInput> get serializer =>
+      _$RenameBusinessRequestInputSerializer();
 }
 
-class _$RenameBusinessRequestInputSerializer implements PrimitiveSerializer<RenameBusinessRequestInput> {
+class _$RenameBusinessRequestInputSerializer
+    implements PrimitiveSerializer<RenameBusinessRequestInput> {
   @override
-  final Iterable<Type> types = const [RenameBusinessRequestInput, _$RenameBusinessRequestInput];
+  final Iterable<Type> types = const [
+    RenameBusinessRequestInput,
+    _$RenameBusinessRequestInput
+  ];
 
   @override
   final String wireName = r'RenameBusinessRequestInput';
@@ -54,7 +63,9 @@ class _$RenameBusinessRequestInputSerializer implements PrimitiveSerializer<Rena
     RenameBusinessRequestInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +115,3 @@ class _$RenameBusinessRequestInputSerializer implements PrimitiveSerializer<Rena
     return result.build();
   }
 }
-

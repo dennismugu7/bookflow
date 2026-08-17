@@ -13,25 +13,32 @@ part 'rename_business_request.g.dart';
 /// Properties:
 /// * [name] - Required. Trimmed. 1–200 characters after trimming.
 @BuiltValue()
-abstract class RenameBusinessRequest implements Built<RenameBusinessRequest, RenameBusinessRequestBuilder> {
+abstract class RenameBusinessRequest
+    implements Built<RenameBusinessRequest, RenameBusinessRequestBuilder> {
   /// Required. Trimmed. 1–200 characters after trimming.
   @BuiltValueField(wireName: r'name')
   String get name;
 
   RenameBusinessRequest._();
 
-  factory RenameBusinessRequest([void updates(RenameBusinessRequestBuilder b)]) = _$RenameBusinessRequest;
+  factory RenameBusinessRequest(
+      [void updates(RenameBusinessRequestBuilder b)]) = _$RenameBusinessRequest;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(RenameBusinessRequestBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<RenameBusinessRequest> get serializer => _$RenameBusinessRequestSerializer();
+  static Serializer<RenameBusinessRequest> get serializer =>
+      _$RenameBusinessRequestSerializer();
 }
 
-class _$RenameBusinessRequestSerializer implements PrimitiveSerializer<RenameBusinessRequest> {
+class _$RenameBusinessRequestSerializer
+    implements PrimitiveSerializer<RenameBusinessRequest> {
   @override
-  final Iterable<Type> types = const [RenameBusinessRequest, _$RenameBusinessRequest];
+  final Iterable<Type> types = const [
+    RenameBusinessRequest,
+    _$RenameBusinessRequest
+  ];
 
   @override
   final String wireName = r'RenameBusinessRequest';
@@ -54,7 +61,9 @@ class _$RenameBusinessRequestSerializer implements PrimitiveSerializer<RenameBus
     RenameBusinessRequest object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +113,3 @@ class _$RenameBusinessRequestSerializer implements PrimitiveSerializer<RenameBus
     return result.build();
   }
 }
-

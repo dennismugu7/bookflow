@@ -13,25 +13,34 @@ part 'create_business_request_input.g.dart';
 /// Properties:
 /// * [name] - Required. Trimmed. 1–200 characters after trimming.
 @BuiltValue()
-abstract class CreateBusinessRequestInput implements Built<CreateBusinessRequestInput, CreateBusinessRequestInputBuilder> {
+abstract class CreateBusinessRequestInput
+    implements
+        Built<CreateBusinessRequestInput, CreateBusinessRequestInputBuilder> {
   /// Required. Trimmed. 1–200 characters after trimming.
   @BuiltValueField(wireName: r'name')
   String get name;
 
   CreateBusinessRequestInput._();
 
-  factory CreateBusinessRequestInput([void updates(CreateBusinessRequestInputBuilder b)]) = _$CreateBusinessRequestInput;
+  factory CreateBusinessRequestInput(
+          [void updates(CreateBusinessRequestInputBuilder b)]) =
+      _$CreateBusinessRequestInput;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CreateBusinessRequestInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CreateBusinessRequestInput> get serializer => _$CreateBusinessRequestInputSerializer();
+  static Serializer<CreateBusinessRequestInput> get serializer =>
+      _$CreateBusinessRequestInputSerializer();
 }
 
-class _$CreateBusinessRequestInputSerializer implements PrimitiveSerializer<CreateBusinessRequestInput> {
+class _$CreateBusinessRequestInputSerializer
+    implements PrimitiveSerializer<CreateBusinessRequestInput> {
   @override
-  final Iterable<Type> types = const [CreateBusinessRequestInput, _$CreateBusinessRequestInput];
+  final Iterable<Type> types = const [
+    CreateBusinessRequestInput,
+    _$CreateBusinessRequestInput
+  ];
 
   @override
   final String wireName = r'CreateBusinessRequestInput';
@@ -54,7 +63,9 @@ class _$CreateBusinessRequestInputSerializer implements PrimitiveSerializer<Crea
     CreateBusinessRequestInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +115,3 @@ class _$CreateBusinessRequestInputSerializer implements PrimitiveSerializer<Crea
     return result.build();
   }
 }
-

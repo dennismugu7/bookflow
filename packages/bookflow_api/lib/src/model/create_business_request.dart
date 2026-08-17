@@ -13,25 +13,32 @@ part 'create_business_request.g.dart';
 /// Properties:
 /// * [name] - Required. Trimmed. 1–200 characters after trimming.
 @BuiltValue()
-abstract class CreateBusinessRequest implements Built<CreateBusinessRequest, CreateBusinessRequestBuilder> {
+abstract class CreateBusinessRequest
+    implements Built<CreateBusinessRequest, CreateBusinessRequestBuilder> {
   /// Required. Trimmed. 1–200 characters after trimming.
   @BuiltValueField(wireName: r'name')
   String get name;
 
   CreateBusinessRequest._();
 
-  factory CreateBusinessRequest([void updates(CreateBusinessRequestBuilder b)]) = _$CreateBusinessRequest;
+  factory CreateBusinessRequest(
+      [void updates(CreateBusinessRequestBuilder b)]) = _$CreateBusinessRequest;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(CreateBusinessRequestBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<CreateBusinessRequest> get serializer => _$CreateBusinessRequestSerializer();
+  static Serializer<CreateBusinessRequest> get serializer =>
+      _$CreateBusinessRequestSerializer();
 }
 
-class _$CreateBusinessRequestSerializer implements PrimitiveSerializer<CreateBusinessRequest> {
+class _$CreateBusinessRequestSerializer
+    implements PrimitiveSerializer<CreateBusinessRequest> {
   @override
-  final Iterable<Type> types = const [CreateBusinessRequest, _$CreateBusinessRequest];
+  final Iterable<Type> types = const [
+    CreateBusinessRequest,
+    _$CreateBusinessRequest
+  ];
 
   @override
   final String wireName = r'CreateBusinessRequest';
@@ -54,7 +61,9 @@ class _$CreateBusinessRequestSerializer implements PrimitiveSerializer<CreateBus
     CreateBusinessRequest object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -104,4 +113,3 @@ class _$CreateBusinessRequestSerializer implements PrimitiveSerializer<CreateBus
     return result.build();
   }
 }
-

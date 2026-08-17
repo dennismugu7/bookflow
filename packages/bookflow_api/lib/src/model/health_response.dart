@@ -12,25 +12,29 @@ part 'health_response.g.dart';
 /// Liveness response.
 ///
 /// Properties:
-/// * [status] 
+/// * [status]
 @BuiltValue()
-abstract class HealthResponse implements Built<HealthResponse, HealthResponseBuilder> {
+abstract class HealthResponse
+    implements Built<HealthResponse, HealthResponseBuilder> {
   @BuiltValueField(wireName: r'status')
   HealthResponseStatusEnum get status;
   // enum statusEnum {  ok,  };
 
   HealthResponse._();
 
-  factory HealthResponse([void updates(HealthResponseBuilder b)]) = _$HealthResponse;
+  factory HealthResponse([void updates(HealthResponseBuilder b)]) =
+      _$HealthResponse;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(HealthResponseBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<HealthResponse> get serializer => _$HealthResponseSerializer();
+  static Serializer<HealthResponse> get serializer =>
+      _$HealthResponseSerializer();
 }
 
-class _$HealthResponseSerializer implements PrimitiveSerializer<HealthResponse> {
+class _$HealthResponseSerializer
+    implements PrimitiveSerializer<HealthResponse> {
   @override
   final Iterable<Type> types = const [HealthResponse, _$HealthResponse];
 
@@ -55,7 +59,9 @@ class _$HealthResponseSerializer implements PrimitiveSerializer<HealthResponse> 
     HealthResponse object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
+    return _serializeProperties(serializers, object,
+            specifiedType: specifiedType)
+        .toList();
   }
 
   void _deserializeProperties(
@@ -107,15 +113,16 @@ class _$HealthResponseSerializer implements PrimitiveSerializer<HealthResponse> 
 }
 
 class HealthResponseStatusEnum extends EnumClass {
-
   @BuiltValueEnumConst(wireName: r'ok')
   static const HealthResponseStatusEnum ok = _$healthResponseStatusEnum_ok;
 
-  static Serializer<HealthResponseStatusEnum> get serializer => _$healthResponseStatusEnumSerializer;
+  static Serializer<HealthResponseStatusEnum> get serializer =>
+      _$healthResponseStatusEnumSerializer;
 
-  const HealthResponseStatusEnum._(String name): super(name);
+  const HealthResponseStatusEnum._(String name) : super(name);
 
-  static BuiltSet<HealthResponseStatusEnum> get values => _$healthResponseStatusEnumValues;
-  static HealthResponseStatusEnum valueOf(String name) => _$healthResponseStatusEnumValueOf(name);
+  static BuiltSet<HealthResponseStatusEnum> get values =>
+      _$healthResponseStatusEnumValues;
+  static HealthResponseStatusEnum valueOf(String name) =>
+      _$healthResponseStatusEnumValueOf(name);
 }
-

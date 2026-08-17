@@ -1,7 +1,6 @@
 import 'package:test/test.dart';
 import 'package:bookflow_api/bookflow_api.dart';
 
-
 /// tests for BusinessesApi
 void main() {
   final instance = BookflowApi().getBusinessesApi();
@@ -33,6 +32,5 @@ void main() {
     test('test renameBusiness', () async {
       // TODO
     });
-
   });
 }

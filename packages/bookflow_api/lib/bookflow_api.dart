@@ -29,4 +29,3 @@ export 'package:bookflow_api/src/model/signup_accepted.dart';
 export 'package:bookflow_api/src/model/signup_accepted_input.dart';
 export 'package:bookflow_api/src/model/signup_request.dart';
 export 'package:bookflow_api/src/model/signup_request_input.dart';
-

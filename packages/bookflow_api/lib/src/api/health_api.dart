@@ -11,7 +11,6 @@ import 'package:dio/dio.dart';
 import 'package:bookflow_api/src/model/health_response.dart';
 
 class HealthApi {
-
   final Dio _dio;
 
   final Serializers _serializers;
@@ -31,7 +30,7 @@ class HealthApi {
   ///
   /// Returns a [Future] containing a [Response] with a [HealthResponse] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<HealthResponse>> getHealth({ 
+  Future<Response<HealthResponse>> getHealth({
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
     Map<String, dynamic>? extra,
@@ -64,11 +63,12 @@ class HealthApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null ? null : _serializers.deserialize(
-        rawResponse,
-        specifiedType: const FullType(HealthResponse),
-      ) as HealthResponse;
-
+      _responseData = rawResponse == null
+          ? null
+          : _serializers.deserialize(
+              rawResponse,
+              specifiedType: const FullType(HealthResponse),
+            ) as HealthResponse;
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -90,5 +90,4 @@ class HealthApi {
       extra: _response.extra,
     );
   }
-
 }
