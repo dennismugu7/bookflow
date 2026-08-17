@@ -339,12 +339,15 @@ which is public. These three are behind a token.
 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 31, 32, 34, 35, 36, 37, 38, 39, 40,
 51.
 
-**Criteria this contract CANNOT satisfy — the list that matters, 22 of them:**
+**Criteria this contract CANNOT satisfy — the list that matters, 28 of them:**
 
-**COUNT CORRECTED 2026-08-17.** This mapping totalled 51 while the criteria file held 54:
-**52, 53 and 54 were appended in the same step that named the rename surface and were never
-classified.** All three are UI — the business section, its loading state, its error state — so
-all three belong below, with the other screen criteria. **32 satisfiable + 22 not = 54.**
+**COUNT CORRECTED TWICE, and the pattern is worth more than either correction.** First on
+2026-08-17, when this mapping totalled 51 against a file holding 54 — criteria 52–54 appended
+with the rename surface and never classified. Then again the same day at 54 against 60, criteria
+**55–60** appended with decision 12's navigation chain and likewise never classified. All nine
+are UI. **The mapping drifts every time criteria are appended in a step that does not revisit
+it**, which is a standing hazard of an append-only list read by a section that summarises it, and
+the reason the totals are stated rather than left implicit. **32 satisfiable + 28 not = 60.**
 
 - **22 — CORRECTED 2026-08-17. This was listed as satisfiable and is not.** Criterion 22 reads
   *"after **any** further creation attempt"*, and a concurrent double-submit is one. **The
@@ -365,6 +368,10 @@ all three belong below, with the other screen criteria. **32 satisfiable + 22 no
   database; no response body exposes membership rows.
 - **25, 26, 27, 28, 29, 30, 33, 43, 44, 45, 46, 47, 52, 53, 54 (screens and their states).** UI,
   in §C. The contract is necessary for several and sufficient for none.
+- **55, 56, 57, 58, 59, 60 (reachability and the account menu).** UI and routing, in §C.9.
+  **The contract is not even necessary for these** — no endpoint is involved in whether a screen
+  can be opened, whether a menu omits a row, or whether sign-out is reachable. They are the
+  criteria furthest from this section, which is precisely why the mapping lost them.
 - **41 and 42 (the membership status reports the business, and survives a restart).** `GET
   /v1/me/business` is necessary and not sufficient: 41 needs the Flutter repository to replace
   its `MembershipStatus.none` constant, and 42 needs session restore to re-issue the call.
@@ -640,7 +647,151 @@ through neither.** Criterion 57 exists for that.
 
 ## D. Layers touched, and risk
 
-*Not written in this step.*
+The manual's own list, walked in its own order. **A layer this slice does not touch is named and
+marked so, rather than omitted** — an omitted layer and an untouched one look identical, and only
+one of them has been thought about.
+
+### D.1 Layer by layer
+
+**Database.** Touched. One migration — decision 10's partial unique index (§A.4). No table, no
+column, no type, no trigger. Writes to `businesses` and `memberships`; reads both.
+
+**Data-access.** Touched, and this is where most of the new code lives. A new
+`modules/businesses/` repository gaining insert, update and two scoped reads, each **taking its
+executor as an argument** per `CLAUDE.md` §5. The insert of a business and its membership must
+share one transaction.
+
+**Business logic.** Touched. A new `businesses.service.ts`: the conflict check, the
+create-both-rows transaction, and the rename. Thin, but not empty — and it is where the
+read-then-insert of decision 8 lives.
+
+**API.** Touched. Three new routes, one existing route unchanged, one new `PROBLEM_TYPES` entry
+(§5.2), and the OpenAPI spec plus the Dart client regenerating as a consequence.
+
+**Frontend.** Touched, heavily. Three screens built (#5, #12, #17), one widened (#20), a new
+`features/business/` folder, `features/membership/`'s constant replaced, and the first
+tap-driven route.
+
+**Infra / config.** **NOT TOUCHED.** No new environment variable, no new secret, no Render
+change, no `render.yaml` change, no new CI job. The one infra *dependency* is that ADR-034's
+existing `migrate-staging` job must run for §5.4's migration — an existing job doing its
+existing work.
+
+**Jobs / webhooks.** **NOT TOUCHED.** No outbox row, no worker, no scheduled task, no inbound
+webhook. Worth stating because a business-creation slice might be expected to send a welcome
+email; ADR-027 puts account email on GoTrue's side and the outbox does not ship until the booking
+slice.
+
+### D.2 Do-Not-Vibe surfaces — checked against `CLAUDE.md` §6, not against memory
+
+The universal list is *payment math · webhooks · migrations · auth and password reset ·
+production secrets*. The Bookflow-specific list adds the availability predicate and exclusion
+constraint, booking status transitions, the membership scoping rule, the public projection
+allowlist, booking token minting and validation, the payment-proof access path, handle assignment
+and retirement, and the outbox transaction boundary.
+
+**Touched — two:**
+
+1. **Migrations.** Decision 10's partial unique index. Universal list.
+2. **The membership scoping rule.** Twice over: the new repository applies it to every protected
+   read and write, and decision 10's index constrains the very table the rule traverses.
+
+**Deliberately checked and NOT touched — the rest of both lists.** No payment math, no webhooks,
+no auth or password-reset path (sign-up and sign-in are untouched; this slice adds no
+credential handling), no production secrets, no availability predicate or exclusion constraint,
+no booking statuses, no public projection (`business_public` is a non-goal), no booking tokens,
+no payment-proof path, no handle assignment (ADR-021's table does not exist), and no outbox
+boundary.
+
+**Operationally, per `CLAUDE.md` §6:** both are written deliberately, reviewed line by line by a
+human, never accepted from a generated diff on faith, and **named in the completion report.**
+
+### D.3 Risks — the specific ones
+
+Generic risk is not worth writing down. Each below is particular to this slice, and each carries
+**what would make it visible early** rather than at the gate.
+
+**R1 — `bookflow_api`'s write grants on `businesses` and `memberships` have never been exercised
+by any code path.** `20260811180042_application_role.sql` grants CRUD, but **nothing under
+`apps/api/src` has ever inserted into either table** — the only writes the API performs today are
+to `user_profiles`, at sign-up. A grant that has never run is a grant nobody has tested.
+**Early warning:** the first integration test that inserts a business, run against the real local
+stack under the `bookflow_api` role rather than as `postgres`. `role.integration.test.ts` already
+establishes the pattern for asserting what a role may and may not do. **This is cheap and it is
+the first thing to write** — it fails in seconds locally rather than in `migrate-staging`.
+
+**R2 — the first tap-driven route.** §C.9: `router.dart`'s redirect is total, no `GoRoute` has
+children, nothing calls `context.go` or `context.push`. A pushed route is **not** the destination
+the provider computes, so the redirect as written would pull the user straight back to `/home`.
+This is a change to routing's shape, in the one file that decides where a user may be.
+**Early warning:** `router_redirect_test.dart` already drives both membership statuses through
+the redirect by overriding the repository, without a widget tree. **A test that pushes #17 and
+asserts the redirect does not yank the user back belongs in that same file, written before the
+screen exists.** If the redirect cannot express it, that is known before any widget is built.
+
+**R3 — criteria 41 and 42 cannot be demonstrated on the staging e2e account.** K78's standing
+rule is that this account **must never be given a membership**, and 41 and 42 are precisely about
+an account acquiring one. **E14 compounds it:** staging's sender is Resend's test address
+reaching one inbox, so a replacement account cannot complete an activation link and must be
+admin-created with `email_confirmed_at` set, as the existing one was. **Early warning:** decide
+the second account's provenance **now, in Phase 1**, not when the e2e gate is written — and the
+check that proves it is `docs/ENVIRONMENT.md`'s "expected total: 1" identity check on
+`auth.users`, which **must be updated in the same commit that creates the account** or it starts
+reporting residue that is not residue.
+
+**R4 — the mapping in §B.9 drifts whenever criteria are appended.** It has been wrong twice in
+one day, both times because criteria were added in a step that did not revisit it. **Early
+warning:** the totals are now stated explicitly, so a reader can subtract; and the criteria file's
+count is a single `grep`. **Cheapest real fix is procedural** — whoever appends a criterion
+classifies it in the same commit.
+
+**R5 — three screens and a widened fourth is the largest frontend surface any slice has
+carried.** Phase 3 built one screen and called it the one true page. This slice builds #5, #12
+and #17, widens #20, and adds the first push route. **Early warning:** §E's task order is where
+this is either managed or not, and the manual's own instruction — *"Aim for an order where each
+step leaves the app in a runnable state"* — is the test. **Specifically: the diff that moves
+`/home` to screen #12 must not be separable from the diff that builds #17**, because between them
+sign-out is reachable through neither screen (§C.9). Criterion 57 is the assertion; the task
+order is what keeps it true at every commit rather than only at the end.
+
+### D.4 A question for you to rule on, not settled here
+
+**Does the first push route need its own ADR, an amendment to ADR-028, or neither?**
+
+**What ADR-028 actually decides, quoted in full** (lines 23–26): *"**Routing: `go_router`.**
+Declarative routes, and the auth-aware redirect between the logged-out and logged-in shells
+expressed as a `redirect` on the router rather than as navigation scattered through widgets. One
+place decides whether an unauthenticated user may be where they are."*
+
+**That is narrower than it is usually read.** It decides the library; it decides that the
+**auth-aware** redirect lives on the router; and its stated purpose is *"whether an
+unauthenticated user may be where they are."* **It says nothing about the redirect being total,
+and it does not forbid push navigation.**
+
+**The totality is emergent, not decided.** It is a property of how `router.dart` was written —
+the redirect returns `destination.path` unless already there, and no `GoRoute` has children — not
+a rule anyone recorded. The file's own comment stays within ADR-028's scope: *"no screen in this
+app pushes a route **to keep an unauthenticated user out**, and no screen checks a session before
+rendering."* That is a statement about auth, not about navigation generally. **No other ADR
+addresses routing** — a search of `docs/decisions/` for `go_router` or `redirect` returns ADR-028
+and ADR-021, and ADR-021's matches are about URL redirects for retired salon handles, an
+unrelated sense of the word.
+
+**Recommendation: an AMENDMENT to ADR-028, not a new ADR, and not neither.**
+
+- **Not a new ADR**, because nothing is being reversed or re-decided. `go_router` stands, the
+  auth-aware redirect stands, and its rationale is untouched.
+- **Not neither**, because the next reader will hit exactly the ambiguity this section had to
+  resolve by reading source. ADR-028 is where someone looks to find out how navigation works, and
+  it currently answers only half the question.
+- **An amendment**, because this is `CLAUDE.md` §3's category precisely: a fact that has moved on.
+  It would record that the redirect is total for shell selection, that push navigation is
+  permitted **within** a shell, and where the boundary sits.
+
+**One caveat on my own recommendation.** ADR-041's amendment was filed under the same category
+and the guiding brief records that as a **governance gap** — §3 has no category for an amendment
+that *sharpens* an under-specified rule. This is arguably the same shape: ADR-028 is not wrong,
+it is silent. **Worth ruling on both together.**
 
 ## E. Task sequence
 
