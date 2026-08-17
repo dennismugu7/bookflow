@@ -68,8 +68,13 @@ Deliberately excluded. Each is a slice of its own or an already-tracked item.
   names one — see §5.3. It leaves the team-roster, portfolio, opening-hours and handle editing
   surfaces open.
 - **A second business, a second member, or any role but `owner`.** ADR-003 is one business per
-  account; `uq_memberships_user_business` and `ck_memberships_role check (role in ('owner'))`
-  already hold that line. I9's role vocabulary stays closed.
+  account, and I9's role vocabulary stays closed.
+  **CORRECTED 2026-08-17.** This bullet previously read *"`uq_memberships_user_business` and
+  `ck_memberships_role check (role in ('owner'))` already hold that line."* **Neither does.**
+  `ck_memberships_role` constrains the vocabulary, not the count, and
+  `uq_memberships_user_business` forbids only a repeat join to the *same* business — a user may
+  hold memberships in two different businesses and no constraint objects. **What holds the line
+  is decision 10's partial unique index**, which this slice adds; before it, nothing did.
 - **The multi-step sheet flow itself** — back-navigation between onboarding steps and
   preservation of partially-entered data across them (screen #5, interaction A).
 - **The dashboard (#12)** beyond the minimum §5's K47 answer requires — the setup-continuation
@@ -114,12 +119,20 @@ All six questions this frame raised are answered. Each carries its reason.
    *Decided by Dennis, 2026-08-16, guiding session.*
 8. **What happens when an account that already has a business creates another? — REFUSED WITH A
    CONFLICT.** Not silently satisfied by returning the existing business.
-   **Reason:** `uq_memberships_user_business` enforces this in the database regardless, so two
-   simultaneous requests hit that constraint whatever the contract says — the contract must
-   therefore name that failure rather than leave it to surface as an unhandled error. And
-   returning the existing business would **silently discard a differently-named second
-   attempt**: the owner asks for "Vera's Salon", receives "Vera Salon", and nothing tells them
-   their input was ignored.
+   **Reason — CORRECTED 2026-08-17. The decision was right; its stated reason was wrong.**
+   It originally read: *"`uq_memberships_user_business` enforces this in the database regardless,
+   so two simultaneous requests hit that constraint whatever the contract says."* **They do not
+   hit it.** Two concurrent creations insert `(U, B1)` and `(U, B2)` with different business ids;
+   the tuples differ, and that constraint only forbids a repeat join to the *same* business. At
+   the time this decision was written **nothing in the schema or the code enforced the rule at
+   all**, so the argument rested on a constraint that does not implement it.
+   **Decision 10 is what makes the reason true.** With the partial unique index in place, two
+   simultaneous requests genuinely do hit a constraint whatever the contract says, and the
+   contract must therefore name that failure rather than leave it to surface as an unhandled
+   error. The rest of the original reason stands untouched and never depended on the schema:
+   returning the existing business would **silently discard a differently-named second attempt**
+   — the owner asks for "Vera's Salon", receives "Vera Salon", and nothing tells them their input
+   was ignored.
    **OBLIGATION:** no entry in `apps/api/src/platform/problem.ts`'s `PROBLEM_TYPES` covers a
    conflict. One must be appended, which touches **ADR-014's error contract** — that table is
    the contract the Flutter client branches on, and adding a slug is a contract change, not a
@@ -133,6 +146,25 @@ All six questions this frame raised are answered. Each carries its reason.
    invisible characters. Trimming makes the stored value match what a person would call the
    name, and makes the 200-character limit mean what it appears to mean.
    *Decided by Dennis, 2026-08-17, guiding session.*
+10. **What enforces one business per account? — A PARTIAL UNIQUE INDEX**, added by this slice:
+    `memberships (user_id) where role = 'owner'`.
+    **Reason:** until today, **nothing enforced ADR-003's rule at all.** No trigger, no RLS
+    policy (there are zero policies in the repository), no check constraint, and no application
+    code — nothing under `apps/api/src` inserts into `memberships`. The rule rested on a
+    read-then-insert that had not been written yet, and `uq_memberships_user_business` was
+    widely read as covering it. **It does not:** it forbids the same user joining the same
+    business twice, and two concurrent creations produce `(U, B1)` and `(U, B2)` with different
+    business ids, so the tuples differ and neither insert is rejected.
+    **Why PARTIAL, and this is the load-bearing half.** A plain `unique (user_id)` would cap a
+    user at one membership of any kind and **permanently forbid a stylist working at two
+    salons**. ADR-003 does not forbid that — it caps businesses per account for v1 and
+    anticipates growth in terms: *"Adding a second seat later is a feature that inserts rows;
+    it is not an auth rewrite."* Predicating on `role = 'owner'` enforces exactly the rule ADR-003
+    states and leaves I9's role vocabulary free to widen, which `ck_memberships_role` is already
+    documented as the place to do.
+    **OBLIGATION:** this makes the slice's migration count one rather than zero, and puts it on
+    the Do-Not-Vibe surface. See §5.4 and `02-design.md` §A.4.
+    *Decided by Dennis, 2026-08-17, guiding session.*
 
 ### Consequence — the design and the build now disagree, on purpose
 
@@ -259,6 +291,22 @@ decision reads as settled — it says renaming is in scope, names the field, and
 may change — and §3 asserted for a day that it had settled the surface too. Nothing in reading it
 surfaced the gap. **A mechanical sweep against an external checklist did**, which is the argument
 for running such sweeps rather than trusting a careful reading of one's own document.
+
+**Status: OUTSTANDING.**
+
+### 5.4 Outstanding obligation — decision 10's migration must be written and applied
+
+Decision 10 adds the first migration this slice owns. **It is written in Phase 3, not now** —
+Phase 1 sketches a migration and Phase 3 scaffolds it (`02-design.md` §A.4 carries the DDL).
+
+**It reaches staging only through CI.** ADR-034 applies migrations from the `migrate-staging`
+job on merge to `main`, never from a development machine, so this obligation **cannot be
+discharged before Actions minutes reset (~2026-08-31)**. That is the same wall PR #14 is behind,
+and it now has a second thing waiting on it.
+
+**It is a Do-Not-Vibe surface twice over** — migrations universally, and the membership scoping
+rule specifically, since it constrains the table that rule traverses. It is reviewed line by
+line by a human and named in the completion report.
 
 **Status: OUTSTANDING.**
 

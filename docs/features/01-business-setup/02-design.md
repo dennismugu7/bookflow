@@ -56,9 +56,16 @@ join table, and the migration says why the shape was chosen: *"a business row do
 owns it, which is the point of modelling ownership as a join rather than an owner_id column."*
 ADR-003's one-business-per-account rule is **not** enforced by `uq_memberships_user_business` —
 that constraint forbids the same user joining the same business twice, not a user joining two
-different businesses. **Decision 8's conflict is therefore enforced by application logic over a
-`memberships` read, and the unique constraint is the backstop for the concurrent case only.**
-This is the most important sentence in this section and it corrects a natural misreading.
+different businesses.
+
+**CORRECTED 2026-08-17.** This paragraph originally continued: *"the unique constraint is the
+backstop for the concurrent case only."* **It is not a backstop for that case at all.** Two
+concurrent creations insert `(U, B1)` and `(U, B2)` with different business ids; the tuples
+differ and neither is rejected. The constraint backstops only a double-join to the *same*
+business, which is not the race decision 8 is about — so as written, criterion 22 was
+unachievable. **Decision 10 supplies the real backstop:** a partial unique index on
+`memberships (user_id) where role = 'owner'`, sketched in §A.4. Application logic still performs
+the read; the index is what makes the concurrent case safe.
 
 `ck_businesses_name_present` measures **`btrim(name)`** while the column stores what is given.
 Decision 9 (store trimmed) is an application-layer rule; the constraint does not impose it.
@@ -76,7 +83,7 @@ none.
 |---|---|---|
 | Q1 | Insert a business | none needed; maintains `pk_businesses` |
 | Q2 | Insert a membership | uniqueness checked against `uq_memberships_user_business` |
-| Q3 | Does this account already have a business? — `memberships where user_id = $1` (decision 8, criterion 22) | `uq_memberships_user_business`, **prefix match on `user_id`** |
+| Q3 | Does this account already have a business? — `memberships where user_id = $1` (decision 8, criterion 22) | after decision 10, **`uq_memberships_one_owner_per_user` directly** — it is keyed on exactly this predicate. `uq_memberships_user_business`'s `user_id` prefix also serves it. **The read alone is insufficient**: it answers the question but cannot prevent two concurrent readers both finding none. The index, not the read, is what satisfies criterion 22. |
 | Q4 | Membership status for criterion 41 — the caller's business via `memberships where user_id = $1` joined to `businesses` | `uq_memberships_user_business` prefix on `user_id`, then `pk_businesses` |
 | Q5 | Read a business by id, scoped — the existing `findBusinessForUser` | `pk_businesses` for `businesses.id`; the join and `user_id` filter by `uq_memberships_user_business`, or `ix_memberships_business` for the join side |
 | Q6 | Rename — update `businesses` by id, after Q5's scope check | `pk_businesses` |
@@ -96,8 +103,13 @@ a statement about the *absence* of a constraint, not a lookup.
 
 ### A.4 Migration judgement
 
-**This slice needs no migration at all.** Not additive, not altering — zero schema change.
+**CORRECTED 2026-08-17. This section originally read "This slice needs no migration at all —
+not additive, not altering — zero schema change", and concluded that "the Do-Not-Vibe migration
+surface is not touched by this slice." Both are false.** They followed from reading
+`uq_memberships_user_business` as enforcing ADR-003's rule, which §A.2 now records that it does
+not. **This slice owns exactly one migration**, and it is on the Do-Not-Vibe surface.
 
+**What was right, and still is:** every column this slice reads or writes already exists.
 Shown from the schema rather than asserted:
 
 - Decision 1 ships **name only**, and `businesses.name text not null` exists with its length
@@ -110,9 +122,39 @@ Shown from the schema rather than asserted:
   to it by `ck_memberships_role`.
 - Criterion 4's `published = false` at creation is already the column default.
 
-**Consequence: the Do-Not-Vibe migration surface is not touched by this slice.** That is worth
-saying out loud, because "migrations" is the surface a reviewer would otherwise expect a
-business-creation slice to hit.
+**What no existing column supplies is enforcement of ADR-003's cardinality**, and that is the
+one migration this slice owns.
+
+#### The migration, sketched — Phase 1 sketches, Phase 3 writes the file
+
+```
+create unique index uq_memberships_one_owner_per_user
+  on public.memberships (user_id)
+  where role = 'owner';
+```
+
+**No file is created in Phase 1.** This is the sketch the manual asks for at this phase.
+
+**Naming.** ADR-036's table maps `uq_` to *unique constraint* and `ix_` to *index*, and a partial
+unique index is strictly the latter — PostgreSQL cannot express a partial unique *constraint*.
+The `uq_` prefix is chosen anyway, and deliberately: ADR-036's own rationale is that *"constraint
+names are a public interface here"* because the API branches on the name a violation reports, and
+a `23505` naming `uq_…` tells a reader what was violated. **ADR-036 does not anticipate a partial
+unique index; this is a gap in its table, not a departure from it.** Worth a ruling before the
+second one is written.
+
+**Additive.** It creates an index. No column is altered, nothing is dropped, no data is rewritten.
+Safe by the manual's own test.
+
+**It fails to build if duplicate owner rows already exist.** That is the correct behaviour — it
+refuses rather than silently keeping one. **Staging has none today**: no code path has ever
+inserted a `memberships` row, because nothing under `apps/api/src` writes to that table.
+
+**DO-NOT-VIBE: YES, twice.** *Migrations* universally (`CLAUDE.md` §6), and *the membership
+scoping rule* specifically, since this constrains the table that rule traverses. It is written
+deliberately, reviewed line by line by a human, and named in the completion report. Tracked as an
+outstanding obligation in `00-frame.md` §5.4 — it reaches staging only through ADR-034's
+`migrate-staging` job, so it waits on Actions minutes.
 
 **The one thing to re-check at Phase 2**, and it is a schema question rather than a code one: the
 application role's grants. `20260811180042_application_role.sql` grants CRUD to `bookflow_api`;

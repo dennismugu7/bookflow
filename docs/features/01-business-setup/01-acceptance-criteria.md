@@ -142,6 +142,20 @@ appears here, deliberately.
     ordinary output of this slice — the dashboard renders the setup-continuation state rather
     than a blank screen.
 
+### One business per account, enforced (decision 10)
+
+48. Two creation attempts issued concurrently for the same account do not leave that account
+    holding two businesses: afterwards it holds exactly one business and exactly one membership.
+49. When concurrent attempts collide, at most one succeeds and the other is refused — no attempt
+    both fails and leaves a business behind.
+50. An account holding an `owner` membership can still be given a membership with a different
+    role at a second business, and that insert is accepted. This is what pins the enforcement to
+    a *partial* index: were it satisfied by a plain unique key on the account, this criterion
+    would fail.
+51. A business created by one account and a business created by another are unaffected by each
+    other's existence: neither account's creation is refused because a different account already
+    has a business.
+
 ## Notes on individual criteria
 
 **Criterion 32 — where the no-echo rule comes from.** It is not introduced here. It restates a
@@ -152,6 +166,19 @@ probe."* And above `problemBody`, which builds every problem body in the API: *"
 carries NO `detail` and NO `instance`. A detail string is where an error response leaks: 'no
 membership for user X on business Y' is a helpful message and an oracle."* Criterion 32 pins the
 existing behaviour so this slice does not become the first route to break it.
+
+**Criterion 22 was correct and unachievable, and that is how the gap was found.** It says an
+account that already has a business "does not acquire a second". When it was written, **nothing
+in the schema or the code enforced that** — `uq_memberships_user_business` forbids a repeat join
+to the *same* business, so two concurrent creations produce two businesses and no constraint
+objects. The criterion was not wrong; it asserted something true of the design and false of the
+system, which is exactly what a criterion is for. **It is left untouched — criteria are
+append-only — and decision 10's partial unique index is what makes it achievable.** Criteria 48
+to 51 pin the enforcement itself, 50 specifically pinning that the index must be *partial*.
+
+Worth noting how it surfaced: not by reading the criterion, and not by reading the migration,
+but by writing §A.2 of the design and having to state, in one sentence, what each constraint
+actually forbids.
 
 **Which screens this slice introduces, and which of the three states each takes.** The
 `DEFINITION_OF_DONE.md` requirement is per screen, so the list has to exist before the criteria
