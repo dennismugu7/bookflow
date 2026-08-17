@@ -92,6 +92,23 @@ These were learned by being wrong. None of them are obvious from the repository.
   settled which surface renaming lives on. It had not, and no amount of re-reading the decision
   surfaced that — **listing the slice's screens against `DEFINITION_OF_DONE.md` line 32 did**,
   because the checklist asks a question the document was not written to answer.
+- **The contradicting evidence may already be in the repository, green and unread.** On
+  2026-08-17 a partial unique index was added because **nothing enforced ADR-003's
+  one-business-per-account rule** — no trigger, no policy, no check, no code.
+  `schema.integration.test.ts` had asserted the opposite six days earlier, in plain words: *"The
+  constraint is on the pair, not on user_id alone. ADR-003 makes one business per account a
+  product rule, not a schema one."* **It passed the whole time.** Three documents and two
+  sessions asserted the rule was enforced, and nobody searched the test suite for what it already
+  claimed. **Before asserting what a schema or an invariant guarantees, grep the tests for what
+  they already say about it** — a passing test is a claim somebody verified, and it outranks a
+  document that merely asserts.
+- **A shell does what it is told, not what was meant.** A commit message containing backticks was
+  executed as command substitution — it re-invoked the CLI and mangled the `git add` beside it.
+  Nothing was damaged only because state was checked before retrying. **Write any message
+  containing backticks, `$` or quotes to a file and use `git commit -F`.** Same family as
+  `git add -A` sweeping four golden-diff PNGs into a commit that legitimately updated one golden,
+  and as scripted text replacement exiting zero on no match: **the tool did exactly what it was
+  asked, and what it was asked was not what was meant.**
 
 ## 3. What the Claude Code session is like
 
