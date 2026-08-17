@@ -129,6 +129,19 @@ appears here, deliberately.
 42. That status survives a restart: an owner who reopens the app on a valid session is still
     recognised as having a business, and is not returned to the "finish setting up" screen.
 
+### Loading, empty and error states (`DEFINITION_OF_DONE.md`)
+
+43. While a business-creation request is in flight, screen #5 shows a loading state.
+44. When a business-creation request fails, screen #5 shows an error state, and the owner can
+    submit again without restarting the app.
+45. While the owner's business and membership status are being loaded, the dashboard shows a
+    loading state rather than a blank or partially-populated screen.
+46. When that load fails, the dashboard shows an error state, and shows neither the
+    setup-continuation state nor the bookings empty state.
+47. For a business with no bookings, no services, no team members and no portfolio images — the
+    ordinary output of this slice — the dashboard renders the setup-continuation state rather
+    than a blank screen.
+
 ## Notes on individual criteria
 
 **Criterion 32 — where the no-echo rule comes from.** It is not introduced here. It restates a
@@ -139,6 +152,26 @@ probe."* And above `problemBody`, which builds every problem body in the API: *"
 carries NO `detail` and NO `instance`. A detail string is where an error response leaks: 'no
 membership for user X on business Y' is a helpful message and an oracle."* Criterion 32 pins the
 existing behaviour so this slice does not become the first route to break it.
+
+**Which screens this slice introduces, and which of the three states each takes.** The
+`DEFINITION_OF_DONE.md` requirement is per screen, so the list has to exist before the criteria
+do.
+
+| New surface | Loading | Empty | Error |
+|---|---|---|---|
+| **Screen #5** — the business-name form | 43 | inapplicable, see below | 44 |
+| **The dashboard's setup-continuation state** (§5's K47 answer) | 45 | 47 | 46 |
+
+The dashboard's *empty* state is not a separate screen state here: for a business with nothing
+under it, the setup-continuation state **is** what empty renders as, which is why criterion 47
+pins it and criterion 46 forbids falling back to it when the truth is unknown.
+
+**A rename surface is not on this list, because none is specified.** `00-frame.md` §3 says
+decision 4 *"settles that the business name is editable and on which surface"* — but no surface
+is named in §3, §4 or anywhere else in that document, and criteria 13–16 and 39 are all
+API-observable. That claim is unsupported as written. Either renaming is API-only in this slice,
+or a screen is owed and its three states with it; Phase 1 must settle which, and criteria are
+appended then rather than guessed at now.
 
 ## Deliberately not covered
 
@@ -177,6 +210,23 @@ not because it was overlooked.
 - **The `PROBLEM_TYPES` entry decision 8 requires.** Criterion 35 pins the response the slug must
   carry; appending the slug is a change to ADR-014's error contract, tracked as an outstanding
   obligation in `00-frame.md` §5.2 rather than as a criterion.
+- **An empty state for screen #5 — INAPPLICABLE, not overlooked.**
+  `DEFINITION_OF_DONE.md` requires loading, empty and error on every new screen. Screen #5 is a
+  form: it renders no collection, so there is nothing it can be empty *of*. Its unfilled state is
+  its initial state, not an empty state in the sense the requirement means, and criterion 30
+  already pins that it does not submit an empty name. Loading and error are covered by criteria
+  43 and 44.
+- **Performance and other non-functional criteria — INAPPLICABLE, and considered.** The feature
+  manual's own example set includes one (*"loads in under 2s for 10k rows"*), and this slice has
+  none. It writes one row and reads one row: no collection, no pagination, no aggregate, no
+  volume that could degrade. There is no quantity here for a threshold to be about. Recorded so
+  the absence reads as a decision rather than an omission; the first slice that returns a
+  collection — bookings, contacts, services — is where a threshold starts meaning something.
+- **Loading, empty and error states for a rename surface.** **No rename screen is named
+  anywhere.** Decision 4 settles that the name is editable, and criteria 13–16, 39 pin renaming
+  as behaviour observable through the API — but no screen is specified for it in `00-frame.md`
+  or here. If a rename surface is added, its three states need criteria appended at that point.
+  See the note below.
 
 ## Blocked
 
