@@ -795,4 +795,81 @@ it is silent. **Worth ruling on both together.**
 
 ## E. Task sequence
 
-*Not written in this step.*
+The manual: *"Sequence the work into tasks and order them by dependency. Data layer usually first
+(everything depends on it); UI polish usually last. Aim for an order where each step leaves the
+app in a runnable state."*
+
+**Three constraints bind this order. They are not preferences.**
+
+- **T1 comes first (R1).** `bookflow_api`'s write grants on `businesses` and `memberships` have
+  never been exercised. A grant failure caught locally costs seconds; caught in
+  `migrate-staging` it costs a CI run nobody can currently pay for.
+- **T7 and T8 must not be separable (R5).** Between moving `/home` to the dashboard and building
+  the account menu, **sign-out is reachable through neither screen.** Criterion 57 is the
+  assertion; this ordering is what keeps it true at every commit rather than only at the end.
+- **T5 precedes every widget (R2).** The redirect test for a pushed route needs no widget tree
+  and tells us whether ADR-042's requirement can be met at all.
+
+### E.1 The tasks
+
+| # | Task | Produces | Depends on | Criteria it makes observable | Runnable after? |
+|---|---|---|---|---|---|
+| **T1** | Grant probe | An integration test inserting a business and a membership **as `bookflow_api`**, following `role.integration.test.ts` | nothing | none directly — it de-risks every later task | **yes**, nothing shipped |
+| **T2** | The migration | `uq_memberships_one_owner_per_user`, the partial unique index (§A.4) | T1 | 48, 49, 50 at the database level | **yes** |
+| **T3** | The conflict slug | `business-already-exists` appended to `PROBLEM_TYPES` (§5.2) | nothing | none alone | **yes** |
+| **T4** | API vertical slice | `modules/businesses/` — schema, repository, service, three routes; regenerated spec and Dart client | T1, T2, T3 | 1–24, 31, 32, 34–40, 51 | **yes** — the app still shows #20 |
+| **T5** | Redirect for pushed routes | `router.dart` per ADR-042, and the redirect test that pushes a within-shell route | nothing | none directly | **yes**, no screen uses it yet |
+| **T6** | Screen #5 and the business feature | `features/business/`, the form, `POST` wired | T4, T5 | 29, 30, 33, 43, 44 | **yes** |
+| **T7+T8** | **One task, deliberately.** Dashboard at `/home`, account menu, avatar, sign-out moved, #20's back affordance | screens #12 and #17, the first push route | T4, T5, T6 | 25, 26, 27, 28, 45, 46, 47, 55, 56, 57, 58, 59, 60 | **yes — only because they are one task** |
+| **T9** | Membership status | `features/membership/`'s constant replaced by a real call over `GET /v1/me/business`; the 404 mapping (§C.6) | T4, T7+T8 | 41, 42 | **yes** |
+| **T10** | Screen #20's business section | The section, its edit affordance, `PATCH` wired | T4, T7+T8 | 52, 53, 54 | **yes** |
+| **T11** | Design-system and deviation records | ADR-039 classification for #5, #12, #17; the five deviations into `08-design-deviations.md` | T6, T7+T8, T10 | none — it is the record | **yes** |
+
+### E.2 Runnable at every step — checked, not asserted
+
+**Yes at every step, and one of them only because of how the tasks are cut.**
+
+**T7+T8 is the honest part of this table.** Written as two tasks it fails: after moving `/home`
+to the dashboard, screen #20 has no path and sign-out is reachable from nowhere — criteria 55, 57
+and 58 all fail, and an owner who opens the app cannot leave it. **That is not "less polished",
+it is broken.** Merging them is not tidiness; it is the only ordering in which the constraint
+holds, and it is why R5 was recorded as a risk rather than a note.
+
+**T2 deserves a caveat rather than a clean yes.** The index applies to a database with no
+`memberships` rows, so it cannot fail on existing data — but it is applied to *staging* by
+`migrate-staging`, and until then local and staging schemas differ. The app runs against both;
+"runnable" holds, "identical" does not.
+
+**T3 is inert on its own.** A slug nothing throws changes no behaviour. It is separated from T4
+deliberately, because it edits ADR-014's shared error contract and deserves its own review rather
+than arriving inside a 500-line feature diff.
+
+### E.3 What can be done now, and what waits for 2026-08-31
+
+**This is the split that decides how much of Phases 2 and 3 can start immediately.**
+
+**Fully doable AND verifiable locally — T1 through T7+T8, T9, T10, T11.** Everything, in other
+words, up to the point of proving it. `npm run verify` runs lint, format, typecheck, unit tests
+**and the integration suite against the real local Supabase stack** — the same stack, the same
+Postgres 17.6 line, the same migrations. The pre-push hook already runs it on every push, and has
+on all seventeen commits of this branch. On the Dart side `flutter analyze`, `dart format` and
+`flutter test` are local. **The redirect test (T5), the grant probe (T1) and every widget test
+need no network at all.**
+
+**Needs CI and Actions minutes — three things, and only three:**
+
+1. **`migrate-staging` applying T2's index to staging.** ADR-034 forbids applying migrations from
+   a development machine. This is `00-frame.md` §5.4's outstanding obligation.
+2. **The `contracts` job** proving the regenerated OpenAPI spec and Dart client have no drift.
+   Generation is local; the **drift check as a gate** is CI's.
+3. **`deploy-staging`, `smoke-staging` and `e2e-staging`** — the deployed API, and the e2e journey
+   `DEFINITION_OF_DONE.md` requires for a critical journey.
+
+**Needs staging specifically, beyond minutes — one thing, and it should be decided now.** R3: the
+staging e2e account cannot demonstrate criteria 41 and 42, because K78 forbids giving it a
+membership, and E14 means a replacement must be admin-created with `email_confirmed_at` set.
+**That decision costs nothing today and blocks the e2e gate if left until the gate is written.**
+
+**So: T1 through T11 can be built and locally verified before the reset. What cannot happen is
+merging any of it** — `DEFINITION_OF_DONE.md` wants CI green end to end, and PR #14 is already
+waiting on the same wall. The work is not blocked; only the merge is.
