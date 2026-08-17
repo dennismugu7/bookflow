@@ -251,6 +251,13 @@ remote are the truth: `git branch -r`.** That rule has now paid for itself twice
   discipline-enforced.
 - **No gate is ever weakened to work around the minutes ceiling.** An unproducible green
   is a reason to wait, never a reason to lower the bar.
+- **The local database is shared across branches; `supabase/migrations/` is not.** Switching to a
+  branch with a different migration set leaves the schema from wherever you were, so its suite
+  fails through the pre-push hook — **correctly, and it will look like a defect in that branch
+  rather than an artefact of the machine.** The remedy is `npm run db:reset` on the branch you
+  are on; **never `--no-verify`**, which would push code whose tests never ran against its own
+  schema. **This bites during the 2026-08-31 merge sequence**: three of the four queued branches
+  carry three migrations and `feat/business-setup-frame` carries four.
 - **A push to a non-`main` branch triggers nothing and costs nothing. Opening a PR against
   `main` does.** The workflow's triggers are `push: branches: [main]`, `pull_request:
   branches: [main]`, and `workflow_dispatch` — so a push to a feature branch cannot start a
