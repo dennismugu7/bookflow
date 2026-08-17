@@ -23,6 +23,42 @@ appears here, deliberately.
 >
 > This rule exists in the file rather than in a person's memory because renumbering is the
 > tidiest-looking way to break every citation at once.
+>
+> ## The naming rule — a test carries the number of the criterion it covers
+>
+> **A test that covers a criterion names it, in the form `criterion N — …`.** A test covering
+> several names all of them: `criterion 37, 39 — …`.
+>
+> **So the mapping is derived, never maintained.** `DEFINITION_OF_DONE.md` asks that every
+> criterion "maps to a **named** test", and this makes that a `grep` rather than a table:
+>
+> ```
+> grep -rhoE "'criterion [0-9]+(, [0-9]+)*" apps/api/src apps/api/test apps/mobile/test \
+>   | grep -oE "[0-9]+" | sort -n | uniq
+> ```
+>
+> **Two details in that command are load-bearing, both found by running it.**
+>
+> **The leading `'` is deliberate.** Without it the grep also matches prose — a comment reading
+> *"the boundary opposite criterion 10"* would count as coverage. Anchoring on the opening quote
+> restricts it to string literals, which is where test names live. There are three such prose
+> mentions today and all three happen to name criteria that are covered anyway, so the loose form
+> gave the right answer for the wrong reason.
+>
+> **Do not anchor on `it(` or `testWidgets(`.** The formatter wraps long declarations, so the
+> call and its name land on different lines and a line-anchored pattern silently under-counts —
+> it reported **21** where the true figure is **23**, losing the two Dart tests whose names the
+> formatter had moved. A mapping check that quietly under-reports is worse than none, because it
+> looks like work still to do rather than like a broken instrument.
+>
+> **Why derived and not written down.** A table a human maintains is a table that goes stale, and
+> this project has the evidence: `02-design.md` §B.9's count drifted **twice in one day**, both
+> times because criteria were appended in a step that did not revisit it. A count nobody can
+> compute is a count nobody can check, and it reads as current the whole time it is wrong.
+>
+> **A number in a test name is a claim.** If the test does not actually exercise that criterion,
+> the name is a false mapping and worse than no mapping — the grep will report coverage that does
+> not exist. Name what the test proves, not what you meant it to prove.
 
 ## Criteria
 

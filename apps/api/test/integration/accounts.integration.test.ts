@@ -142,7 +142,7 @@ describe('unrelatedAccountWithBusiness', () => {
     ).toBeDefined();
   });
 
-  it('two accounts may hold businesses with the identical name (decision 7, criterion 51)', async () => {
+  it('criterion 24, 51 — two accounts may hold businesses with the identical name', async () => {
     const first = await accountWithBusiness(ctx, 'Sharp Cuts');
     const second = await unrelatedAccountWithBusiness(ctx, first, 'Sharp Cuts');
 

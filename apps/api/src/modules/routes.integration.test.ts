@@ -290,7 +290,7 @@ describe('GET /v1/businesses/:businessId — the scoping rule', () => {
     });
   });
 
-  it('gives the SAME response for “not yours” and “does not exist”', async () => {
+  it('criterion 20 — gives the SAME response for “not yours” and “does not exist”', async () => {
     // ── THE TEST THIS ROUTE EXISTS FOR ──────────────────────────────────────
     //
     // A business that is real but belongs to someone else, and a business id
