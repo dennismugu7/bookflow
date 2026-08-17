@@ -174,10 +174,23 @@ describe('POST /v1/businesses', () => {
       payload: { name: 'Nothing Else' },
     });
 
-    // Asserted as the absence of the TABLES, which is the strongest form
-    // available: those tables do not exist, so nothing can have been written to
-    // them. If a later slice adds one, this test starts failing and whoever
-    // adds it has to say what creation does about it.
+    // ══ THIS ASSERTS THE ABSENCE OF THE TABLES, WHICH IS A PROXY ════════════
+    //
+    // Criterion 7 says creation makes no services, team members, portfolio or
+    // opening hours. Nothing can be written to a table that does not exist, so
+    // the table list is the strongest form available today — stronger than
+    // counting rows, because it forecloses the question rather than sampling
+    // it.
+    //
+    // **IT WILL FAIL THE DAY THE SERVICES SLICE ADDS A TABLE, AND THAT IS THE
+    // POINT — DO NOT "FIX" IT BY UPDATING THE EXPECTED LIST.** The failure is a
+    // prompt to re-express criterion 7 as **zero ROWS in the new table after a
+    // creation**, which is what the criterion actually means and what only
+    // becomes testable once the table exists.
+    //
+    // Updating the array instead would keep the test green while silently
+    // dropping the assertion: a services table could then be populated by
+    // creation and nothing here would notice.
     const tables = await sql<{ tablename: string }>`
       select tablename from pg_tables where schemaname = 'public' order by tablename
     `.execute(ctx.db);

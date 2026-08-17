@@ -191,6 +191,31 @@ revoked or missing grant now fails in seconds, locally, instead of in `migrate-s
 permits only `'owner'`, so the row that would distinguish a partial unique index from a plain one
 cannot be inserted at all. It is a schema limit, not a missing fixture.
 
+### E.7 `contracts:generate` is not reliably atomic on this machine
+
+**Two failure modes, both seen on 2026-08-17, and neither reads as what it is.**
+
+**It deletes every model `.g.dart` and may not re-emit them.** The generator wipes
+`packages/bookflow_api/` and rebuilds; `build_runner` is supposed to follow. Once it did not, and
+the symptom was `flutter analyze` failing on `Undefined class
+'RenameBusinessRequestInputBuilder'` — which looks like a code error in `apps/mobile`, not a
+generation failure two packages away. **Check for `.g.dart` files after regenerating**:
+`find packages/bookflow_api -name "*.g.dart" | wc -l` should not be zero.
+
+**It fails with `EPERM` on `rmSync` when a `build_runner` daemon holds the directory open**, and
+`contracts:check` reports that as exit 1 — **indistinguishable from drift unless you read the
+output.** `build_runner` leaves a daemon behind; Windows will not delete a directory a process
+has open. **An exit 1 from `contracts:check` is not evidence of drift until the message has been
+read.**
+
+**The remedy for both, and the order matters:** stop stray `dart`/`build_runner` processes, then
+regenerate through **`npm run contracts:generate`** — never `build_runner` on its own.
+
+**Running `build_runner` directly skips the pipeline's final `dart format`**, and the difference
+is not cosmetic: it produced **real drift across 46 files** that `contracts:check` correctly
+refused, on trailing-newline differences alone. The manual command looks like a subset of the
+pipeline and is not one.
+
 ### E.6 The local database is shared across branches; the code is not
 
 **Found on 2026-08-17, by a pre-push hook refusing correctly.**

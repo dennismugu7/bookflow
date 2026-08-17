@@ -160,6 +160,112 @@ void main() {
 
     expect(container.read(appDestinationProvider), AppDestination.signedOut);
   });
+
+  /// ══ ADR-042 — LEVEL 2, MOVEMENT WITHIN A SHELL ═══════════════════════════
+  ///
+  /// `redirectFor` is pure, so these need no widget tree — the same property
+  /// the tests above rely on.
+  ///
+  /// **Each case is driven against its opposite.** A redirect asserted only
+  /// where it returns `null` proves nothing about the case it exists for: a
+  /// function that always returned `null` would pass every "stays put" test and
+  /// break every guarantee ADR-028 makes.
+  group('ADR-042: pushed routes within a shell', () {
+    test('a pushed route belonging to the current shell is NOT redirected', () {
+      expect(
+        redirectFor(
+          matchedLocation: '/profile',
+          destination: AppDestination.home,
+        ),
+        isNull,
+        reason: '/profile belongs to the home shell, which is selected',
+      );
+      expect(
+        redirectFor(
+          matchedLocation: '/account',
+          destination: AppDestination.home,
+        ),
+        isNull,
+      );
+    });
+
+    test('the same route IS redirected when its shell is not selected', () {
+      // The other half of the case above. Without it, "stays put" is satisfied
+      // by a function that never redirects at all.
+      expect(
+        redirectFor(
+          matchedLocation: '/profile',
+          destination: AppDestination.setupRequired,
+        ),
+        AppDestination.setupRequired.path,
+        reason: 'an owner with no business does not belong on the profile',
+      );
+    });
+
+    test('a shell change overrides a pushed route — level 1 beats level 2', () {
+      // ADR-042: "If the session ends while the profile is pushed, the redirect
+      // moves the user to the signed-out shell and the stack is discarded."
+      expect(
+        redirectFor(
+          matchedLocation: '/profile',
+          destination: AppDestination.signedOut,
+        ),
+        AppDestination.signedOut.path,
+      );
+      expect(
+        redirectFor(
+          matchedLocation: '/account',
+          destination: AppDestination.unavailable,
+        ),
+        AppDestination.unavailable.path,
+      );
+    });
+
+    test('an unauthenticated user on a pushed route is still ejected', () {
+      // ADR-028's guarantee — "one place decides whether an unauthenticated
+      // user may be where they are" — must survive ADR-042. This is the
+      // assertion that fails if pushed routes are ever exempted from the
+      // redirect rather than scoped by it.
+      for (final String pushed in pushedRouteShells.keys) {
+        expect(
+          redirectFor(
+            matchedLocation: pushed,
+            destination: AppDestination.signedOut,
+          ),
+          AppDestination.signedOut.path,
+          reason: '$pushed must not survive a signed-out session',
+        );
+      }
+    });
+
+    test('an unknown location is redirected to the destination', () {
+      // A path in no ownership map is not a pushed route. Treated as a shell
+      // mismatch rather than tolerated, or a typo becomes a way to sit outside
+      // the redirect entirely.
+      expect(
+        redirectFor(
+          matchedLocation: '/not-a-route',
+          destination: AppDestination.home,
+        ),
+        AppDestination.home.path,
+      );
+    });
+
+    test('the shell itself still stays put, as before', () {
+      // The pre-ADR-042 rule, unchanged: returning the current location
+      // unconditionally makes go_router loop.
+      for (final AppDestination destination in AppDestination.values) {
+        expect(
+          redirectFor(
+            matchedLocation: destination.path,
+            destination: destination,
+          ),
+          isNull,
+          reason: '${destination.path} is where the state says to be',
+        );
+      }
+    });
+  });
 }
 
 class _FakeAuthGateway implements AuthGateway {

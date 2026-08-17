@@ -90,6 +90,66 @@ final Provider<AppDestination> appDestinationProvider =
       );
     });
 
+/// ══ LEVEL 2 — ROUTES REACHED BY TAPPING (ADR-042) ═══════════════════════════
+///
+/// ADR-042 splits navigation in two. **Level 1**, which shell the user is in, is
+/// computed from state and enforced by the redirect — that is `AppDestination`
+/// above and it is unchanged. **Level 2** is movement *within* a shell, by push,
+/// and this is where it is declared.
+///
+/// The boundary is ADR-042's question: *"A destination is a shell if the answer
+/// to 'why am I here?' is a fact about the user's account that the app computed.
+/// It is a pushed screen if the answer is 'because I tapped something.'"*
+///
+/// **Each pushed route declares which shell it belongs to**, which is what lets
+/// the redirect ask "is this location within the currently-selected shell?"
+/// rather than "does this location equal the destination?" — the change ADR-042
+/// requires.
+///
+/// **The screens are not built yet.** `/account` is screen #17 and `/profile` is
+/// screen #20 under decision 12; T7+T8 registers their `GoRoute`s and their
+/// builders. The ownership map exists first because the redirect must tolerate
+/// them before anything can navigate to one, and because R2 wanted this tested
+/// before any widget exists.
+const Map<String, AppDestination> pushedRouteShells = <String, AppDestination>{
+  '/account': AppDestination.home,
+  '/profile': AppDestination.home,
+};
+
+/// Where the router should send a user currently at `matchedLocation`, or
+/// `null` for "stay put".
+///
+/// Pure, so the tests drive it without a widget tree, a navigator or a pumped
+/// frame — the same property `appDestinationProvider` has and for the same
+/// reason.
+///
+/// ── THE TWO RULES, IN ADR-042's ORDER ───────────────────────────────────────
+///
+/// 1. **Stay put if the location is the destination.** Unchanged, and still
+///    required: returning the current location unconditionally makes `go_router`
+///    loop.
+/// 2. **Stay put if the location is a pushed route belonging to the shell the
+///    state already selects.** This is the new half. Without it a push is
+///    immediately undone — the pushed route is not the computed destination, so
+///    the old redirect yanked the user straight back.
+///
+/// **Anything else is a shell change and wins.** ADR-042: *"If the session ends
+/// while the profile is pushed, the redirect moves the user to the signed-out
+/// shell and the stack is discarded. Level 1 always overrides level 2 — that is
+/// what keeps ADR-028's guarantee intact."* So a pushed route whose owning shell
+/// is no longer selected is left, not kept.
+String? redirectFor({
+  required String matchedLocation,
+  required AppDestination destination,
+}) {
+  if (matchedLocation == destination.path) return null;
+
+  final AppDestination? owner = pushedRouteShells[matchedLocation];
+  if (owner == destination) return null;
+
+  return destination.path;
+}
+
 /// Rebuilds the router's redirect when the destination changes.
 ///
 /// `go_router` listens to a `Listenable`, and Riverpod speaks providers; this is
@@ -124,12 +184,12 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
     initialLocation: AppDestination.startup.path,
     refreshListenable: notifier,
     redirect: (BuildContext context, GoRouterState state) {
-      final AppDestination destination = ref.read(appDestinationProvider);
-      // Returning null means "stay put" — required, because returning the
-      // current location unconditionally makes go_router loop.
-      return state.matchedLocation == destination.path
-          ? null
-          : destination.path;
+      // The decision lives in `redirectFor`, which is pure and directly tested
+      // (ADR-042). This closure only supplies the two inputs.
+      return redirectFor(
+        matchedLocation: state.matchedLocation,
+        destination: ref.read(appDestinationProvider),
+      );
     },
     routes: <RouteBase>[
       GoRoute(
