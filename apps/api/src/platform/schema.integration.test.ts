@@ -134,9 +134,25 @@ describe('memberships uniqueness', () => {
     );
   });
 
-  it('allows the same user in a different business', async () => {
-    // The constraint is on the pair, not on user_id alone. ADR-003 makes one
-    // business per account a product rule, not a schema one.
+  it('uq_memberships_user_business alone does NOT stop a second business — a different index does', async () => {
+    // ══ THIS TEST CHANGED ON 2026-08-17, AND ITS OLD COMMENT WAS RIGHT ═══════
+    //
+    // It used to be called "allows the same user in a different business", and
+    // it passed, and it said:
+    //
+    //   "The constraint is on the pair, not on user_id alone. ADR-003 makes one
+    //    business per account a product rule, not a schema one."
+    //
+    // **That was accurate, and it was the evidence nobody consulted.** For six
+    // days the frame, the Phase 1 design and the session that wrote both
+    // asserted that `uq_memberships_user_business` enforced ADR-003's
+    // cardinality. This file said in plain words that it did not, and sat there
+    // passing.
+    //
+    // Business-setup decision 10 changed the world rather than the reading:
+    // `uq_memberships_one_owner_per_user` now enforces the rule. So the same
+    // two inserts that used to be legal are refused — **and by the OTHER index,
+    // which is the whole point of asserting on the name.**
     await makeUser(OWNER, 'pair-probe@bookflow.test');
     const first = await makeBusiness('Pair Probe A');
     const second = await makeBusiness('Pair Probe B');
@@ -144,15 +160,25 @@ describe('memberships uniqueness', () => {
     await sql`insert into public.memberships (user_id, business_id) values (${OWNER}::uuid, ${first}::uuid)`.execute(
       ctx.db,
     );
-    await sql`insert into public.memberships (user_id, business_id) values (${OWNER}::uuid, ${second}::uuid)`.execute(
-      ctx.db,
+
+    await ctx.expectDenied(
+      () =>
+        sql`insert into public.memberships (user_id, business_id) values (${OWNER}::uuid, ${second}::uuid)`.execute(
+          ctx.db,
+        ),
+      // NOT `uq_memberships_user_business` — the pair differs, so that
+      // constraint is satisfied. If this ever starts failing by that name
+      // instead, the partial index has been dropped and something else is
+      // catching it by accident.
+      /uq_memberships_one_owner_per_user/,
+      'a second owner membership is refused by the partial index, not by the pair constraint',
     );
 
     const result = await sql<{ count: string }>`
       select count(*)::text as count from public.memberships where user_id = ${OWNER}::uuid
     `.execute(ctx.db);
 
-    expect(result.rows[0]?.count).toBe('2');
+    expect(result.rows[0]?.count, 'the first membership survives').toBe('1');
   });
 
   it('rejects a role outside the I9 vocabulary', async () => {
