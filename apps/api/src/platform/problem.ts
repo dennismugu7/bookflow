@@ -46,6 +46,23 @@ export const PROBLEM_TYPES = {
     status: 400,
     title: 'Password rejected',
   },
+  // The caller already has a business (ADR-003, business-setup decision 8).
+  //
+  // Specific rather than a generic `conflict`, deliberately: ADR-014 has the
+  // client branch on `type` rather than on a message, so a slug is only useful
+  // to the degree the client can act on it, and a generic one would force the
+  // client to work out WHAT conflicted from something other than the `type`.
+  // `password-rejected` above is the precedent for a slug scoped to one
+  // situation.
+  //
+  // Like every entry here it carries no `detail`, so the response does not name
+  // or link the business that already exists. That raises no oracle either way
+  // — the caller owns it — but the no-detail rule is the API's, not this
+  // route's, and one exception is how it stops being a rule.
+  'business-already-exists': {
+    status: 409,
+    title: 'Business already exists',
+  },
   'rate-limited': {
     status: 429,
     title: 'Too many requests',

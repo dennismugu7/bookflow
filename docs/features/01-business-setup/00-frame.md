@@ -311,9 +311,21 @@ Flutter client branches on `type` rather than on a message. The file says a slug
 to, but an existing slug never changes meaning"* — so appending is the sanctioned move, and it is
 still a change to a contract two clients read.
 
-**Status: OUTSTANDING.** Nothing in this document adds the slug. Criterion 35 pins the behaviour
-the slug must carry; the slug itself is the first thing the implementation owes, and it is a
-Do-Not-Vibe-adjacent edit to a shared contract rather than a line in a route.
+**Status: DISCHARGED 2026-08-17.** `business-already-exists`, status 409, is in `PROBLEM_TYPES`.
+
+**CORRECTED WHILE DISCHARGING IT.** This section said appending a slug is *"a change to ADR-014's
+error contract"*. **It is not, and checking rather than assuming is what showed it.** ADR-014
+states a property, not a list — *"Errors as RFC 9457 `application/problem+json`, each carrying a
+stable machine-readable `type` slug"* — and **enumerates no slugs anywhere.** `problem.ts` holds
+the registry and sanctions growth in terms: *"it may be added to, but an existing slug never
+changes meaning."* So appending is **ordinary operation**, and no ADR needed amending. What is
+true is the weaker claim: it edits a table two clients branch on, which earns review and the full
+suite — not that it contradicts a decision.
+
+**It maps no criterion.** Criteria 34 and 35 are about what `POST /v1/businesses` *does* with the
+slug, and that route does not exist. **The slug does not even reach the OpenAPI spec yet** —
+`contracts:generate` produced no diff, because nothing declares a 409 response. Adding it is a
+prerequisite for those criteria, not partial satisfaction of them.
 
 ### 5.3 ~~Outstanding obligation~~ — DISCHARGED 2026-08-17 by decision 11
 
