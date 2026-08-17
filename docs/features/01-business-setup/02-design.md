@@ -339,7 +339,12 @@ which is public. These three are behind a token.
 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 31, 32, 34, 35, 36, 37, 38, 39, 40,
 51.
 
-**Criteria this contract CANNOT satisfy — the list that matters, 19 of them:**
+**Criteria this contract CANNOT satisfy — the list that matters, 22 of them:**
+
+**COUNT CORRECTED 2026-08-17.** This mapping totalled 51 while the criteria file held 54:
+**52, 53 and 54 were appended in the same step that named the rename surface and were never
+classified.** All three are UI — the business section, its loading state, its error state — so
+all three belong below, with the other screen criteria. **32 satisfiable + 22 not = 54.**
 
 - **22 — CORRECTED 2026-08-17. This was listed as satisfiable and is not.** Criterion 22 reads
   *"after **any** further creation attempt"*, and a concurrent double-submit is one. **The
@@ -358,8 +363,8 @@ which is public. These three are behind a token.
   it.
 - **5 (the membership row and its `owner` role).** Caused by `POST`, but observed in the
   database; no response body exposes membership rows.
-- **25, 26, 27, 28, 29, 30, 33, 43, 44, 45, 46, 47 (screens and their states).** UI, in Phase 1
-  §C. The contract is necessary for several and sufficient for none.
+- **25, 26, 27, 28, 29, 30, 33, 43, 44, 45, 46, 47, 52, 53, 54 (screens and their states).** UI,
+  in §C. The contract is necessary for several and sufficient for none.
 - **41 and 42 (the membership status reports the business, and survives a restart).** `GET
   /v1/me/business` is necessary and not sufficient: 41 needs the Flutter repository to replace
   its `MembershipStatus.none` constant, and 42 needs session restore to re-issue the call.
@@ -369,8 +374,203 @@ which is public. These three are behind a token.
 
 ## C. UI and component tree
 
-*Not written in this step.* Blocked in part on §5.3 of `00-frame.md` — the rename surface has no
-screen. See `03-rename-surface-evidence.md` if that decision is taken separately.
+**Read before writing, and followed rather than invented:** `ui/async_value_view.dart` (the
+`AsyncValueView` / `LoadingView` / `ErrorView` / `EmptyStateView` set, and its rule that **no
+screen writes its own spinner**), `features/profile/profile_providers.dart` (a `FutureProvider`
+per read, errors deliberately uncaught), `features/profile/profile_repository.dart` (the only
+file in its feature permitted to import `package:bookflow_api`, enforced by
+`test/design_system_test.dart`), `platform/router.dart` (the `AppDestination` enum and the
+membership-driven redirect), `features/setup/setup_required_screen.dart` (the stub), and
+`features/membership/membership_repository.dart`.
+
+**Empty is not a fourth state here.** ADR-028, quoted in `async_value_view.dart`: *"Empty is not
+an `AsyncValue` case and remains the screen's own responsibility inside the data branch."* Every
+"empty state" below therefore lives **inside** a data branch, never beside loading and error.
+
+### C.1 The three surfaces, and one new feature folder
+
+Following ADR-028's `features/<feature>/` shape, this slice adds **`features/business/`** with
+`business_repository.dart`, `business_providers.dart`, `business_models.dart`, and the screens.
+`features/membership/` is **modified**, not added — its constant is replaced by a real call.
+
+| Surface | New or changed | Holds | Fetches |
+|---|---|---|---|
+| **Screen #5** — business-name form | new | the typed name; submission in flight | nothing |
+| **Screen #12** — setup-continuation | new | nothing of its own | the caller's business |
+| **Screen #20** — widened, decision 11 | changed | the edited name; submission in flight | the caller's business, beside the existing profile |
+
+### C.2 Screen #5 — the business-name form
+
+**What it holds.** One text field's value, and whether a submission is in flight. Local to the
+screen; no provider caches a half-typed name.
+
+**What it submits.** `POST /v1/businesses` with `{ name }`. **The client does not pre-trim** —
+decision 9's `.trim()` lives in the Zod schema server-side (§B.3), and duplicating it here would
+create two places where the rule could drift.
+
+**What it fetches: nothing.** This is why its empty state is inapplicable.
+
+**Loading — criterion 43.** The in-flight state is a property of a *submission*, not of a read,
+so it is **not** an `AsyncValueView`. `AsyncValueView` renders a whole screen from an
+`AsyncValue`; here the form must stay on screen with its content intact while the request runs.
+A `Notifier` holding an `AsyncValue<void>` for the submission, with the screen disabling its
+submit control and showing progress on it. **The distinction matters and is the one place this
+slice departs from screen #20's pattern** — #20 reads, and a read can own the whole screen.
+
+**Empty — INAPPLICABLE, and why rather than omitted.** `EmptyStateView` exists for *"a successful
+load with nothing in it"*. This screen performs no load. Its unfilled field is its initial state,
+not an empty state, and criterion 30 already pins that it does not submit an empty name.
+
+**Error — criterion 44.** The submission's error branch keeps the form mounted and the typed name
+intact, surfaces the failure, and leaves the control usable. `ErrorView` is **not** used: it
+replaces the screen and offers a retry, which would discard what the owner typed. This is the
+second deliberate departure, and it follows `ErrorView`'s own doc — *"Overridable so a screen can
+say something truer than the default when it genuinely knows more."* Here it genuinely does: a
+409 means "you already have one" and a 400 means "that name will not do", and neither is
+*"Something went wrong."*
+
+### C.3 Screen #12 — the setup-continuation state
+
+**What it fetches.** `GET /v1/me/business`, through `business_providers.dart`'s
+`FutureProvider`, exactly as `myProfileProvider` wraps `GET /v1/me`.
+
+**All three states, and the ordering criterion 46 imposes:**
+
+- **Loading — criterion 45.** `AsyncValueView`'s loading branch → `LoadingView`. Nothing else is
+  drawn: not a skeleton of the setup state, not the bookings frame.
+- **Error — criterion 46.** `AsyncValueView`'s error branch → `ErrorView` with `onRetry`.
+  **It shows neither the setup-continuation state nor the bookings empty state.** Both assert
+  something about a business whose state is not known, and asserting either while ignorant is
+  the failure this criterion exists to prevent. `router.dart` already argues the same point for
+  the redirect: *"Guessing wrong in that direction is worse than saying 'we could not load this'
+  and offering a retry."*
+- **Data — criterion 47.** Inside the data branch, and only there: a business with nothing under
+  it renders the **setup-continuation state**, naming where the owner is in setup and what
+  remains. **Criteria 27 and 28**: no bookings empty state, no share-link prompt, no *"Share your
+  booking link ›"* button, because there is nothing to share.
+
+**Nothing here needs `EmptyStateView`.** The zero-everything case *is* the setup-continuation
+state (criterion 47), so emptiness is expressed by the content, not by a generic view.
+
+### C.4 Screen #20 widened — decision 11
+
+**What it holds.** The existing personal section, unchanged. Beneath it, a **business section**
+holding the business name, an edit affordance, the edited value while editing, and whether a
+rename is in flight.
+
+**What it fetches.** Two independent reads: the existing `myProfileProvider`, and the same
+`GET /v1/me/business` provider screen #12 uses. Independent on purpose — one failing must not
+blank the other.
+
+- **Criterion 52.** The business section renders the name, beneath the personal section.
+- **Loading — criterion 53.** The rename submission's in-flight state, on the same
+  submission-not-read pattern as §C.2: the section stays mounted, its control shows progress.
+- **Error — criterion 54.** Keeps the section mounted with the edited value intact and the
+  control usable. Not `ErrorView`, for the same reason as §C.2.
+- **Empty — inapplicable.** A field with an edit affordance is not a collection.
+
+**How it sits beside the read-only personal section.** The personal fields keep K75's dead `Edit`
+control, unbuilt, and the business section below has a working one. **This is decision 11's
+recorded cost and it is not softened here.** The section is visually subordinate — beneath, under
+its own heading — so the working affordance reads as belonging to the business block rather than
+as an inconsistency within one card.
+
+### C.5 Routing
+
+`router.dart`'s `AppDestination` enum today: `startup('/startup')`, `signedOut('/welcome')`,
+`setupRequired('/setup')`, `home('/home')` — which builds `ProfileScreen` — and
+`unavailable('/unavailable')`. The redirect maps `MembershipStatus.member → home` and
+`MembershipStatus.none → setupRequired`.
+
+**After sign-up.** Unchanged in mechanism: no membership, so `none`, so `/setup`. **What changes
+is what `/setup` offers** — today a dead-end stub with a sign-out button; now the entry point to
+screen #5. Criterion 29's "no back arrow" follows from this: the owner arrives from a
+destination, not from a previous onboarding step.
+
+**After creating a business.** The membership provider is invalidated, the read re-runs, the
+status becomes `member`, and the redirect carries the owner to `/home`. **Criterion 25 is
+satisfied by the existing redirect and no new routing rule** — which is what the redirect tests
+already exercise by overriding the repository to force `member`.
+
+**One consequence worth naming:** `/home` builds `ProfileScreen` today. Screen #12 becomes the
+home destination, and screen #20 moves behind it. That is a change to an existing route, not an
+addition.
+
+### C.6 The 404 rule — where criterion 46 actually lives
+
+`GET /v1/me/business` answers **404 when the account has no business** (§B.7). **That 404 is a
+data answer, not an error, and the mapping happens in exactly one place:
+`features/business/business_repository.dart`.**
+
+- **404** → the "no business" value. **Not thrown.**
+- **Every other failure** → rethrown, so `AsyncValue` turns it into the error state.
+
+**This is the single line criterion 46 depends on.** If a 404 escaped as a `DioException`, the
+dashboard would render `ErrorView` for the ordinary condition of a brand-new account, and the
+redirect would send a user with no business to `/unavailable` rather than `/setup`.
+
+**It is a deliberate exception to the repository convention**, and the convention says so itself:
+`profile_repository.dart` states that errors *"are deliberately NOT caught"* because the 401
+interceptor and `AsyncValue.guard` both need to see them. **That reasoning does not extend to a
+404 that means "nothing here yet"** — there is no session to end and no failure to report. The
+exception is narrow: one status, one repository, everything else rethrown.
+
+**`membership_repository.dart` is where this lands.** Its `NoBusinessYetMembershipRepository`
+constant — the file that says it *"becomes a lie the moment business creation ships"* — is
+replaced by a real implementation over this call. **Criteria 41 and 42.**
+
+### C.7 Every screen criterion, mapped to a surface and a state
+
+| Criterion | Surface | State |
+|---|---|---|
+| 25 | routing (§C.5) | redirect on `member` |
+| 26 | screen #12 | data |
+| 27 | screen #12 | data — by absence |
+| 28 | screen #12 | data — by absence |
+| 29 | screen #5 | initial |
+| 30 | screen #5 | initial — submit blocked on an empty field |
+| 33 | screen #5 | submission error |
+| 43 | screen #5 | submission loading |
+| 44 | screen #5 | submission error |
+| 45 | screen #12 | loading |
+| 46 | screen #12 | error, and §C.6's 404 rule |
+| 47 | screen #12 | data |
+| 52 | screen #20 business section | data |
+| 53 | screen #20 business section | submission loading |
+| 54 | screen #20 business section | submission error |
+
+**All fifteen have a home. None is unhoused — stated as a finding, having been checked one by
+one rather than asserted.**
+
+**Two are close enough to overlap that it is worth saying they are not duplicates.** 33 and 44
+both concern screen #5's failure path: **33** says an error is surfaced and the screen does not
+stay in a permanent loading state — it forbids a hang. **44** says the owner can submit again
+without restarting — it requires recovery. An implementation could satisfy 33 and fail 44 by
+showing an error and disabling the form.
+
+### C.8 ADR-039 — is a visual-language classification owed here?
+
+**Owed for one surface, and this sketch does not discharge it.**
+
+ADR-039 splits the 28 screenshots into two visual languages and rules that only Generation A's
+colour may be copied; the guiding brief records eight as unclassified, to be resolved as each
+screen is built. **This slice builds against three:**
+
+- **Screen #12** (`native-11-screen-5-dashboard-main-bookings-view.png`) and **screen #5**
+  (`native-04-business-branding-onboarding-let-s-give-your.png`) — both are **built here for the
+  first time**, so if either is among the eight, its classification is owed **before its widgets
+  are written**, not after.
+- **Screen #20** was already classified in PR 3b, which built it. Widening it adds no new
+  question: the business section inherits the section it sits under.
+
+**This document does not classify anything, deliberately** — ADR-039 decides which screenshots
+belong to which generation, and answering it inside a slice's design sketch would settle an ADR's
+question in the wrong document, which is the mistake §5.3 was raised over.
+
+**Recorded as owed, to be settled at the start of Phase 3** — when widgets are written and the
+tokens are actually reached for — **not as a fourth outstanding obligation in `00-frame.md` §5**,
+because unlike §5.1, §5.2 and §5.4 it blocks nothing that is currently in flight and has a
+natural trigger already.
 
 ## D. Layers touched, and risk
 
