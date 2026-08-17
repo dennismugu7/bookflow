@@ -373,6 +373,30 @@ line by a human and named in the completion report.
 
 **Status: OUTSTANDING.**
 
+### 5.5 Outstanding obligation — `docs/ENVIRONMENT.md` §4 is stale about `seed.sql`
+
+**§4 lists `supabase/seed.sql` under "Blocks Phase 2"**, saying `db reset` warns *"no files
+matched pattern: supabase/seed.sql"* on every run and that it is *"Not writable yet — ADR-026
+wants one demo salon with bookings in every status, which needs tables, which are Phase 3."*
+
+**All of that has moved on.** The file exists, is 144 lines, seeds one owner, one business and
+one membership at fixed ids, is idempotent by `on conflict do nothing`, and is applied by
+`supabase db reset` and `npm run seed`. **It is covered by `seed.integration.test.ts`**, which
+does not count rows — it signs the seeded owner in against real GoTrue and asserts the token
+names them. Its own header already records the partial scope §4 said made it unwritable:
+*"Only the first part of that is writable today … This file seeds what exists … and grows with
+each slice that adds a table."*
+
+**`CLAUDE.md` §5 makes a stale entry there a defect, not untidiness**, which is why this is an
+obligation rather than a note.
+
+**Deferred to the same pass as §5.1, and for the same reason.** PR #14 also edits
+`docs/ENVIRONMENT.md`, and a conflict in the one document whose whole value is being readable
+about the state of the world is worse than a fortnight of staleness. **Both are corrected in one
+pass the moment #14 merges.**
+
+**Status: OUTSTANDING.**
+
 ## 6. Unknowns and spikes
 
 **There are none, and no spike is proposed.** The manual asks for a spike wherever some part is

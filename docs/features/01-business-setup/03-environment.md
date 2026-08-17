@@ -118,6 +118,75 @@ met and the answer is still no. Three reasons:
 before the first production release — and this declines a flag for one slice, which is not that
 decision.
 
-## E. Fixtures — gap analysis only
+## E. Fixtures
 
-*Read-only. Nothing written. See the report accompanying this commit for the proposal.*
+### E.1 What already existed
+
+**More than expected.** `supabase/seed.sql` exists — 144 lines seeding one owner, one business
+and one membership at fixed ids, idempotent, local-only, applied by `supabase db reset` and
+`npm run seed`. It is verified by `seed.integration.test.ts`, which **signs the seeded owner in
+against real GoTrue** rather than counting rows. (`docs/ENVIRONMENT.md` §4 still says this file
+does not exist — see `00-frame.md` §5.5.)
+
+The harness supplies `db` (a per-test transaction as `bookflow_api`, rolled back after),
+`asAdmin`, `asRole` and `expectDenied`.
+
+### E.2 The gap, and what was built
+
+The seed gives **one owner who already has a business** — the `member` path. It gives nothing
+for the state every creation criterion starts from, nor for a second party.
+
+**Three helpers, in `apps/api/test/integration/accounts.ts`. Helpers inside the transaction, not
+seed rows** — `seed.sql` is a demo state, and a demo state cannot also be a test fixture without
+every test inheriting whatever the demo needs next.
+
+| Helper | Provides |
+|---|---|
+| `accountWithoutBusiness` | An `auth.users` row plus its `user_profiles` row, owning nothing |
+| `accountWithBusiness` | The above, plus a business and one `owner` membership |
+| `unrelatedAccountWithBusiness` | A second such account, **asserted** to share no id and no email with the first |
+
+Ids are random rather than fixed: integration files run in parallel against one database, and two
+files choosing the same constant would contend **across** transactions rather than within one —
+the shape A14 describes for the booking slice, avoided by construction.
+
+**`auth.users` is written through `asAdmin`; everything in `public` is written as the application
+role, deliberately.** That second half is not incidental — see §E.4.
+
+### E.3 How they are verified — driven, not counted
+
+`accounts.integration.test.ts`, **6 tests**. The standard is the project's own: a fixture was once
+verified by counting rows when the seeded user could never log in, and `seed.integration.test.ts`
+is the correction. **A `select count(*)` proves the insert ran; it does not prove the fixture is
+what the tests above it assume.**
+
+So each helper is pushed through the production code that will consume it —
+`findBusinessForUser`, which applies the membership scoping rule, and `findProfileByUserId`:
+
+- **`accountWithoutBusiness` is usable** — its profile reads back through `GET /v1/me`'s own
+  repository, not through a row check.
+- **It genuinely owns nothing** — the scoping rule returns `undefined` for it **while a business
+  owned by somebody else exists**. Without that second account the assertion would pass against
+  an empty table and prove nothing.
+- **`accountWithBusiness` owns exactly what it claims** — the business resolves *through
+  membership*, with `published` asserted `false` per ADR-004.
+- **`unrelatedAccountWithBusiness` is genuinely unrelated** — driven **both ways round**, because
+  one direction passing is consistent with a scoping bug that favours whichever account was
+  created first; **and** each account is shown to still reach its own business, because otherwise
+  both isolation assertions are satisfied by a repository that finds nothing at all.
+- **Two accounts may hold the identical business name** — decision 7, criterion 51.
+
+### E.4 A risk closed as a side effect
+
+**R1 said `bookflow_api`'s write grants on `businesses` and `memberships` had never been
+exercised by any code path** — the only write the API performs today is to `user_profiles`, at
+sign-up. **These fixtures insert into both tables as `bookflow_api`, and they pass.** The grants
+work.
+
+That is R1's early warning arriving earlier than planned: it was scheduled as task T1, and
+building the fixtures discharged it. **It cost nothing and it fires on every future run** — a
+revoked or missing grant now fails in seconds, locally, instead of in `migrate-staging`.
+
+**No fixture for criterion 50**, and the reason is in the criteria file's notes: `ck_memberships_role`
+permits only `'owner'`, so the row that would distinguish a partial unique index from a plain one
+cannot be inserted at all. It is a schema limit, not a missing fixture.

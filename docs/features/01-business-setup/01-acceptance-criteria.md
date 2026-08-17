@@ -189,6 +189,30 @@ carries NO `detail` and NO `instance`. A detail string is where an error respons
 membership for user X on business Y' is a helpful message and an oracle."* Criterion 32 pins the
 existing behaviour so this slice does not become the first route to break it.
 
+**Criterion 50 is behaviourally unobservable today, and not for want of a fixture.** It requires
+that an account holding an `owner` membership can still take a membership with a **different
+role** at a second business — the property that pins decision 10's index to being *partial*
+rather than a plain `unique (user_id)`. **`ck_memberships_role check (role in ('owner'))` permits
+no other value**, so the row that would distinguish a partial index from a plain one **cannot be
+inserted at all**. Any attempt is rejected by a check constraint, not by the index under test,
+and a test asserting the rejection would be asserting the wrong thing entirely.
+
+**It becomes observable when I9 widens the role vocabulary** — the migration already names
+`ck_memberships_role` as *"where it widens"*. Widening it here is out of scope: I9 is a `D` item
+and this slice does not decide the role set.
+
+**The proxy, so `DEFINITION_OF_DONE.md`'s criterion-to-test mapping is honest rather than
+silently unmet:** a named test asserting the index's **predicate** from the system catalogue —
+that `uq_memberships_one_owner_per_user` exists, is unique, and carries a `WHERE role = 'owner'`
+clause, readable from `pg_indexes.indexdef`.
+
+**Stated plainly, because the gap is the point: that is a schema assertion, not the behavioural
+one criterion 50 describes.** It proves the index was *declared* partial. It does not prove a
+non-owner membership at a second business is *accepted*, because nothing can accept one yet. **A
+future change to `ck_memberships_role` would not fail that proxy**, which is exactly the
+limitation — the proxy cannot notice the day the real behaviour becomes testable. Criterion 50 is
+left as written, and this note is the record of what is and is not being demonstrated.
+
 **Criterion 22 was correct and unachievable, and that is how the gap was found.** It says an
 account that already has a business "does not acquire a second". When it was written, **nothing
 in the schema or the code enforced that** — `uq_memberships_user_business` forbids a repeat join
