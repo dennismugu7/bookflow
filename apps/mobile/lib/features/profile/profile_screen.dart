@@ -1,3 +1,4 @@
+import 'package:bookflow/features/business/business_section.dart';
 import 'package:bookflow/features/profile/profile_models.dart';
 import 'package:bookflow/features/profile/profile_providers.dart';
 import 'package:bookflow/platform/providers.dart';
@@ -105,6 +106,14 @@ class _ProfileCard extends StatelessWidget {
               // API's Profile schema deliberately does not mirror it. Shown from
               // the session instead — see `_Field`'s sibling below.
               const _EmailField(),
+              const SizedBox(height: BookflowSpacing.lg),
+              const Divider(),
+              const SizedBox(height: BookflowSpacing.lg),
+              // Decision 11: screen #20 widened to the "Personal/Business
+              // Information Management page" its own routing text already names
+              // (`DD-Bookflow-Native.md:973`). Beneath the personal fields, and
+              // reading its own provider — see `BusinessSection`.
+              const BusinessSection(),
             ],
           ),
         ),

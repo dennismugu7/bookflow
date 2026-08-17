@@ -190,3 +190,20 @@ revoked or missing grant now fails in seconds, locally, instead of in `migrate-s
 **No fixture for criterion 50**, and the reason is in the criteria file's notes: `ck_memberships_role`
 permits only `'owner'`, so the row that would distinguish a partial unique index from a plain one
 cannot be inserted at all. It is a schema limit, not a missing fixture.
+
+### E.5 The seed contradicts a decision made after it — recorded, not fixed
+
+`supabase/seed.sql`'s business has **`published = true` and zero services.** §5's K27 answer makes
+that state **impossible** once the publishing slice enforces its precondition: a business may not
+be published until it has at least one service.
+
+**Nothing to fix now.** The seed is local-only — it writes to `auth.users` directly and its own
+header says so — nothing in CI or on staging runs it, and it predates the decision by a fortnight.
+Its comment already anticipates the shape of the problem: *"services, team members, opening hours
+and bookings have no tables yet … This file seeds what exists — one owner, one business, one
+membership — and grows with each slice that adds a table."*
+
+**Recorded so the publishing slice does not inherit a fixture that contradicts it.** The moment
+services exist, this row is either given one or its `published` flag comes off; leaving it as it
+is would mean the first local test of the precondition fails against seed data rather than
+against a bug, which is the most expensive kind of false positive.
