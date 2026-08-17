@@ -6,6 +6,8 @@ doc/AuthApi.md
 doc/Business.md
 doc/BusinessInput.md
 doc/BusinessesApi.md
+doc/CreateBusinessRequest.md
+doc/CreateBusinessRequestInput.md
 doc/HealthApi.md
 doc/HealthResponse.md
 doc/HealthResponseInput.md
@@ -33,6 +35,8 @@ lib/src/auth/oauth.dart
 lib/src/date_serializer.dart
 lib/src/model/business.dart
 lib/src/model/business_input.dart
+lib/src/model/create_business_request.dart
+lib/src/model/create_business_request_input.dart
 lib/src/model/date.dart
 lib/src/model/health_response.dart
 lib/src/model/health_response_input.dart
@@ -50,6 +54,8 @@ test/auth_api_test.dart
 test/business_input_test.dart
 test/business_test.dart
 test/businesses_api_test.dart
+test/create_business_request_input_test.dart
+test/create_business_request_test.dart
 test/health_api_test.dart
 test/health_response_input_test.dart
 test/health_response_test.dart

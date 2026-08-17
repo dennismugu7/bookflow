@@ -80,6 +80,279 @@ async function storedName(businessId: string): Promise<string | undefined> {
   return result.rows[0]?.name;
 }
 
+describe('POST /v1/businesses', () => {
+  /**
+   * The seeded owner already has a business, so every creation test starts by
+   * clearing their membership — inside the rolled-back transaction.
+   */
+  async function clearSeededMembership(): Promise<void> {
+    await sql`delete from public.memberships where user_id = ${SEEDED_USER}::uuid`.execute(
+      ctx.db,
+    );
+  }
+
+  it('criterion 1, 2, 3, 4 — creates a business that is readable, with a uuid, the submitted name, and unpublished', async () => {
+    await clearSeededMembership();
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/businesses',
+      headers: bearer(),
+      payload: { name: 'Vera’s Salon' },
+    });
+
+    expect(response.statusCode, '201, not 202 — something usable exists').toBe(
+      201,
+    );
+    const created: { id: string; name: string; published: boolean } =
+      response.json();
+
+    expect(created.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    );
+    expect(created.name).toBe('Vera’s Salon');
+    expect(created.published, 'ADR-004: private until published').toBe(false);
+
+    // Readable afterwards — through the other route, not just echoed back.
+    const readBack = await app.inject({
+      method: 'GET',
+      url: '/v1/me/business',
+      headers: bearer(),
+    });
+    expect(readBack.statusCode).toBe(200);
+    expect(readBack.json()).toEqual(created);
+  });
+
+  it('criterion 5 — creates exactly one membership, with role owner', async () => {
+    await clearSeededMembership();
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/businesses',
+      headers: bearer(),
+      payload: { name: 'Membership Probe' },
+    });
+    const created: { id: string } = response.json();
+
+    const rows = await sql<{ role: string; business_id: string }>`
+      select role, business_id from public.memberships
+       where user_id = ${SEEDED_USER}::uuid
+    `.execute(ctx.db);
+
+    expect(rows.rows).toHaveLength(1);
+    expect(rows.rows[0]?.role).toBe('owner');
+    expect(rows.rows[0]?.business_id).toBe(created.id);
+  });
+
+  it('criterion 6 — one request is enough; no further step is required', async () => {
+    await clearSeededMembership();
+
+    await app.inject({
+      method: 'POST',
+      url: '/v1/businesses',
+      headers: bearer(),
+      payload: { name: 'One Step' },
+    });
+
+    // Nothing else called. The business and its membership exist already.
+    const readBack = await app.inject({
+      method: 'GET',
+      url: '/v1/me/business',
+      headers: bearer(),
+    });
+    expect(readBack.statusCode).toBe(200);
+    expect(readBack.json()).toMatchObject({ name: 'One Step' });
+  });
+
+  it('criterion 7 — creates no services, team members, portfolio or opening hours', async () => {
+    await clearSeededMembership();
+
+    await app.inject({
+      method: 'POST',
+      url: '/v1/businesses',
+      headers: bearer(),
+      payload: { name: 'Nothing Else' },
+    });
+
+    // Asserted as the absence of the TABLES, which is the strongest form
+    // available: those tables do not exist, so nothing can have been written to
+    // them. If a later slice adds one, this test starts failing and whoever
+    // adds it has to say what creation does about it.
+    const tables = await sql<{ tablename: string }>`
+      select tablename from pg_tables where schemaname = 'public' order by tablename
+    `.execute(ctx.db);
+
+    expect(tables.rows.map((r) => r.tablename)).toEqual([
+      'businesses',
+      'memberships',
+      'user_profiles',
+    ]);
+  });
+
+  it('criterion 22, 23, 34, 35 — a second attempt is refused with a conflict, and changes nothing', async () => {
+    // The seeded owner already has one, so this IS the second attempt.
+    const before = await sql<{ id: string; name: string }>`
+      select id, name from public.businesses where id = ${SEEDED_BUSINESS}::uuid
+    `.execute(ctx.db);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/businesses',
+      headers: bearer(),
+      payload: { name: 'A Second Salon' },
+    });
+
+    // 34, 35 — refused, with a problem document naming a conflict.
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      type: '/problems/business-already-exists',
+      title: 'Business already exists',
+      status: 409,
+    });
+
+    // 22 — still exactly one business and one membership.
+    const businesses = await sql<{ count: string }>`
+      select count(*)::text as count from public.businesses b
+       join public.memberships m on m.business_id = b.id
+       where m.user_id = ${SEEDED_USER}::uuid
+    `.execute(ctx.db);
+    const memberships = await sql<{ count: string }>`
+      select count(*)::text as count from public.memberships
+       where user_id = ${SEEDED_USER}::uuid
+    `.execute(ctx.db);
+    expect(businesses.rows[0]?.count).toBe('1');
+    expect(memberships.rows[0]?.count).toBe('1');
+
+    // 23 — the existing one is untouched.
+    const after = await sql<{ id: string; name: string }>`
+      select id, name from public.businesses where id = ${SEEDED_BUSINESS}::uuid
+    `.execute(ctx.db);
+    expect(after.rows[0]).toEqual(before.rows[0]);
+  });
+
+  it('criterion 36 — the refused attempt’s name is stored nowhere', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/v1/businesses',
+      headers: bearer(),
+      payload: { name: 'Never Stored Anywhere' },
+    });
+
+    const found = await sql<{ count: string }>`
+      select count(*)::text as count from public.businesses
+       where name = 'Never Stored Anywhere'
+    `.execute(ctx.db);
+
+    expect(found.rows[0]?.count, 'no orphan row from a refused create').toBe(
+      '0',
+    );
+  });
+
+  it('a membership failure fails the whole request — the orphan half is NOT observable here', async () => {
+    // ══ CRITERION 49 IS NOT NAMED HERE, AND THIS RECORDS WHY ════════════════
+    //
+    // 49's second clause is "no attempt both fails and leaves a business
+    // behind". Fault injection looked like the way to prove it: make the
+    // membership insert fail after the business insert, with a `not valid`
+    // check constraint, and count the businesses afterwards.
+    //
+    // **It was tried, and it does not work.** The failed statement ABORTS the
+    // test's transaction — "current transaction is aborted, commands ignored
+    // until end of transaction block" — so the counting query cannot run. The
+    // only way to make the transaction usable again is `rollback to savepoint`,
+    // and that ALSO erases the business row, whether or not the statement was
+    // atomic. **Every arrangement that lets you look has already destroyed the
+    // evidence.**
+    //
+    // So the property is guaranteed BY CONSTRUCTION rather than by test: both
+    // inserts are a single CTE statement, and PostgreSQL executes one statement
+    // atomically. `createBusinessForUser` documents that, and it is the reason
+    // the code is shaped that way rather than as two calls.
+    //
+    // What IS observable is asserted below: the request fails rather than
+    // half-succeeding with a 201.
+    await clearSeededMembership();
+    await ctx.asAdmin(async () => {
+      await sql`
+        alter table public.memberships
+        add constraint tmp_reject_all check (false) not valid
+      `.execute(ctx.db);
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/businesses',
+      headers: bearer(),
+      payload: { name: 'Should Not Survive' },
+    });
+
+    // Not 201. A route that returned success while the membership failed would
+    // be the worst outcome — an owner told they have a business they cannot
+    // reach.
+    expect(response.statusCode).not.toBe(201);
+    expect(response.statusCode).toBeGreaterThanOrEqual(500);
+  });
+
+  it('criterion 18 — is 401 with no token, and creates nothing', async () => {
+    const before = await sql<{ count: string }>`
+      select count(*)::text as count from public.businesses
+    `.execute(ctx.db);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/businesses',
+      payload: { name: 'Unauthenticated Salon' },
+    });
+
+    expect(response.statusCode).toBe(401);
+
+    const after = await sql<{ count: string }>`
+      select count(*)::text as count from public.businesses
+    `.execute(ctx.db);
+    expect(after.rows[0]?.count).toBe(before.rows[0]?.count);
+  });
+
+  it('criterion 8, 10, 11, 12 — validates the name at creation exactly as at rename', async () => {
+    await clearSeededMembership();
+
+    // Rejections first, so the account still has no business for the accept.
+    for (const bad of ['', '   ', 'a'.repeat(201)]) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/v1/businesses',
+        headers: bearer(),
+        payload: { name: bad },
+      });
+      expect(response.statusCode, `name of length ${bad.length}`).toBe(400);
+    }
+
+    // One character is accepted — the boundary opposite 201.
+    const ok = await app.inject({
+      method: 'POST',
+      url: '/v1/businesses',
+      headers: bearer(),
+      payload: { name: 'V' },
+    });
+    expect(ok.statusCode).toBe(201);
+    expect(ok.json()).toMatchObject({ name: 'V' });
+  });
+
+  it('criterion 37, 40 — a name submitted with padding is created trimmed', async () => {
+    await clearSeededMembership();
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/businesses',
+      headers: bearer(),
+      payload: { name: '   Padded Salon   ' },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const created: { id: string } = response.json();
+    expect(await storedName(created.id)).toBe('Padded Salon');
+  });
+});
+
 describe('GET /v1/me/business', () => {
   it('drives 1 → 0 → 1 on the same account, so neither answer is a constant', async () => {
     // 1 — the seeded owner has a business.

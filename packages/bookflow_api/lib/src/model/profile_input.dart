@@ -11,13 +11,12 @@ part 'profile_input.g.dart';
 /// The authenticated owner's own profile.
 ///
 /// Properties:
-/// * [id]
-/// * [firstName]
-/// * [lastName]
-/// * [avatarPath]
+/// * [id] 
+/// * [firstName] 
+/// * [lastName] 
+/// * [avatarPath] 
 @BuiltValue()
-abstract class ProfileInput
-    implements Built<ProfileInput, ProfileInputBuilder> {
+abstract class ProfileInput implements Built<ProfileInput, ProfileInputBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -69,12 +68,10 @@ class _$ProfileInputSerializer implements PrimitiveSerializer<ProfileInput> {
       specifiedType: const FullType(String),
     );
     yield r'avatarPath';
-    yield object.avatarPath == null
-        ? null
-        : serializers.serialize(
-            object.avatarPath,
-            specifiedType: const FullType.nullable(String),
-          );
+    yield object.avatarPath == null ? null : serializers.serialize(
+      object.avatarPath,
+      specifiedType: const FullType.nullable(String),
+    );
   }
 
   @override
@@ -83,9 +80,7 @@ class _$ProfileInputSerializer implements PrimitiveSerializer<ProfileInput> {
     ProfileInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -157,3 +152,4 @@ class _$ProfileInputSerializer implements PrimitiveSerializer<ProfileInput> {
     return result.build();
   }
 }
+

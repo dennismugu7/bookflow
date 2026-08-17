@@ -9,6 +9,8 @@ part of 'serializers.dart';
 Serializers _$serializers = (Serializers().toBuilder()
       ..add(Business.serializer)
       ..add(BusinessInput.serializer)
+      ..add(CreateBusinessRequest.serializer)
+      ..add(CreateBusinessRequestInput.serializer)
       ..add(HealthResponse.serializer)
       ..add(HealthResponseInput.serializer)
       ..add(HealthResponseInputStatusEnum.serializer)

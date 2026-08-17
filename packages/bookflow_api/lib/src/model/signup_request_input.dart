@@ -16,8 +16,7 @@ part 'signup_request_input.g.dart';
 /// * [firstName] - Required. Trimmed. Rejected above 100 characters.
 /// * [lastName] - Required. Trimmed. Rejected above 100 characters.
 @BuiltValue()
-abstract class SignupRequestInput
-    implements Built<SignupRequestInput, SignupRequestInputBuilder> {
+abstract class SignupRequestInput implements Built<SignupRequestInput, SignupRequestInputBuilder> {
   /// Where the activation email is sent.
   @BuiltValueField(wireName: r'email')
   String get email;
@@ -36,19 +35,16 @@ abstract class SignupRequestInput
 
   SignupRequestInput._();
 
-  factory SignupRequestInput([void updates(SignupRequestInputBuilder b)]) =
-      _$SignupRequestInput;
+  factory SignupRequestInput([void updates(SignupRequestInputBuilder b)]) = _$SignupRequestInput;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(SignupRequestInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<SignupRequestInput> get serializer =>
-      _$SignupRequestInputSerializer();
+  static Serializer<SignupRequestInput> get serializer => _$SignupRequestInputSerializer();
 }
 
-class _$SignupRequestInputSerializer
-    implements PrimitiveSerializer<SignupRequestInput> {
+class _$SignupRequestInputSerializer implements PrimitiveSerializer<SignupRequestInput> {
   @override
   final Iterable<Type> types = const [SignupRequestInput, _$SignupRequestInput];
 
@@ -88,9 +84,7 @@ class _$SignupRequestInputSerializer
     SignupRequestInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -161,3 +155,4 @@ class _$SignupRequestInputSerializer
     return result.build();
   }
 }
+

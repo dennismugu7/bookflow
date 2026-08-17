@@ -14,8 +14,7 @@ part 'signup_accepted.g.dart';
 /// Properties:
 /// * [status] - The request was accepted. If the address could be registered, an activation email has been sent to it.
 @BuiltValue()
-abstract class SignupAccepted
-    implements Built<SignupAccepted, SignupAcceptedBuilder> {
+abstract class SignupAccepted implements Built<SignupAccepted, SignupAcceptedBuilder> {
   /// The request was accepted. If the address could be registered, an activation email has been sent to it.
   @BuiltValueField(wireName: r'status')
   SignupAcceptedStatusEnum get status;
@@ -23,19 +22,16 @@ abstract class SignupAccepted
 
   SignupAccepted._();
 
-  factory SignupAccepted([void updates(SignupAcceptedBuilder b)]) =
-      _$SignupAccepted;
+  factory SignupAccepted([void updates(SignupAcceptedBuilder b)]) = _$SignupAccepted;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(SignupAcceptedBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<SignupAccepted> get serializer =>
-      _$SignupAcceptedSerializer();
+  static Serializer<SignupAccepted> get serializer => _$SignupAcceptedSerializer();
 }
 
-class _$SignupAcceptedSerializer
-    implements PrimitiveSerializer<SignupAccepted> {
+class _$SignupAcceptedSerializer implements PrimitiveSerializer<SignupAccepted> {
   @override
   final Iterable<Type> types = const [SignupAccepted, _$SignupAccepted];
 
@@ -60,9 +56,7 @@ class _$SignupAcceptedSerializer
     SignupAccepted object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -114,18 +108,16 @@ class _$SignupAcceptedSerializer
 }
 
 class SignupAcceptedStatusEnum extends EnumClass {
+
   /// The request was accepted. If the address could be registered, an activation email has been sent to it.
   @BuiltValueEnumConst(wireName: r'confirmation_required')
-  static const SignupAcceptedStatusEnum confirmationRequired =
-      _$signupAcceptedStatusEnum_confirmationRequired;
+  static const SignupAcceptedStatusEnum confirmationRequired = _$signupAcceptedStatusEnum_confirmationRequired;
 
-  static Serializer<SignupAcceptedStatusEnum> get serializer =>
-      _$signupAcceptedStatusEnumSerializer;
+  static Serializer<SignupAcceptedStatusEnum> get serializer => _$signupAcceptedStatusEnumSerializer;
 
-  const SignupAcceptedStatusEnum._(String name) : super(name);
+  const SignupAcceptedStatusEnum._(String name): super(name);
 
-  static BuiltSet<SignupAcceptedStatusEnum> get values =>
-      _$signupAcceptedStatusEnumValues;
-  static SignupAcceptedStatusEnum valueOf(String name) =>
-      _$signupAcceptedStatusEnumValueOf(name);
+  static BuiltSet<SignupAcceptedStatusEnum> get values => _$signupAcceptedStatusEnumValues;
+  static SignupAcceptedStatusEnum valueOf(String name) => _$signupAcceptedStatusEnumValueOf(name);
 }
+

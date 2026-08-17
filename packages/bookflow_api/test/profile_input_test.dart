@@ -26,5 +26,6 @@ void main() {
     test('to test the property `avatarPath`', () async {
       // TODO
     });
+
   });
 }

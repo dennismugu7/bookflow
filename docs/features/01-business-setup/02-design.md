@@ -562,7 +562,43 @@ stay in a permanent loading state — it forbids a hang. **44** says the owner c
 without restarting — it requires recovery. An implementation could satisfy 33 and fail 44 by
 showing an error and disabling the form.
 
-### C.8 ADR-039 — is a visual-language classification owed here?
+### C.8 ADR-039 — nothing is owed. All three screens are already classified.
+
+**CORRECTED 2026-08-17. This section said a classification was owed for screens #5, #12 and #17,
+and named it an obligation to settle before their widgets. That is false, and reading ADR-039's
+Decision settles it in a minute.**
+
+ADR-039 classifies all three **by name**:
+
+- **Screen #5 is `native-04`** — inside "Screens `native-00` through `native-11`" and named among
+  "all four onboarding steps". **Generation A.**
+- **Screen #12 is `native-11`** — the upper bound of that range, named explicitly as "the
+  dashboard". **Generation A.**
+- **Screen #17 is `native-16`** — listed first under Generation B and named as "the profile and
+  account menu". **Generation B.**
+
+**The eight genuinely unclassified are `native-12, 13, 14, 15, 17, 18, 21, 22`.** None is
+`native-04`, `native-11` or `native-16`. There was never an obligation here.
+
+**What IS true, and binds T6 and T7+T8 more tightly than the imagined obligation did:**
+
+- **Screens #5 and #12 are Generation A, which ADR-039 calls "Bookflow's design system".** The
+  tokens in `tokens.dart` were derived from Generation A screens, so they apply **directly** —
+  blue actions `#0278FF`, green CTA `#2DE27E`, the indigo hero gradient, green initials avatars.
+  A measurement taken from either screenshot is a measurement of the system.
+- **Screen #17 is Generation B, and ADR-039 rules that Generation B "is not" the design system.**
+  It is a **structural reference only**: "Layout, hierarchy, copy and content stand. Colour and
+  treatment come from the tokens." So `native-16`'s violet accents, black pill buttons and pink
+  avatar are **never sampled**. Read it for what the rows are and where they sit; take every
+  colour from `tokens.dart`.
+
+**That is a stronger constraint than "classify it first", and it is already decided** — which is
+the whole reason the imagined obligation was worse than useless: it deferred a live rule behind a
+step that did not exist.
+
+*Superseded text follows, left as the record of what was asserted.*
+
+### C.8.1 What this section said before the correction
 
 **Owed for one surface, and this sketch does not discharge it.**
 

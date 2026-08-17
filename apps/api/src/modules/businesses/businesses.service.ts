@@ -1,8 +1,11 @@
 import type { Executor } from '../../platform/db.ts';
+import { ProblemError } from '../../platform/problem.ts';
 import {
   type BusinessRow,
   type BusinessScope,
+  createBusinessForUser,
   findBusinessOwnedBy,
+  isSecondBusinessConflict,
   renameBusinessForUser,
 } from './businesses.repository.ts';
 
@@ -39,6 +42,63 @@ export async function getMyBusiness(
   scope: { readonly userId: string },
 ): Promise<BusinessRow | undefined> {
   return await findBusinessOwnedBy(db, scope);
+}
+
+/**
+ * Creates the caller's business.
+ *
+ * ── TWO LAYERS OF DEFENCE, AND THE SECOND IS THE REAL ONE ───────────────────
+ *
+ * Decision 8 refuses a second business with a conflict. This checks first —
+ * which gives the ordinary caller a clean 409 without provoking a database
+ * error — and then **relies on the index** for the case the check cannot see:
+ * two requests that both read before either writes.
+ *
+ * **The pre-check is a courtesy; `uq_memberships_one_owner_per_user` is the
+ * guarantee.** If the check were removed the behaviour would be identical, only
+ * noisier. If the index were removed the check would be a race, and criterion 22
+ * would silently stop holding. That ordering matters when someone later
+ * wonders which to keep.
+ *
+ * Throws `ProblemError('business-already-exists')` either way, so the route does
+ * not have to know which layer caught it.
+ */
+export async function createMyBusiness(
+  db: Executor,
+  scope: { readonly userId: string },
+  name: string,
+): Promise<BusinessRow> {
+  const existing = await findBusinessOwnedBy(db, scope);
+  if (existing !== undefined) {
+    throw new ProblemError(
+      'business-already-exists',
+      'this account already has a business',
+    );
+  }
+
+  let created: BusinessRow | undefined;
+  try {
+    created = await createBusinessForUser(db, scope.userId, name);
+  } catch (error) {
+    if (isSecondBusinessConflict(error)) {
+      // The index caught what the check could not. Same answer to the caller —
+      // and nothing was written, because both inserts are one statement.
+      throw new ProblemError(
+        'business-already-exists',
+        'this account already has a business (constraint)',
+      );
+    }
+    throw error;
+  }
+
+  if (created === undefined) {
+    // A statement that inserted and returned nothing. The contract says this
+    // cannot happen; failing is right, because the alternative is answering 201
+    // with no business.
+    throw new Error('business insert returned no row');
+  }
+
+  return created;
 }
 
 /**

@@ -12,6 +12,7 @@ import 'package:bookflow_api/src/model/signup_accepted.dart';
 import 'package:bookflow_api/src/model/signup_request_input.dart';
 
 class AuthApi {
+
   final Dio _dio;
 
   final Serializers _serializers;
@@ -22,7 +23,7 @@ class AuthApi {
   /// Mediated sign-up (ADR-037). The client never calls GoTrue directly. Creates the account, records terms acceptance with a SERVER-supplied version, and asks GoTrue to send its own activation email. Answers identically whether or not the address already has an account.
   ///
   /// Parameters:
-  /// * [signupRequestInput]
+  /// * [signupRequestInput] 
   /// * [cancelToken] - A [CancelToken] that can be used to cancel the operation
   /// * [headers] - Can be used to add additional headers to the request
   /// * [extras] - Can be used to add flags to the request
@@ -32,7 +33,7 @@ class AuthApi {
   ///
   /// Returns a [Future] containing a [Response] with a [SignupAccepted] as data
   /// Throws [DioException] if API call or serialization fails
-  Future<Response<SignupAccepted>> signUp({
+  Future<Response<SignupAccepted>> signUp({ 
     required SignupRequestInput signupRequestInput,
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
@@ -59,11 +60,11 @@ class AuthApi {
 
     try {
       const _type = FullType(SignupRequestInput);
-      _bodyData =
-          _serializers.serialize(signupRequestInput, specifiedType: _type);
-    } catch (error, stackTrace) {
+      _bodyData = _serializers.serialize(signupRequestInput, specifiedType: _type);
+
+    } catch(error, stackTrace) {
       throw DioException(
-        requestOptions: _options.compose(
+         requestOptions: _options.compose(
           _dio.options,
           _path,
         ),
@@ -86,12 +87,11 @@ class AuthApi {
 
     try {
       final rawResponse = _response.data;
-      _responseData = rawResponse == null
-          ? null
-          : _serializers.deserialize(
-              rawResponse,
-              specifiedType: const FullType(SignupAccepted),
-            ) as SignupAccepted;
+      _responseData = rawResponse == null ? null : _serializers.deserialize(
+        rawResponse,
+        specifiedType: const FullType(SignupAccepted),
+      ) as SignupAccepted;
+
     } catch (error, stackTrace) {
       throw DioException(
         requestOptions: _response.requestOptions,
@@ -113,4 +113,5 @@ class AuthApi {
       extra: _response.extra,
     );
   }
+
 }

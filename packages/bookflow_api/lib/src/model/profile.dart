@@ -11,10 +11,10 @@ part 'profile.g.dart';
 /// The authenticated owner's own profile.
 ///
 /// Properties:
-/// * [id]
-/// * [firstName]
-/// * [lastName]
-/// * [avatarPath]
+/// * [id] 
+/// * [firstName] 
+/// * [lastName] 
+/// * [avatarPath] 
 @BuiltValue()
 abstract class Profile implements Built<Profile, ProfileBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -68,12 +68,10 @@ class _$ProfileSerializer implements PrimitiveSerializer<Profile> {
       specifiedType: const FullType(String),
     );
     yield r'avatarPath';
-    yield object.avatarPath == null
-        ? null
-        : serializers.serialize(
-            object.avatarPath,
-            specifiedType: const FullType.nullable(String),
-          );
+    yield object.avatarPath == null ? null : serializers.serialize(
+      object.avatarPath,
+      specifiedType: const FullType.nullable(String),
+    );
   }
 
   @override
@@ -82,9 +80,7 @@ class _$ProfileSerializer implements PrimitiveSerializer<Profile> {
     Profile object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -156,3 +152,4 @@ class _$ProfileSerializer implements PrimitiveSerializer<Profile> {
     return result.build();
   }
 }
+

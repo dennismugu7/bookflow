@@ -105,9 +105,16 @@ to make possible, and it passes.
 
 ## 4. Still owed
 
-**The ADR-039 classification.** Due at the first widget for screen **#5, #12 or #17** — none of
-which this pierce built. Screen #20 was classified in PR 3b and decision 11's widening inherits
-it. **Unchanged and still owed** (`02-design.md` §C.8).
+**~~The ADR-039 classification.~~ NOT OWED — CORRECTED 2026-08-17.** This said a classification
+was due at the first widget for screens #5, #12 or #17. **ADR-039 classifies all three by name**:
+`native-04` and `native-11` are **Generation A**, `native-16` is **Generation B**, and the eight
+genuinely unclassified are `native-12, 13, 14, 15, 17, 18, 21, 22`. Reading the Decision section
+settles it in a minute; asserting it did not.
+
+**What binds instead, and binds harder:** #5 and #12 are Generation A, so `tokens.dart` applies
+directly — it was derived from Generation A screens. **#17 is Generation B, a structural
+reference only**: layout, hierarchy and copy stand; colour and treatment come from the tokens and
+are **never sampled from the screenshot**. See `02-design.md` §C.8.
 
 **Outstanding obligations, by number** (`00-frame.md` §5):
 
@@ -163,3 +170,36 @@ for having finished this phase.
 services, which §5's K27 answer makes impossible once the publishing slice enforces its
 precondition. Local-only and predating the decision — recorded there so the publishing slice does
 not inherit a fixture that contradicts it.
+
+## 8. Pending handoff lessons
+
+**A queue, so handoff updates batch.** Writing to `docs/GUIDE_HANDOFF.md` costs a branch switch
+*and* a database reset in each direction (`03-environment.md` §E.6) — a real cost that has already
+been paid three times for one lesson each. **Entries accumulate here and go over in one pass.**
+
+**Clear this list at the next handoff update**, and delete each entry as it lands rather than
+leaving a copy in two places.
+
+### Pending
+
+**An obligation attributed to a document must be QUOTED from it, or it is not an obligation.**
+
+Three instances on 2026-08-17, all in this slice, all by the same session:
+
+- **ADR-003** was said to be enforced by `uq_memberships_user_business`. That constraint forbids a
+  repeat join to the *same* business and enforces nothing about the rule. Nothing enforced it.
+- **ADR-014** was said to enumerate the problem-type slugs, making an addition a contract change
+  needing an amendment. It enumerates none — it states a property, and `problem.ts` is the
+  registry, which sanctions addition explicitly.
+- **ADR-039** was said to leave screens #5, #12 and #17 unclassified, and a classification was
+  recorded as owed before their widgets. It classifies all three **by name**.
+
+**Each was settled in about a minute by reading the Decision section.** None of the three needed
+research, a spike, or a judgement call — only reading the document being cited, which is the step
+that was skipped every time.
+
+**The propagation is the part that matters.** All three reached documents the guiding session
+relies on, and two of them shaped work: the ADR-014 misreading made a routine slug addition look
+like an ADR-level event for a day, and the ADR-039 one deferred a live constraint — *"Generation B
+is a structural reference; colour is never sampled"* — behind a step that did not exist. **A false
+obligation is more expensive than a missed one, because nobody audits work that looks careful.**

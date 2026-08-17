@@ -11,9 +11,9 @@ part 'business.g.dart';
 /// A business the caller is a member of.
 ///
 /// Properties:
-/// * [id]
-/// * [name]
-/// * [published]
+/// * [id] 
+/// * [name] 
+/// * [published] 
 @BuiltValue()
 abstract class Business implements Built<Business, BusinessBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -71,9 +71,7 @@ class _$BusinessSerializer implements PrimitiveSerializer<Business> {
     Business object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -137,3 +135,4 @@ class _$BusinessSerializer implements PrimitiveSerializer<Business> {
     return result.build();
   }
 }
+

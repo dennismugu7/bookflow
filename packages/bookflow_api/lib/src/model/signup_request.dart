@@ -16,8 +16,7 @@ part 'signup_request.g.dart';
 /// * [firstName] - Required. Trimmed. Rejected above 100 characters.
 /// * [lastName] - Required. Trimmed. Rejected above 100 characters.
 @BuiltValue()
-abstract class SignupRequest
-    implements Built<SignupRequest, SignupRequestBuilder> {
+abstract class SignupRequest implements Built<SignupRequest, SignupRequestBuilder> {
   /// Where the activation email is sent.
   @BuiltValueField(wireName: r'email')
   String get email;
@@ -36,15 +35,13 @@ abstract class SignupRequest
 
   SignupRequest._();
 
-  factory SignupRequest([void updates(SignupRequestBuilder b)]) =
-      _$SignupRequest;
+  factory SignupRequest([void updates(SignupRequestBuilder b)]) = _$SignupRequest;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(SignupRequestBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<SignupRequest> get serializer =>
-      _$SignupRequestSerializer();
+  static Serializer<SignupRequest> get serializer => _$SignupRequestSerializer();
 }
 
 class _$SignupRequestSerializer implements PrimitiveSerializer<SignupRequest> {
@@ -87,9 +84,7 @@ class _$SignupRequestSerializer implements PrimitiveSerializer<SignupRequest> {
     SignupRequest object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -160,3 +155,4 @@ class _$SignupRequestSerializer implements PrimitiveSerializer<SignupRequest> {
     return result.build();
   }
 }
+

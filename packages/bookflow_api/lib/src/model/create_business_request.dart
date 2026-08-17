@@ -6,39 +6,39 @@
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
-part 'rename_business_request_input.g.dart';
+part 'create_business_request.g.dart';
 
-/// A new name for the business. The only editable field.
+/// The business to create. Name only.
 ///
 /// Properties:
 /// * [name] - Required. Trimmed. 1–200 characters after trimming.
 @BuiltValue()
-abstract class RenameBusinessRequestInput implements Built<RenameBusinessRequestInput, RenameBusinessRequestInputBuilder> {
+abstract class CreateBusinessRequest implements Built<CreateBusinessRequest, CreateBusinessRequestBuilder> {
   /// Required. Trimmed. 1–200 characters after trimming.
   @BuiltValueField(wireName: r'name')
   String get name;
 
-  RenameBusinessRequestInput._();
+  CreateBusinessRequest._();
 
-  factory RenameBusinessRequestInput([void updates(RenameBusinessRequestInputBuilder b)]) = _$RenameBusinessRequestInput;
+  factory CreateBusinessRequest([void updates(CreateBusinessRequestBuilder b)]) = _$CreateBusinessRequest;
 
   @BuiltValueHook(initializeBuilder: true)
-  static void _defaults(RenameBusinessRequestInputBuilder b) => b;
+  static void _defaults(CreateBusinessRequestBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<RenameBusinessRequestInput> get serializer => _$RenameBusinessRequestInputSerializer();
+  static Serializer<CreateBusinessRequest> get serializer => _$CreateBusinessRequestSerializer();
 }
 
-class _$RenameBusinessRequestInputSerializer implements PrimitiveSerializer<RenameBusinessRequestInput> {
+class _$CreateBusinessRequestSerializer implements PrimitiveSerializer<CreateBusinessRequest> {
   @override
-  final Iterable<Type> types = const [RenameBusinessRequestInput, _$RenameBusinessRequestInput];
+  final Iterable<Type> types = const [CreateBusinessRequest, _$CreateBusinessRequest];
 
   @override
-  final String wireName = r'RenameBusinessRequestInput';
+  final String wireName = r'CreateBusinessRequest';
 
   Iterable<Object?> _serializeProperties(
     Serializers serializers,
-    RenameBusinessRequestInput object, {
+    CreateBusinessRequest object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
     yield r'name';
@@ -51,7 +51,7 @@ class _$RenameBusinessRequestInputSerializer implements PrimitiveSerializer<Rena
   @override
   Object serialize(
     Serializers serializers,
-    RenameBusinessRequestInput object, {
+    CreateBusinessRequest object, {
     FullType specifiedType = FullType.unspecified,
   }) {
     return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
@@ -62,7 +62,7 @@ class _$RenameBusinessRequestInputSerializer implements PrimitiveSerializer<Rena
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
     required List<Object?> serializedList,
-    required RenameBusinessRequestInputBuilder result,
+    required CreateBusinessRequestBuilder result,
     required List<Object?> unhandled,
   }) {
     for (var i = 0; i < serializedList.length; i += 2) {
@@ -85,12 +85,12 @@ class _$RenameBusinessRequestInputSerializer implements PrimitiveSerializer<Rena
   }
 
   @override
-  RenameBusinessRequestInput deserialize(
+  CreateBusinessRequest deserialize(
     Serializers serializers,
     Object serialized, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    final result = RenameBusinessRequestInputBuilder();
+    final result = CreateBusinessRequestBuilder();
     final serializedList = (serialized as Iterable<Object?>).toList();
     final unhandled = <Object?>[];
     _deserializeProperties(

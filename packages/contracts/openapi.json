@@ -72,6 +72,21 @@
         ],
         "description": "A new name for the business. The only editable field."
       },
+      "CreateBusinessRequestInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required. Trimmed. 1–200 characters after trimming."
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "description": "The business to create. Name only."
+      },
       "BusinessInput": {
         "type": "object",
         "properties": {
@@ -206,6 +221,22 @@
         ],
         "additionalProperties": false,
         "description": "A new name for the business. The only editable field."
+      },
+      "CreateBusinessRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required. Trimmed. 1–200 characters after trimming."
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false,
+        "description": "The business to create. Name only."
       },
       "Business": {
         "type": "object",
@@ -421,6 +452,38 @@
         ],
         "responses": {
           "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Business"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/businesses": {
+      "post": {
+        "operationId": "createBusiness",
+        "summary": "Create the caller's business",
+        "tags": [
+          "businesses"
+        ],
+        "description": "Creates the business and the caller's owner membership in one statement, so neither can exist without the other. An account may hold only one business (ADR-003): a second attempt is refused with 409 business-already-exists and writes nothing. The name is trimmed before it is stored.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBusinessRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
             "description": "Default Response",
             "content": {
               "application/json": {

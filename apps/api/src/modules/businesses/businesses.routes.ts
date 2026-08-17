@@ -6,8 +6,15 @@ import type { Executor } from '../../platform/db.ts';
 import { principalOf } from '../../platform/auth.ts';
 import { ProblemError } from '../../platform/problem.ts';
 import { findBusinessForUser } from './businesses.repository.ts';
-import { renameBusinessRequestSchema } from './businesses.schema.ts';
-import { getMyBusiness, renameMyBusiness } from './businesses.service.ts';
+import {
+  createBusinessRequestSchema,
+  renameBusinessRequestSchema,
+} from './businesses.schema.ts';
+import {
+  createMyBusiness,
+  getMyBusiness,
+  renameMyBusiness,
+} from './businesses.service.ts';
 
 /** Knows HTTP. Parses, calls the repository, serialises. No logic. */
 
@@ -61,6 +68,38 @@ export function registerBusinessRoutes(
       }
 
       return business;
+    },
+  );
+
+  // ── POST /v1/businesses ───────────────────────────────────────────────────
+  //
+  // 201, not 202. `auth.routes.ts` answers 202 to sign-up because "nothing
+  // usable exists yet"; here something does — the business is readable
+  // immediately — so the ordinary 201 applies.
+  app.withTypeProvider<ZodTypeProvider>().post(
+    '/v1/businesses',
+    {
+      schema: {
+        operationId: 'createBusiness',
+        summary: "Create the caller's business",
+        description:
+          "Creates the business and the caller's owner membership in one statement, so neither can exist without the other. An account may hold only one business (ADR-003): a second attempt is refused with 409 business-already-exists and writes nothing. The name is trimmed before it is stored.",
+        tags: ['businesses'],
+        body: createBusinessRequestSchema,
+        response: { 201: businessSchema },
+      },
+    },
+    async (request, reply) => {
+      const { userId } = principalOf(request);
+      // Zod has already run, so `name` arrives trimmed (decision 9).
+      const { name } = request.body;
+
+      const business = await createMyBusiness(db(), { userId }, name);
+
+      // The service throws `business-already-exists` for the conflict, from
+      // either the pre-check or the index, so this handler has no conflict
+      // branch of its own — there is one place that decision lives.
+      return await reply.code(201).send(business);
     },
   );
 

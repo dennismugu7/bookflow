@@ -16,6 +16,8 @@ import 'package:bookflow_api/src/model/date.dart';
 
 import 'package:bookflow_api/src/model/business.dart';
 import 'package:bookflow_api/src/model/business_input.dart';
+import 'package:bookflow_api/src/model/create_business_request.dart';
+import 'package:bookflow_api/src/model/create_business_request_input.dart';
 import 'package:bookflow_api/src/model/health_response.dart';
 import 'package:bookflow_api/src/model/health_response_input.dart';
 import 'package:bookflow_api/src/model/profile.dart';
@@ -32,6 +34,8 @@ part 'serializers.g.dart';
 @SerializersFor([
   Business,
   BusinessInput,
+  CreateBusinessRequest,
+  CreateBusinessRequestInput,
   HealthResponse,
   HealthResponseInput,
   Profile,
@@ -47,8 +51,8 @@ Serializers serializers = (_$serializers.toBuilder()
       ..add(const OneOfSerializer())
       ..add(const AnyOfSerializer())
       ..add(const DateSerializer())
-      ..add(Iso8601DateTimeSerializer()))
-    .build();
+      ..add(Iso8601DateTimeSerializer())
+    ).build();
 
 Serializers standardSerializers =
     (serializers.toBuilder()..addPlugin(StandardJsonPlugin())).build();

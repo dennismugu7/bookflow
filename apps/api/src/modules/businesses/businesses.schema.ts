@@ -51,3 +51,18 @@ export const renameBusinessRequestSchema = z
   .object({ name: businessName })
   .describe('A new name for the business. The only editable field.')
   .meta({ id: 'RenameBusinessRequest' });
+
+/**
+ * Creation takes the name and nothing else (decision 1). Tagline, About and the
+ * banner are non-goals and have no columns; a salon category is not collected
+ * here (decision 5, K16).
+ *
+ * Its own schema id rather than sharing `RenameBusinessRequest`: they are
+ * separate operations in the generated Dart client, and a shared id couples them
+ * the first time they diverge — which they will, the moment creation gains a
+ * field rename does not have.
+ */
+export const createBusinessRequestSchema = z
+  .object({ name: businessName })
+  .describe('The business to create. Name only.')
+  .meta({ id: 'CreateBusinessRequest' });

@@ -14,8 +14,7 @@ part 'signup_accepted_input.g.dart';
 /// Properties:
 /// * [status] - The request was accepted. If the address could be registered, an activation email has been sent to it.
 @BuiltValue()
-abstract class SignupAcceptedInput
-    implements Built<SignupAcceptedInput, SignupAcceptedInputBuilder> {
+abstract class SignupAcceptedInput implements Built<SignupAcceptedInput, SignupAcceptedInputBuilder> {
   /// The request was accepted. If the address could be registered, an activation email has been sent to it.
   @BuiltValueField(wireName: r'status')
   SignupAcceptedInputStatusEnum get status;
@@ -23,24 +22,18 @@ abstract class SignupAcceptedInput
 
   SignupAcceptedInput._();
 
-  factory SignupAcceptedInput([void updates(SignupAcceptedInputBuilder b)]) =
-      _$SignupAcceptedInput;
+  factory SignupAcceptedInput([void updates(SignupAcceptedInputBuilder b)]) = _$SignupAcceptedInput;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(SignupAcceptedInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<SignupAcceptedInput> get serializer =>
-      _$SignupAcceptedInputSerializer();
+  static Serializer<SignupAcceptedInput> get serializer => _$SignupAcceptedInputSerializer();
 }
 
-class _$SignupAcceptedInputSerializer
-    implements PrimitiveSerializer<SignupAcceptedInput> {
+class _$SignupAcceptedInputSerializer implements PrimitiveSerializer<SignupAcceptedInput> {
   @override
-  final Iterable<Type> types = const [
-    SignupAcceptedInput,
-    _$SignupAcceptedInput
-  ];
+  final Iterable<Type> types = const [SignupAcceptedInput, _$SignupAcceptedInput];
 
   @override
   final String wireName = r'SignupAcceptedInput';
@@ -63,9 +56,7 @@ class _$SignupAcceptedInputSerializer
     SignupAcceptedInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -117,18 +108,16 @@ class _$SignupAcceptedInputSerializer
 }
 
 class SignupAcceptedInputStatusEnum extends EnumClass {
+
   /// The request was accepted. If the address could be registered, an activation email has been sent to it.
   @BuiltValueEnumConst(wireName: r'confirmation_required')
-  static const SignupAcceptedInputStatusEnum confirmationRequired =
-      _$signupAcceptedInputStatusEnum_confirmationRequired;
+  static const SignupAcceptedInputStatusEnum confirmationRequired = _$signupAcceptedInputStatusEnum_confirmationRequired;
 
-  static Serializer<SignupAcceptedInputStatusEnum> get serializer =>
-      _$signupAcceptedInputStatusEnumSerializer;
+  static Serializer<SignupAcceptedInputStatusEnum> get serializer => _$signupAcceptedInputStatusEnumSerializer;
 
-  const SignupAcceptedInputStatusEnum._(String name) : super(name);
+  const SignupAcceptedInputStatusEnum._(String name): super(name);
 
-  static BuiltSet<SignupAcceptedInputStatusEnum> get values =>
-      _$signupAcceptedInputStatusEnumValues;
-  static SignupAcceptedInputStatusEnum valueOf(String name) =>
-      _$signupAcceptedInputStatusEnumValueOf(name);
+  static BuiltSet<SignupAcceptedInputStatusEnum> get values => _$signupAcceptedInputStatusEnumValues;
+  static SignupAcceptedInputStatusEnum valueOf(String name) => _$signupAcceptedInputStatusEnumValueOf(name);
 }
+

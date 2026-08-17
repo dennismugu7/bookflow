@@ -11,12 +11,11 @@ part 'business_input.g.dart';
 /// A business the caller is a member of.
 ///
 /// Properties:
-/// * [id]
-/// * [name]
-/// * [published]
+/// * [id] 
+/// * [name] 
+/// * [published] 
 @BuiltValue()
-abstract class BusinessInput
-    implements Built<BusinessInput, BusinessInputBuilder> {
+abstract class BusinessInput implements Built<BusinessInput, BusinessInputBuilder> {
   @BuiltValueField(wireName: r'id')
   String get id;
 
@@ -28,15 +27,13 @@ abstract class BusinessInput
 
   BusinessInput._();
 
-  factory BusinessInput([void updates(BusinessInputBuilder b)]) =
-      _$BusinessInput;
+  factory BusinessInput([void updates(BusinessInputBuilder b)]) = _$BusinessInput;
 
   @BuiltValueHook(initializeBuilder: true)
   static void _defaults(BusinessInputBuilder b) => b;
 
   @BuiltValueSerializer(custom: true)
-  static Serializer<BusinessInput> get serializer =>
-      _$BusinessInputSerializer();
+  static Serializer<BusinessInput> get serializer => _$BusinessInputSerializer();
 }
 
 class _$BusinessInputSerializer implements PrimitiveSerializer<BusinessInput> {
@@ -74,9 +71,7 @@ class _$BusinessInputSerializer implements PrimitiveSerializer<BusinessInput> {
     BusinessInput object, {
     FullType specifiedType = FullType.unspecified,
   }) {
-    return _serializeProperties(serializers, object,
-            specifiedType: specifiedType)
-        .toList();
+    return _serializeProperties(serializers, object, specifiedType: specifiedType).toList();
   }
 
   void _deserializeProperties(
@@ -140,3 +135,4 @@ class _$BusinessInputSerializer implements PrimitiveSerializer<BusinessInput> {
     return result.build();
   }
 }
+

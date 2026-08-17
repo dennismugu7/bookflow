@@ -66,6 +66,7 @@ All URIs are relative to *http://localhost*
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
 [*AuthApi*](doc/AuthApi.md) | [**signUp**](doc/AuthApi.md#signup) | **POST** /v1/auth/signup | Create an owner account
+[*BusinessesApi*](doc/BusinessesApi.md) | [**createBusiness**](doc/BusinessesApi.md#createbusiness) | **POST** /v1/businesses | Create the caller&#39;s business
 [*BusinessesApi*](doc/BusinessesApi.md) | [**getBusiness**](doc/BusinessesApi.md#getbusiness) | **GET** /v1/businesses/{businessId} | A business the caller belongs to
 [*BusinessesApi*](doc/BusinessesApi.md) | [**renameBusiness**](doc/BusinessesApi.md#renamebusiness) | **PATCH** /v1/businesses/{businessId} | Rename a business the caller belongs to
 [*HealthApi*](doc/HealthApi.md) | [**getHealth**](doc/HealthApi.md#gethealth) | **GET** /health | Liveness probe
@@ -77,6 +78,8 @@ Class | Method | HTTP request | Description
 
  - [Business](doc/Business.md)
  - [BusinessInput](doc/BusinessInput.md)
+ - [CreateBusinessRequest](doc/CreateBusinessRequest.md)
+ - [CreateBusinessRequestInput](doc/CreateBusinessRequestInput.md)
  - [HealthResponse](doc/HealthResponse.md)
  - [HealthResponseInput](doc/HealthResponseInput.md)
  - [Profile](doc/Profile.md)
