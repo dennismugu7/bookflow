@@ -335,11 +335,20 @@ which is public. These three are behind a token.
 
 ### B.9 What this contract makes satisfiable — and what it cannot
 
-**Satisfiable by this contract**, wholly or as the API half: 1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12,
-13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 31, 32, 34, 35, 36, 37, 38, 39, 40, 51.
+**Satisfiable by this contract**, wholly or as the API half — **32 criteria**: 1, 2, 3, 4, 6, 7,
+8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 31, 32, 34, 35, 36, 37, 38, 39, 40,
+51.
 
-**Criteria this contract CANNOT satisfy — the list that matters:**
+**Criteria this contract CANNOT satisfy — the list that matters, 19 of them:**
 
+- **22 — CORRECTED 2026-08-17. This was listed as satisfiable and is not.** Criterion 22 reads
+  *"after **any** further creation attempt"*, and a concurrent double-submit is one. **The
+  distinction:** the contract satisfies 22's **sequential** case entirely — a second request
+  arriving after the first has committed reads the existing membership and is refused with the
+  409. It cannot satisfy the **concurrent** case, where both requests read before either writes.
+  **Only decision 10's partial unique index satisfies that**, which is the same reason 48 and 49
+  sit here. The Notes section of the criteria file already said this; the mapping had not caught
+  up.
 - **48 and 49 (concurrency).** The contract's read-then-insert cannot stop two simultaneous
   callers both finding no business. **Only decision 10's partial unique index can**, and the
   contract's job is to turn the resulting `23505` into the 409 above rather than a 500. The

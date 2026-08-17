@@ -156,6 +156,13 @@ appears here, deliberately.
     other's existence: neither account's creation is refused because a different account already
     has a business.
 
+### The rename surface, once it had one (decision 11)
+
+52. Screen #20 shows a business section carrying the business name, beneath the personal section.
+53. While a rename request is in flight, screen #20's business section shows a loading state.
+54. When a rename request fails, screen #20's business section shows an error state, and the
+    owner can submit the rename again without restarting the app.
+
 ## Notes on individual criteria
 
 **Criterion 32 — where the no-echo rule comes from.** It is not introduced here. It restates a
@@ -193,11 +200,16 @@ The dashboard's *empty* state is not a separate screen state here: for a busines
 under it, the setup-continuation state **is** what empty renders as, which is why criterion 47
 pins it and criterion 46 forbids falling back to it when the truth is unknown.
 
-**A rename surface is owed and not yet on this list.** Decision 4 implies one exists — an owner
-who mistypes the name must be able to fix it, and an owner does not issue API requests — but no
-design names which screen it is. That is a Phase 1 decision, tracked in `00-frame.md` §5.3.
-Criteria 13–16 and 39 pin the behaviour; the screen's loading and error criteria are appended
-once it has an identity, and its empty state is inapplicable for the same reason screen #5's is.
+**UPDATED 2026-08-17. The rename surface is named and now on this list.** It was owed and
+unidentified; decision 11 settles it as **screen #20's business section**, widened to the
+Personal/Business Information Management page. It is a *section added to a screen that already
+exists* rather than a new screen, which is why it sits apart in the table:
+
+| Surface | Loading | Empty | Error |
+|---|---|---|---|
+| **Screen #20's business section** (decision 11) — an existing screen, widened | 53 | inapplicable | 54 |
+
+Criterion 52 pins the section itself. Criteria 13–16 and 39 remain the API-observable half.
 
 ## Deliberately not covered
 
@@ -257,6 +269,13 @@ not because it was overlooked.
   behaviour and are API-observable only. The screen's loading and error criteria are **appended
   when the surface is named** — append-only, so new numbers, never a renumber. Its empty state
   is inapplicable for the same reason screen #5's is.
+  **UPDATED 2026-08-17 — the surface is now named and this entry is no longer OWED.** Decision 11
+  puts renaming on **screen #20**, widened to the Personal/Business Information Management page
+  its own routing text already names. `00-frame.md` §5.3 is **discharged**, and **criteria 52–54
+  are the appended criteria this entry promised** — 52 the section, 53 loading, 54 error. **What
+  remains on this list is the empty state alone, and now as a genuine inapplicability rather than
+  a placeholder:** the business section is a field with an edit affordance, not a collection, so
+  there is nothing it can be empty *of*, exactly as with screen #5.
 
 ## Blocked
 

@@ -165,6 +165,29 @@ All six questions this frame raised are answered. Each carries its reason.
     **OBLIGATION:** this makes the slice's migration count one rather than zero, and puts it on
     the Do-Not-Vibe surface. See §5.4 and `02-design.md` §A.4.
     *Decided by Dennis, 2026-08-17, guiding session.*
+11. **Where does renaming live? — SCREEN #20**, widened from "My Profile Details" to what
+    `DD-Bookflow-Native.md:973` already calls its destination: **the Personal/Business
+    Information Management page.** A business section sits beneath the personal one, carrying the
+    business name and its own edit affordance.
+    **Reason:** #20 is the only real screen already built, so this adds a **section** rather than
+    a screen. The design's own routing text already names *Business* as living there — the
+    obligation in §5.3 was that no design named a surface, and this one half-names it.
+    **Why not the alternatives:** #17 is a five-row menu (Profile, My services, Settings,
+    Support, Log out) with **no business section to extend**; #23 is app-level by content —
+    change password, privacy policy, terms, delete account; and the "main business settings
+    dashboard" mentioned in passing at `DD-Bookflow-Native.md:1229` **is specified nowhere**, so
+    choosing it would be exactly the invention §5.3 refused.
+    **COST, recorded rather than glossed.** #20 carries K75's **dead Edit control** — the
+    affordance the design draws for the personal fields, deliberately not built because nothing
+    it could do exists. **This slice therefore ships a screen whose business section is editable
+    and whose personal section is not.** That is odd to look at and it is the strongest argument
+    against this decision. **K75 is not fixed here** — profile editing remains a non-goal, and
+    widening this slice to fix it would turn one page into a feature, which is the reason K75 was
+    deferred in the first place.
+    **This is the fourth design deviation** (with the three in the §4 Consequence and §5's K47
+    answer), and it belongs in `docs/analysis/08-design-deviations.md` on the same terms: written
+    in the slice that ships the code, not here.
+    *Decided by Dennis, 2026-08-17, guiding session.*
 
 ### Consequence — the design and the build now disagree, on purpose
 
@@ -268,7 +291,23 @@ still a change to a contract two clients read.
 the slug must carry; the slug itself is the first thing the implementation owes, and it is a
 Do-Not-Vibe-adjacent edit to a shared contract rather than a line in a route.
 
-### 5.3 Outstanding obligation — Phase 1 must name the rename surface
+### 5.3 ~~Outstanding obligation~~ — DISCHARGED 2026-08-17 by decision 11
+
+**Settled in Phase 1, which is where it belonged.** The rename surface is **screen #20**, widened
+to the Personal/Business Information Management page its own routing text already names; a
+business section beneath the personal one. See decision 11 for the reasoning, the rejected
+alternatives, and the cost.
+
+**What this unblocks:** criteria 52–54, appended to `01-acceptance-criteria.md` — the loading and
+error states `DEFINITION_OF_DONE.md` line 32 requires, which could not be written for a screen
+with no identity. Its empty state remains inapplicable, for the same reason screen #5's is.
+
+**Left standing below, unedited**, because the record should show what was owed and how it was
+settled, not just the answer. **Still outstanding: §5.1, §5.2 and §5.4.**
+
+---
+
+*Original entry, 2026-08-17:*
 
 **Decision 4's reason is that an owner who mistypes their business name must be able to fix it.
 An API-only rename does not satisfy that** — an owner does not hold a token and does not issue
@@ -292,7 +331,7 @@ may change — and §3 asserted for a day that it had settled the surface too. N
 surfaced the gap. **A mechanical sweep against an external checklist did**, which is the argument
 for running such sweeps rather than trusting a careful reading of one's own document.
 
-**Status: OUTSTANDING.**
+**Status: ~~OUTSTANDING~~ — DISCHARGED, see the heading above.**
 
 ### 5.4 Outstanding obligation — decision 10's migration must be written and applied
 
