@@ -200,7 +200,9 @@ on 2026-08-17; all four are pushed and **none has a PR open**, deliberately — 
 1. **PR #14 (4c), branch `feat/phase3-e2e`** — the only one with a PR. The review record is
    posted (`5311554684`). What remains: **a genuine green on the head commit `607f03b`**, then
    flip ADR-040 to *Accepted* citing that comment id, then merge. Phase 3 closes there. See §4
-   for why the existing green does not count.
+   for why the existing green does not count. **The steps are unchanged; how you verify them is
+   not — do not confirm that green with `gh run list`, which is 404ing. §6 gives the command that
+   works.**
 2. **`ci/ios-build-cadence`** — moves `ios-build` to a weekly schedule plus `workflow_dispatch`.
    Will need `main` refreshed after #14. Also carries `BUILD_LOG.md` §8 and a fix folding a
    stray ADR-024 amendment back into the real file. **Conflicts with #14 on `ci.yml` and on
@@ -238,8 +240,24 @@ remote are the truth: `git branch -r`.** That rule has now paid for itself twice
   run, and a PR against `main` immediately does. **This is why work is pushed but PRs are not
   opened during the outage**: pushing gets the work off the one machine that holds it, at zero
   cost, while opening the PR is deferred to the moment a green can actually be produced.
-  Verified 2026-08-17 by pushing three times and checking `gh run list -b <branch>` each time —
-  zero runs, every time.
+  Verified 2026-08-17 by pushing repeatedly and checking the runs for each branch — zero every
+  time. **Use the command in the next bullet to check, not `gh run list`.**
+- **`gh run list` is broken for this repository, and its failure looks exactly like "no runs".**
+  It queries `/actions/runs`, which returns **HTTP 404** while every other Actions endpoint
+  answers normally — diagnosed 2026-08-17: `actions/permissions` returns `enabled:true`,
+  `actions/workflows` returns `1`, the **per-workflow** runs collection returns `76`, an
+  individual run reads back intact, and cache usage answers. **A 404 from `gh run list` is
+  therefore not evidence of anything.** Use instead:
+  `gh api "repos/dennismugu7/bookflow/actions/workflows/331331404/runs?branch=<branch>" --jq '.total_count'`
+  — or fetch a run by its id. **Always pair a zero with a control**: the same query against
+  `feat/phase3-e2e` returns `8`, and a zero beside a non-zero from the same query is a verified
+  zero where a zero alone is not.
+  **It may be transient** — it had failed on four consecutive attempts over several minutes when
+  diagnosed. **Retry `gh run list` before assuming the workaround is still needed.**
+  **Ruled out with evidence, not by assumption:** Actions being disabled (`permissions` says
+  enabled), token scope (the token holds `repo` and `workflow` and the same token reads five
+  other Actions endpoints), and exhausted-minutes-as-such — **exhaustion would not spare the
+  per-workflow route.**
 - **Supabase free tier** allows two active projects per organisation (`mugu-labs`, on the
   free plan). Both are used: `bookflow-staging`, and `Dashboard X`, which is not a
   Bookflow resource. **So production has no slot** — when it is needed, the options are to
