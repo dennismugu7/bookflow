@@ -163,6 +163,21 @@ appears here, deliberately.
 54. When a rename request fails, screen #20's business section shows an error state, and the
     owner can submit the rename again without restarting the app.
 
+### Reachability and the account menu (decision 12)
+
+55. An owner with a business can reach screen #20 from the screen they land on after signing in,
+    without reinstalling, signing out, or being sent there by a redirect. **This criterion is
+    first in this group deliberately: it is the one that would have caught a route change that
+    left screen #20 with no path to it.**
+56. Screen #17 shows no row whose destination does not exist.
+57. An owner with a business can reach sign-out, and signing out from there returns them to the
+    signed-out shell.
+58. Screen #20's back affordance returns to screen #17, and does not sign the owner out.
+59. While screen #17's header profile is loading, its rows are still present and Log out still
+    works.
+60. When screen #17's header profile fails to load, the rows are still present and Log out still
+    works.
+
 ## Notes on individual criteria
 
 **Criterion 32 — where the no-echo rule comes from.** It is not introduced here. It restates a
@@ -208,8 +223,21 @@ exists* rather than a new screen, which is why it sits apart in the table:
 | Surface | Loading | Empty | Error |
 |---|---|---|---|
 | **Screen #20's business section** (decision 11) — an existing screen, widened | 53 | inapplicable | 54 |
+| **Screen #17**, the account menu (decision 12) — a new screen | 59 | inapplicable | 60 |
 
 Criterion 52 pins the section itself. Criteria 13–16 and 39 remain the API-observable half.
+
+**Screen #17's empty state is inapplicable** because the menu is a fixed list of rows known at
+compile time, not a collection loaded from anywhere — it cannot return nothing. Its loading and
+error criteria are shaped by a carve-out worth restating here: **both pin that the rows survive**,
+because `ErrorView` would replace the screen and take Log out with it, stranding exactly the user
+who most needs to leave.
+
+**Nothing pinned reachability until criterion 55.** Criteria 52–54 presuppose an owner is looking
+at screen #20 and none said how they arrived; 25 pins only that they leave the setup stub. The
+gap surfaced when §C.5 proposed giving `/home` to screen #12 — which would have left #20, and
+with it sign-out, with no path at all. **55 is written first in its group for that reason**, and
+it is the second gap of this shape after §5.3's unnamed rename surface.
 
 ## Deliberately not covered
 
@@ -248,6 +276,16 @@ not because it was overlooked.
 - **The `PROBLEM_TYPES` entry decision 8 requires.** Criterion 35 pins the response the slug must
   carry; appending the slug is a change to ADR-014's error contract, tracked as an outstanding
   obligation in `00-frame.md` §5.2 rather than as a criterion.
+- **Screen #17's My services, Settings and Support rows — OMITTED, and that is the fifth design
+  deviation.** The design gives #17 those three alongside Profile and Log out; decision 12 ships
+  **Profile and Log out only**, because #21/#22, #23 and #18 do not exist. Criterion 56 pins the
+  omission. **This is K75's lesson applied before the mistake rather than after** — a visible
+  control that does nothing is a promise the app does not keep — and shipping the full menu would
+  make that promise three times on one screen. Recorded for
+  `docs/analysis/08-design-deviations.md` in the slice that ships the code, on the same terms as
+  the other four.
+- **An empty state for screen #17 — INAPPLICABLE.** A fixed list of rows known at compile time is
+  not a collection and cannot return nothing. Criteria 59 and 60 cover loading and error.
 - **An empty state for screen #5 — INAPPLICABLE, not overlooked.**
   `DEFINITION_OF_DONE.md` requires loading, empty and error on every new screen. Screen #5 is a
   form: it renders no collection, so there is nothing it can be empty *of*. Its unfilled state is

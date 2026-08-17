@@ -188,6 +188,30 @@ All six questions this frame raised are answered. Each carries its reason.
     answer), and it belongs in `docs/analysis/08-design-deviations.md` on the same terms: written
     in the slice that ships the code, not here.
     *Decided by Dennis, 2026-08-17, guiding session.*
+12. **How does an owner reach screen #20 once #12 is home? — THROUGH SCREEN #17**, which this
+    slice builds. Screen #12 gains the profile avatar; the avatar opens the account menu; the
+    menu's **Profile** row navigates to #20.
+    **Why this and not the avatar going straight to #20.** `DD-Bookflow-Native.md:957` states
+    without qualification that #17 is *"Triggered when the top-right profile avatar (XX) is
+    clicked on any previous main screen."* Lines 610–611 offer a looser alternative — *"Opens
+    user account settings **or** profile drawer/modal"*, *"/settings **or** /profile"* — and the
+    two are inconsistent. **Following the unqualified statement over the disjunctive one** also
+    keeps screen #20 free of a second deviation: routing the avatar directly at #20 would have
+    forced its back affordance to return to #12, which no design says.
+    **ROWS FOR SCREENS THAT DO NOT EXIST ARE OMITTED, NOT SHOWN INERT.** #17 ships with
+    **Profile** and **Log out** only. **My services**, **Settings** and **Support** arrive when
+    #21/#22, #23 and #18 do. **This is K75's lesson applied before the mistake rather than
+    after:** a visible control that does nothing is a promise the app does not keep, and shipping
+    the full menu would make that promise three times over on one screen.
+    **SIGN-OUT MOVES.** Today it is screen #20's back arrow, which `profile_screen.dart` says
+    outright *"leads nowhere in this slice … so it signs out instead of pretending to navigate."*
+    That reasoning expires here: there is now a screen behind #20. **Sign-out becomes #17's Log
+    out row, per the design, and #20's back affordance returns to #17.**
+    **COST RECORDED.** This slice now **builds a screen it did not previously touch**, which is
+    real scope growth and not a detail. And **#17 shipping two rows instead of five is itself a
+    deviation** — the fifth, recorded on the same terms as the other four, for
+    `docs/analysis/08-design-deviations.md` when the code ships.
+    *Decided by Dennis, 2026-08-17, guiding session.*
 
 ### Consequence — the design and the build now disagree, on purpose
 

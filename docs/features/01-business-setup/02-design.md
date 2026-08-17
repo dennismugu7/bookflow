@@ -492,9 +492,16 @@ status becomes `member`, and the redirect carries the owner to `/home`. **Criter
 satisfied by the existing redirect and no new routing rule** — which is what the redirect tests
 already exercise by overriding the repository to force `member`.
 
-**One consequence worth naming:** `/home` builds `ProfileScreen` today. Screen #12 becomes the
-home destination, and screen #20 moves behind it. That is a change to an existing route, not an
-addition.
+**CORRECTED 2026-08-17.** This section originally ended: *"`/home` builds `ProfileScreen` today.
+Screen #12 becomes the home destination, and screen #20 moves behind it. That is a change to an
+existing route, not an addition."* **The first two sentences are true and the third is badly
+incomplete** — "moves behind it" quietly assumed a *behind* existed. It did not. **The moment
+`/home` stops building `ProfileScreen`, screen #20 has no navigation path at all**, and with it
+go sign-out for any owner with a business (its only affordance is #20's back arrow) and the only
+surface in the app that renders a profile.
+
+**Decision 12 supplies the missing path**, and it is more than a route swap: **#12's avatar →
+screen #17 → #20**, with screen #17 built by this slice. §C.9 sketches it.
 
 ### C.6 The 404 rule — where criterion 46 actually lives
 
@@ -571,6 +578,65 @@ question in the wrong document, which is the mistake §5.3 was raised over.
 tokens are actually reached for — **not as a fourth outstanding obligation in `00-frame.md` §5**,
 because unlike §5.1, §5.2 and §5.4 it blocks nothing that is currently in flight and has a
 natural trigger already.
+
+**Decision 12 adds a fourth surface, screen #17**, and the same answer applies to it: if it is
+among the eight, its classification is owed before its widgets are written.
+
+### C.9 The navigation chain — decision 12
+
+**Screen #12's avatar.** Part of the top bar the design specifies alongside the
+Bookings/Contacts/Calendar tabs — *"**User Profile Avatar:** A circular badge with initials
+**"xx"** on the far right"* (`DD-Bookflow-Native.md:586`). It renders initials from the profile,
+reusing `OwnerProfile.initials`, which `profile_models.dart` already computes for #20's badge.
+**It holds nothing and fetches nothing of its own**; it reads the profile provider the screen
+already has. Its tap opens screen #17.
+
+**Screen #17, the account menu — built by this slice.** Composition per decision 12: a header
+carrying the avatar and display name, then **two rows only — Profile and Log out.** My services,
+Settings and Support are omitted rather than drawn inert.
+
+- **What it holds.** Nothing. It is a menu.
+- **What it fetches.** The profile, for the header's name and initials — the same
+  `myProfileProvider` #20 uses, not a second call.
+
+**`DEFINITION_OF_DONE.md` line 32 applied to it, as a new screen:**
+
+- **Loading.** Applies. The header reads the profile, so `AsyncValueView`'s loading branch →
+  `LoadingView` while it is in flight. **The rows do not wait on it** — Profile and Log out are
+  static and navigate regardless, so the loading state covers the header only. Sign-out
+  reachable while the profile is still loading is the point: a user whose profile read hangs must
+  still be able to leave.
+- **Error.** Applies, and with the same carve-out. A failed profile read degrades the header,
+  **not the menu.** `ErrorView` is not used here — it replaces the screen, which would take
+  Log out with it and strand exactly the user who most needs it.
+- **Empty — INAPPLICABLE, and why rather than omitted.** The menu is a fixed list of rows known
+  at compile time, not a collection loaded from anywhere. It cannot return nothing. The header's
+  profile is a single resource, absent only as an error.
+
+**The route change, and it is a first for this app.** `router.dart`'s redirect is **total**: it
+returns `destination.path` unless already there, every screen change today is a consequence of
+state, no `GoRoute` has children, and **nothing anywhere calls `context.go` or `context.push`.**
+Decision 12 introduces **the app's first tap-driven navigation** — #12 → #17 → #20 — which the
+current redirect cannot express, because a pushed route is not the destination the provider
+computes and the redirect would immediately pull the user back to `/home`.
+
+**That is a change to routing's shape, not a new entry in the enum**, and it is the largest
+single piece of new work decision 12 takes on. **Whether it warrants its own ADR is deliberately
+not decided here** — ADR-028 chose `go_router` and the auth-aware redirect without anticipating
+push navigation, and whether extending it is an implementation detail or a foundation change is a
+**risk question, which is §D's subject.** Raised there, not settled here.
+
+**Sign-out relocation.** From #20's back arrow to #17's Log out row. `profile_screen.dart`'s
+comment — *"It leads nowhere in this slice — there is one screen behind the shell — so it signs
+out instead of pretending to navigate"* — **expires with decision 12**, because there is now a
+screen behind it. That comment is the marker for the change.
+
+**Screen #20's back affordance** returns to **#17**. It stops signing out.
+
+**One property worth pinning because it is easy to lose:** sign-out must remain reachable for an
+owner with a business at every step of this move. It is reachable today only through #20; after
+the move only through #17; and **between those two states is a diff in which it is reachable
+through neither.** Criterion 57 exists for that.
 
 ## D. Layers touched, and risk
 
