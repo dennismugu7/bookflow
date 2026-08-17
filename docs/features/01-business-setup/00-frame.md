@@ -233,3 +233,93 @@ still a change to a contract two clients read.
 **Status: OUTSTANDING.** Nothing in this document adds the slug. Criterion 35 pins the behaviour
 the slug must carry; the slug itself is the first thing the implementation owes, and it is a
 Do-Not-Vibe-adjacent edit to a shared contract rather than a line in a route.
+
+## 6. Unknowns and spikes
+
+**There are none, and no spike is proposed.** The manual asks for a spike wherever some part is
+*"I don't actually know how X works"*. Nothing in this slice's pinned scope is that.
+
+**Why the answer is honestly empty, not lazily empty.** The slice writes one row to
+`public.businesses` and one to `public.memberships` — two tables that already exist, already have
+their constraints, and were exercised end to end in Phase 3 — through an API pattern already
+serving traffic on staging: Zod schema, route, service, repository taking its executor, RFC 9457
+problem on failure, generated OpenAPI, generated Dart client, `AsyncValue` in a screen. Every
+layer this slice touches has a working instance of itself in the repository. A spike proposed
+here would be theatre, and Actions minutes are the scarce resource.
+
+**Candidates considered, and why each is knowable by reading rather than by experiment:**
+
+- **How a unique-constraint violation surfaces** when a second business is attempted
+  (criterion 34). PostgreSQL raises SQLSTATE `23505` naming the constraint, and ADR-036 chose
+  explicit constraint names *precisely* so the API can branch on them — `uq_memberships_user_business`
+  is a name we picked, not one we inherited. Spike 001/C1 already observed the analogous
+  `23P01` path for an exclusion constraint. Nothing to discover.
+- **A deliberate constraint violation inside the integration transaction.** A failed statement
+  aborts a PostgreSQL transaction, and the suite runs each test inside one — so a test that
+  provokes `23505` would poison everything after it. **This is already solved infrastructure,
+  not an open question:** `apps/api/test/integration/harness.ts` provides a helper that runs a
+  statement expected to fail inside a `savepoint` and restores afterwards, and both the harness
+  and `apps/api/test/README.md` document the caveat. Two existing test files already rely on it.
+  It is a Phase 1 design note, not an unknown.
+- **Writing the business and its membership atomically.** A Kysely transaction, with the
+  executor passed in — which `CLAUDE.md` §5 already makes non-negotiable and every existing
+  repository already does.
+- **Trimming a name (decision 9).** Application logic with no environmental dependency.
+- **The screen.** The design tokens, `go_router` redirect and Riverpod wiring all shipped in
+  PR 3a and PR 3b, and screen #20 renders live staging data through them today.
+
+### Not unknowns, but two constraints this slice must plan around
+
+Named here because they bind how the slice can be *verified*, and discovering them during Phase 5
+would be expensive.
+
+- **The staging e2e account must never be given a membership** (K78, and stated as the rule that
+  outlives the rotation policy). This slice's central observable — criteria 41 and 42, that the
+  membership stub stops lying — **cannot be demonstrated on that account.** An e2e journey
+  covering business setup needs a different staging account, deliberately created and
+  deliberately disposable.
+- **E14 makes a second staging account non-trivial.** Staging's sender is Resend's test address
+  and reaches exactly one inbox, so an account that must click an activation link cannot be
+  created for CI. The existing e2e account was created through the GoTrue admin path with
+  `email_confirmed_at` set at creation, and a second one would have to be too.
+
+### A14 — does not touch this slice
+
+**A14 is contention on the *exclusion* constraint** over team member, time range and occupying
+status, in a `bookings` table that does not exist. This slice creates no bookings, and no
+exclusion constraint exists to contend on.
+
+The nearest analogue is `uq_memberships_user_business`, and it **cannot** contend across parallel
+test files: contention there needs two tests inserting the same `(user_id, business_id)` pair,
+and every test creates its own account and its own business. Criterion 24 deliberately puts the
+same *name* on two businesses, and no constraint covers names at all (decision 7).
+
+**A14 stays classified against the booking slice, unchanged.**
+
+## 7. Success metrics
+
+**There is no production environment and there are no users, so release metrics cannot be
+measured.** Stating that plainly rather than inventing an activation rate nobody can read is the
+honest answer, and the manual's *"what you'll look at after release"* has no referent yet:
+ADR-023 records that production has no Supabase slot, and ADR-024 deploys production only on a
+tag that has never been cut.
+
+**What can honestly be observed, and therefore stands in until production exists:**
+
+- **The 42 acceptance criteria, observed against deployed staging** rather than against a
+  fixture. That is the whole of what "it worked" can mean for this slice today.
+- **The frame's own solved-signal, §1:** an owner who signs up reaches a state where
+  `memberships` holds their row and the router carries them past the setup stub, on their own
+  credential. Criteria 41 and 42 are that signal made falsifiable, and
+  `membership_repository.dart` stops being a lie at exactly the moment they pass.
+- **One number that is real and worth recording at merge:** how many of the 42 criteria are
+  covered by a named test, and how many are not. `DEFINITION_OF_DONE.md` requires every
+  criterion to map to a named test, so the gap between 42 and that count is a measurement, not
+  an estimate — and it is the first slice where that number can exist at all, Phase 3 having
+  had no criteria to count against (ADR-040 §3.1, K77).
+
+**What is deliberately not proposed:** owner-funnel metrics, completion rates, time-to-first-
+business, drop-off between sign-up and business creation. Every one of them needs real owners on
+a production deployment. They become answerable when production exists, and inventing a
+staging-shaped proxy for them now would produce a number that measures the session's own test
+data.
