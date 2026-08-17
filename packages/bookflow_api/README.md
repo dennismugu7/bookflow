@@ -67,8 +67,10 @@ Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
 [*AuthApi*](doc/AuthApi.md) | [**signUp**](doc/AuthApi.md#signup) | **POST** /v1/auth/signup | Create an owner account
 [*BusinessesApi*](doc/BusinessesApi.md) | [**getBusiness**](doc/BusinessesApi.md#getbusiness) | **GET** /v1/businesses/{businessId} | A business the caller belongs to
+[*BusinessesApi*](doc/BusinessesApi.md) | [**renameBusiness**](doc/BusinessesApi.md#renamebusiness) | **PATCH** /v1/businesses/{businessId} | Rename a business the caller belongs to
 [*HealthApi*](doc/HealthApi.md) | [**getHealth**](doc/HealthApi.md#gethealth) | **GET** /health | Liveness probe
 [*MeApi*](doc/MeApi.md) | [**getMe**](doc/MeApi.md#getme) | **GET** /v1/me | The authenticated owner&#39;s profile
+[*MeApi*](doc/MeApi.md) | [**getMyBusiness**](doc/MeApi.md#getmybusiness) | **GET** /v1/me/business | The caller&#39;s own business
 
 
 ## Documentation For Models
@@ -79,6 +81,8 @@ Class | Method | HTTP request | Description
  - [HealthResponseInput](doc/HealthResponseInput.md)
  - [Profile](doc/Profile.md)
  - [ProfileInput](doc/ProfileInput.md)
+ - [RenameBusinessRequest](doc/RenameBusinessRequest.md)
+ - [RenameBusinessRequestInput](doc/RenameBusinessRequestInput.md)
  - [SignupAccepted](doc/SignupAccepted.md)
  - [SignupAcceptedInput](doc/SignupAcceptedInput.md)
  - [SignupRequest](doc/SignupRequest.md)

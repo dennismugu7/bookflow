@@ -14,5 +14,14 @@ void main() {
     test('test getBusiness', () async {
       // TODO
     });
+
+    // Rename a business the caller belongs to
+    //
+    // The name is the only editable field. Scoped through membership: a business the caller has no membership in is indistinguishable from one that does not exist. The name is trimmed before it is stored.
+    //
+    //Future<Business> renameBusiness(String businessId, RenameBusinessRequestInput renameBusinessRequestInput) async
+    test('test renameBusiness', () async {
+      // TODO
+    });
   });
 }

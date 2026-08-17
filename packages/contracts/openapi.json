@@ -57,6 +57,21 @@
         ],
         "description": "Sign-up accepted; the address must be confirmed before login."
       },
+      "RenameBusinessRequestInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required. Trimmed. 1–200 characters after trimming."
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "description": "A new name for the business. The only editable field."
+      },
       "BusinessInput": {
         "type": "object",
         "properties": {
@@ -175,6 +190,22 @@
         ],
         "additionalProperties": false,
         "description": "Sign-up accepted; the address must be confirmed before login."
+      },
+      "RenameBusinessRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required. Trimmed. 1–200 characters after trimming."
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false,
+        "description": "A new name for the business. The only editable field."
       },
       "Business": {
         "type": "object",
@@ -346,6 +377,70 @@
             "required": true
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Business"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "renameBusiness",
+        "summary": "Rename a business the caller belongs to",
+        "tags": [
+          "businesses"
+        ],
+        "description": "The name is the only editable field. Scoped through membership: a business the caller has no membership in is indistinguishable from one that does not exist. The name is trimmed before it is stored.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameBusinessRequestInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "businessId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Business"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/business": {
+      "get": {
+        "operationId": "getMyBusiness",
+        "summary": "The caller's own business",
+        "tags": [
+          "me"
+        ],
+        "description": "Answers \"do I have a business, and which one\" without needing its id. A 404 means the account has not created one yet — an ordinary state, not an error. Clients must not surface it as a failure.",
         "responses": {
           "200": {
             "description": "Default Response",

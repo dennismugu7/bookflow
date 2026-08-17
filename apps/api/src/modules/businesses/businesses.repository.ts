@@ -89,3 +89,55 @@ export async function findBusinessOwnedBy(
     .limit(1)
     .executeTakeFirst();
 }
+
+/**
+ * Renames the caller's business. Returns `undefined` if it is not theirs, or
+ * does not exist.
+ *
+ * ── THE SCOPE IS IN THE UPDATE, NOT IN A CHECK BEFORE IT ────────────────────
+ *
+ * The membership predicate is part of the `where`, so a business the caller has
+ * no membership in matches no row and nothing is written. The alternative —
+ * read to authorize, then update — is two statements with a gap between them,
+ * and it puts the rule somewhere a later edit can drop it while the update
+ * still looks correct.
+ *
+ * Kysely has no join on `update`, so membership is expressed as an `exists`
+ * subquery over the same `user → membership → business` traversal the reads use
+ * (`CLAUDE.md` §5).
+ *
+ * `updated_at` is not set here. `trg_businesses_updated_at` maintains it
+ * (ADR-036), and setting it in application code is how it comes to lie.
+ *
+ * **The name arrives already trimmed** — `businessName` in `businesses.schema.ts`
+ * trims at the route boundary (decision 9), so nothing here re-trims and there
+ * is exactly one place that rule lives.
+ */
+export async function renameBusinessForUser(
+  executor: Executor,
+  scope: BusinessScope,
+  name: string,
+): Promise<BusinessRow | undefined> {
+  return await executor
+    .updateTable('businesses')
+    .set({ name })
+    .where('businesses.id', '=', sql<string>`${scope.businessId}::uuid`)
+    // The builder is taken whole rather than destructured: pulling `exists` and
+    // `selectFrom` off it separates the methods from their object, which
+    // `@typescript-eslint/unbound-method` refuses for good reason.
+    .where((eb) =>
+      eb.exists(
+        eb
+          .selectFrom('memberships')
+          .select('memberships.id')
+          .whereRef('memberships.business_id', '=', 'businesses.id')
+          .where(
+            'memberships.user_id',
+            '=',
+            sql<string>`${scope.userId}::uuid`,
+          ),
+      ),
+    )
+    .returning(['businesses.id', 'businesses.name', 'businesses.published'])
+    .executeTakeFirst();
+}

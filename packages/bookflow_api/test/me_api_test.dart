@@ -14,5 +14,14 @@ void main() {
     test('test getMe', () async {
       // TODO
     });
+
+    // The caller's own business
+    //
+    // Answers \"do I have a business, and which one\" without needing its id. A 404 means the account has not created one yet — an ordinary state, not an error. Clients must not surface it as a failure.
+    //
+    //Future<Business> getMyBusiness() async
+    test('test getMyBusiness', () async {
+      // TODO
+    });
   });
 }

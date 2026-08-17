@@ -1,7 +1,9 @@
 import type { Executor } from '../../platform/db.ts';
 import {
   type BusinessRow,
+  type BusinessScope,
   findBusinessOwnedBy,
+  renameBusinessForUser,
 } from './businesses.repository.ts';
 
 /**
@@ -37,4 +39,21 @@ export async function getMyBusiness(
   scope: { readonly userId: string },
 ): Promise<BusinessRow | undefined> {
   return await findBusinessOwnedBy(db, scope);
+}
+
+/**
+ * Renames a business the caller is a member of.
+ *
+ * `undefined` means the business is not theirs or does not exist — the two are
+ * not distinguished here, and the route must not distinguish them either.
+ *
+ * `name` is already trimmed by the route's schema (decision 9). This layer does
+ * not re-trim: two places applying the same rule is two places for it to drift.
+ */
+export async function renameMyBusiness(
+  db: Executor,
+  scope: BusinessScope,
+  name: string,
+): Promise<BusinessRow | undefined> {
+  return await renameBusinessForUser(db, scope, name);
 }
