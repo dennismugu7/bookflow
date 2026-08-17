@@ -1,5 +1,7 @@
 # Business setup — Phase 0 frame
 
+> **Not complete on its own.** The slice's acceptance criteria are in `01-acceptance-criteria.md`, written after this frame pinned the scope and before any design (K77); its Blocked list names what is still undecided.
+
 ## 1. Problem statement
 
 **A Kenyan salon or barbershop owner can create an account and then cannot do anything with it.**
