@@ -191,6 +191,33 @@ revoked or missing grant now fails in seconds, locally, instead of in `migrate-s
 permits only `'owner'`, so the row that would distinguish a partial unique index from a plain one
 cannot be inserted at all. It is a schema limit, not a missing fixture.
 
+### E.6 The local database is shared across branches; the code is not
+
+**Found on 2026-08-17, by a pre-push hook refusing correctly.**
+
+`supabase/migrations/` is per-branch. The **applied** schema is not — there is one local Postgres,
+and whatever migration was last run stays run across every `git switch`.
+
+**So a branch whose migration set differs from the applied one fails its own suite, and both
+sides are right.** The concrete instance: this branch's fourth migration,
+`20260817160430_one_owner_membership_per_user`, was applied locally. Switching to
+`docs/guide-handoff-refresh` — which descends from `main` and carries three migrations — its
+`schema.integration.test.ts` failed on *"allows the same user in a different business"* with
+`duplicate key value violates unique constraint "uq_memberships_one_owner_per_user"`. **That
+test is correct for its own code.** It failed against a database from somewhere else.
+
+**The remedy is `npm run db:reset` on the branch you are on. Never `--no-verify`.** The reset
+applies exactly the migrations that branch carries, which is the definition of matching. Bypassing
+the hook would push code whose suite has not run against its own schema, and
+`docs/ENVIRONMENT.md` is explicit that the hook "catches accidents, not intent" — using
+`--no-verify` here would be intent.
+
+**This matters on 2026-08-31 and is why it is written down.** The merge sequence involves checking
+out `feat/phase3-e2e`, `ci/ios-build-cadence` and `docs/guide-handoff-refresh` — all carrying
+**three** migrations — while this branch carries **four**. Every one of those switches will fail
+its suite until the database is reset, and the failure will look like a defect in the branch being
+merged rather than like an artefact of the machine. **Reset first, then read the failure.**
+
 ### E.5 The seed contradicts a decision made after it — recorded, not fixed
 
 `supabase/seed.sql`'s business has **`published = true` and zero services.** §5's K27 answer makes
