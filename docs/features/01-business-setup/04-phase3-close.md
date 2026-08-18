@@ -362,6 +362,17 @@ indistinguishable from an unrun one, and this project already holds the same sha
 places — the scripted replacement that exits zero, `gh run list`'s 404 that reads as "no runs",
 and a count that has only ever been observed at one value.
 
+**AND THE SAME FAILURE HAS A SECOND MECHANISM, which is harder to see because the result IS
+produced.** It is produced into a channel the reader cannot reach. **Tool-output panels are
+visible to the operator and invisible to the guiding session**, which reads only the text of a
+message — so a result shown in a panel has been generated and not delivered, and the session that
+generated it has no signal that anything is missing. **A report is text in a message. It is not a
+rendered artefact.** Three instances on 2026-08-18: `STAT` and `LOG` emitted into fenced blocks
+that arrived empty, and two "verbatim" sections printed by pointing at the `Read` tool's display
+rather than transcribed into the reply. **The verbatim rule already says a quote must be copied
+from the artefact rather than re-rendered — this is its other half: copied INTO the report, where
+the reader is.**
+
 ---
 
 **QUEUED 2026-08-18, as a TRIAGE-ITEM CANDIDATE for the §5.1 pass — a credential is never chosen,
