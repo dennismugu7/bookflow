@@ -5,7 +5,10 @@ import { z } from 'zod';
 import type { Executor } from '../../platform/db.ts';
 import { principalOf } from '../../platform/auth.ts';
 import { ProblemError } from '../../platform/problem.ts';
-import { findBusinessForUser } from './businesses.repository.ts';
+import {
+  businessRepository,
+  findBusinessForUser,
+} from './businesses.repository.ts';
 import {
   createBusinessRequestSchema,
   renameBusinessRequestSchema,
@@ -101,10 +104,11 @@ export function registerBusinessRoutes(
       const { name } = request.body;
 
       // `request.log` rather than the app logger: it carries `reqId`, so a
-      // conflict event can be joined to the request that caused it.
+      // conflict event can be joined to the request that caused it. The
+      // repository is the real one here and always is — the port exists so a
+      // TEST can supply a different one, exactly as `SignupDeps.gotrue` does.
       const business = await createMyBusiness(
-        db(),
-        request.log,
+        { db: db(), log: request.log, repository: businessRepository },
         { userId },
         name,
       );

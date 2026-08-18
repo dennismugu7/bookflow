@@ -268,3 +268,42 @@ export async function renameBusinessForUser(
     .returning(['businesses.id', 'businesses.name', 'businesses.published'])
     .executeTakeFirst();
 }
+
+/**
+ * The two reads and writes `createMyBusiness` needs, as a port it can be given.
+ *
+ * ── THE SAME SHAPE AS `GoTrueClient`, AND FOR THE SAME REASON ───────────────
+ *
+ * `auth.service.ts` takes `gotrue: GoTrueClient` through `SignupDeps` rather
+ * than importing the client, which is what lets a test point sign-up at a
+ * GoTrue that fails in a chosen way. **This exists so the same can be done to
+ * the constraint branch**, which no test could otherwise reach: it fires only
+ * when two creations interleave, and the integration harness has one connection
+ * per test.
+ *
+ * **The executor is still a parameter of every method** (`CLAUDE.md` §5). The
+ * port does not capture a connection; it is the same functions behind a name
+ * the service can be handed a different implementation of.
+ *
+ * **`isSecondBusinessConflict` is deliberately NOT here.** It classifies a
+ * driver error, and injecting it would let a fake decide what counts as a
+ * conflict — which is exactly the judgement the branch test needs to exercise
+ * for real. A fake raises a synthetic `23505`; the genuine predicate reads it.
+ */
+export interface BusinessRepository {
+  findBusinessOwnedBy(
+    executor: Executor,
+    scope: { readonly userId: string },
+  ): Promise<BusinessRow | undefined>;
+  createBusinessForUser(
+    executor: Executor,
+    userId: string,
+    name: string,
+  ): Promise<BusinessRow | undefined>;
+}
+
+/** The real one. What every production call site passes. */
+export const businessRepository: BusinessRepository = {
+  findBusinessOwnedBy,
+  createBusinessForUser,
+};

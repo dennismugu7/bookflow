@@ -1,10 +1,10 @@
 import type { Executor } from '../../platform/db.ts';
 import { ProblemError } from '../../platform/problem.ts';
 import {
+  type BusinessRepository,
   type BusinessRow,
   type BusinessScope,
   businessExistsUnscoped,
-  createBusinessForUser,
   findBusinessOwnedBy,
   isSecondBusinessConflict,
   renameBusinessForUser,
@@ -35,6 +35,30 @@ import {
 export interface BusinessLogger {
   info(context: object, message: string): void;
   warn(context: object, message: string): void;
+}
+
+/**
+ * What `createMyBusiness` is given, in `SignupDeps`'s shape.
+ *
+ * `auth.service.ts` established this: collaborators arrive as a `deps` object,
+ * the executor among them, and the function takes `(deps, request)`. Followed
+ * rather than re-invented — one idea should not have two shapes in one codebase.
+ *
+ * **Only this function takes deps, and that is deliberate.** `getMyBusiness`
+ * and `renameMyBusiness` are pass-throughs with nothing to inject and nothing
+ * to log; wrapping them would be ceremony. `signUp` is likewise the only
+ * public function in its module with a deps object.
+ */
+export interface CreateBusinessDeps {
+  readonly db: Executor;
+  readonly log: BusinessLogger;
+  /**
+   * **NOT optional, for `SignupDeps.breachChecker`'s reason.** A default would
+   * make the real repository the fallback, and a test that forgot to pass a
+   * fake would quietly exercise the database instead of the branch it meant to
+   * — passing for the wrong reason, which is worse than failing.
+   */
+  readonly repository: BusinessRepository;
 }
 
 /**
@@ -89,12 +113,13 @@ export async function getMyBusiness(
  * not have to know which layer caught it.
  */
 export async function createMyBusiness(
-  db: Executor,
-  log: BusinessLogger,
+  deps: CreateBusinessDeps,
   scope: { readonly userId: string },
   name: string,
 ): Promise<BusinessRow> {
-  const existing = await findBusinessOwnedBy(db, scope);
+  const { db, log, repository } = deps;
+
+  const existing = await repository.findBusinessOwnedBy(db, scope);
   if (existing !== undefined) {
     // INFO: an ordinary refusal, not a fault. A returning owner who reinstalls,
     // or a double-tapped button. `signup.password_breached` is the precedent —
@@ -111,7 +136,7 @@ export async function createMyBusiness(
 
   let created: BusinessRow | undefined;
   try {
-    created = await createBusinessForUser(db, scope.userId, name);
+    created = await repository.createBusinessForUser(db, scope.userId, name);
   } catch (error) {
     if (isSecondBusinessConflict(error)) {
       // WARN, and deliberately a level above the branch it mirrors.
