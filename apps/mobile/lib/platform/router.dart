@@ -1,4 +1,6 @@
+import 'package:bookflow/features/account/account_menu_screen.dart';
 import 'package:bookflow/features/business/create_business_screen.dart';
+import 'package:bookflow/features/dashboard/dashboard_screen.dart';
 import 'package:bookflow/features/membership/membership_repository.dart';
 import 'package:bookflow/features/profile/profile_screen.dart';
 import 'package:bookflow/features/signed_out/signed_out_screen.dart';
@@ -213,6 +215,24 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
       ),
       GoRoute(
         path: AppDestination.home.path,
+        // Screen #12 takes the home shell (decision 12). Screen #20 moves to
+        // `/profile` below — a change to an existing route, not an addition,
+        // and the reason this landed as one commit with the account menu:
+        // between the two, sign-out was reachable through neither screen.
+        builder: (BuildContext context, GoRouterState state) =>
+            const DashboardScreen(),
+      ),
+      // ── LEVEL 2 (ADR-042) — reached by tapping, not by state ──────────────
+      //
+      // Declared in `pushedRouteShells` above, which is what stops the redirect
+      // pulling a pushed route straight back to `/home`.
+      GoRoute(
+        path: '/account',
+        builder: (BuildContext context, GoRouterState state) =>
+            const AccountMenuScreen(),
+      ),
+      GoRoute(
+        path: '/profile',
         builder: (BuildContext context, GoRouterState state) =>
             const ProfileScreen(),
       ),

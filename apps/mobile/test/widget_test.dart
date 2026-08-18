@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:bookflow/app.dart';
+import 'package:bookflow/features/business/business_models.dart';
+import 'package:bookflow/features/business/business_providers.dart';
+import 'package:bookflow/features/business/business_repository.dart';
 import 'package:bookflow/features/membership/membership_repository.dart';
 import 'package:bookflow/features/profile/profile_models.dart';
 import 'package:bookflow/features/profile/profile_providers.dart';
@@ -37,6 +40,11 @@ void main() {
         // so these shell tests stay about ROUTING — without it they would fail
         // on a socket, which says nothing about which shell was chosen.
         profileRepositoryProvider.overrideWithValue(const _StubProfile()),
+        // Screen #12 took `/home` in T7+T8 and reads the business. Without
+        // this the dashboard renders its ERROR state — correctly, per
+        // criterion 46 — and the shell assertions below would fail for a
+        // reason that has nothing to do with routing.
+        businessRepositoryProvider.overrideWithValue(const _StubBusiness()),
       ],
       child: const BookflowApp(),
     );
@@ -88,9 +96,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // The one true page (ADR-032), not a placeholder, as of PR 3b.
-    expect(find.text('My profile'), findsOneWidget);
-    expect(find.text('Ada Lovelace'), findsOneWidget);
+    // Was `My profile` — screen #20 held `/home` from PR 3b until decision 12
+    // gave it to the dashboard. #20 is now pushed at `/profile`, behind the
+    // account menu.
+    expect(find.byKey(const Key('setup-continuation')), findsOneWidget);
+    // Was `find.text('Ada Lovelace')`, which screen #20 rendered. The dashboard
+    // shows the profile as INITIALS in the avatar — the same read, a different
+    // rendering — and the avatar is also the path to everything behind it.
+    expect(find.byKey(const Key('dashboard-avatar')), findsOneWidget);
+    expect(find.text('AL'), findsOneWidget);
     expect(find.text('Finish setting up'), findsNothing);
   });
 
@@ -160,4 +174,23 @@ class _FakeMembershipRepository implements MembershipRepository {
 
   @override
   Future<MembershipStatus> currentStatus() async => status;
+}
+
+/// Enough for the dashboard to render its data branch. These tests are about
+/// which SHELL the router picks, not about what the shell contains.
+class _StubBusiness implements BusinessRepository {
+  const _StubBusiness();
+
+  @override
+  Future<BusinessStatus> fetchMine() async => const HasBusiness(
+    OwnedBusiness(id: 'b1', name: 'Demo Salon', published: false),
+  );
+
+  @override
+  Future<OwnedBusiness> create(String name) =>
+      throw UnimplementedError('not used here');
+
+  @override
+  Future<OwnedBusiness> rename({required String id, required String name}) =>
+      throw UnimplementedError('not used here');
 }

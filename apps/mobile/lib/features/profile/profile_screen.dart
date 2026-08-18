@@ -6,6 +6,7 @@ import 'package:bookflow/theme/tokens.dart';
 import 'package:bookflow/ui/async_value_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 /// Screen #20 — My Profile Details. ADR-032's "one true page" for Phase 3.
 ///
@@ -45,13 +46,18 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        // The back arrow of `native-20`. It leads nowhere in this slice — there
-        // is one screen behind the shell — so it signs out instead of pretending
-        // to navigate, which is the only real action this page has.
+        // The back arrow of `native-20`, and it now goes back.
+        //
+        // It used to sign out, with a comment saying it did so because "there
+        // is one screen behind the shell — so it signs out instead of
+        // pretending to navigate". **That reasoning expired with decision 12**:
+        // screen #17 is behind this one now, and sign-out moved to its Log out
+        // row. That comment was the marker for this change.
         leading: IconButton(
+          key: const Key('profile-back'),
           icon: const Icon(Icons.arrow_back),
-          onPressed: () async => ref.read(authGatewayProvider).signOut(),
-          tooltip: 'Sign out',
+          onPressed: () => context.pop(),
+          tooltip: 'Back',
         ),
         title: const Text('My profile'),
       ),
