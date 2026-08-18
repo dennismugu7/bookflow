@@ -4,6 +4,7 @@ import 'package:bookflow/features/profile/profile_providers.dart';
 import 'package:bookflow/platform/providers.dart';
 import 'package:bookflow/theme/tokens.dart';
 import 'package:bookflow/ui/async_value_view.dart';
+import 'package:bookflow/ui/initials_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -129,6 +130,10 @@ class _ProfileCard extends StatelessWidget {
 }
 
 /// Green circle, two white uppercase initials (Styles-Reference §2 and §7).
+///
+/// The circle itself is `InitialsAvatar` in `ui/`, shared with screens #12 and
+/// #17. This wrapper keeps the `Center` and the larger text style, which are
+/// this screen's layout rather than the element's.
 class _Avatar extends StatelessWidget {
   const _Avatar({required this.initials});
 
@@ -137,21 +142,10 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Container(
-        width: BookflowSizes.avatarLarge,
-        height: BookflowSizes.avatarLarge,
-        decoration: const BoxDecoration(
-          color: BookflowColors.avatarGreen,
-          shape: BoxShape.circle,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          initials,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: BookflowColors.textOnBrand,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+      child: InitialsAvatar(
+        initials: initials,
+        diameter: BookflowSizes.avatarLarge,
+        textStyle: Theme.of(context).textTheme.titleLarge,
       ),
     );
   }

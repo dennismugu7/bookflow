@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { isSecondBusinessConflict } from './businesses.repository.ts';
 
 /**
- * The 23505-to-409 mapping, as a unit.
+ * The 23505-to-409 mapping, as a unit — **the PREDICATE, not the service.**
+ *
+ * Paired with `businesses.conflict-service.test.ts`, which asks the other half:
+ * given that this predicate says yes, what does `createMyBusiness` do. **The two
+ * were once named `conflict` and `conflict-branch`**, which distinguished them
+ * to nobody choosing a file to add a test to — the names now say which question
+ * each answers.
  *
  * ══ WHY THIS IS A UNIT TEST AND NOT AN INTEGRATION ONE ══════════════════════
  *

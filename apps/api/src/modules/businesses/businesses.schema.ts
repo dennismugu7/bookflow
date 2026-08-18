@@ -5,8 +5,16 @@ import { z } from 'zod';
  * the OpenAPI document the Dart client is generated from (ADR-014, ADR-025).
  */
 
-/** Mirrors `ck_businesses_name_present` in the foundation migration. */
-export const BUSINESS_NAME_MAX_LENGTH = 200;
+/**
+ * Mirrors `ck_businesses_name_present` in the foundation migration.
+ *
+ * NOT exported. It has one consumer — `businessName` below — and widening a
+ * module's public surface for a value nothing outside it reads invites exactly
+ * the coupling the tests deliberately avoid: a boundary test that imports this
+ * constant still passes when the constant is changed wrongly, which is why
+ * those tests spell `200` out.
+ */
+const BUSINESS_NAME_MAX_LENGTH = 200;
 
 /**
  * ── `.trim()` COMES FIRST, AND THE ORDER IS THE WHOLE MECHANISM ─────────────

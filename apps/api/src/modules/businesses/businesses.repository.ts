@@ -203,7 +203,7 @@ export async function createBusinessForUser(
  * Does this error mean the caller already owns a business?
  *
  * Exported and pure so the mapping can be asserted without provoking a real
- * concurrent write — see `businesses.conflict.test.ts`. Matching on the
+ * concurrent write — see `businesses.conflict-predicate.test.ts`. Matching on the
  * constraint NAME rather than on 23505 alone is deliberate: 23505 is every
  * unique violation on the table, and `uq_memberships_user_business` means
  * something entirely different.

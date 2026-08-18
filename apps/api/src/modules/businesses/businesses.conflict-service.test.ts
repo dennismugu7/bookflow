@@ -9,7 +9,10 @@ import type {
 import { createMyBusiness } from './businesses.service.ts';
 
 /**
- * The branch that had never run.
+ * The branch that had never run — **the SERVICE, not the predicate.**
+ *
+ * Paired with `businesses.conflict-predicate.test.ts`. That file asks whether an
+ * error IS the conflict; this one asks what `createMyBusiness` does once it is.
  *
  * ══ WHY IT COULD NOT BE REACHED BEFORE ══════════════════════════════════════
  *
@@ -19,7 +22,7 @@ import { createMyBusiness } from './businesses.service.ts';
  * transaction per test, so no integration test can produce it. It was reachable
  * in production and by nothing else.
  *
- * `businesses.conflict.test.ts` covers the PREDICATE — given an error, is it
+ * `businesses.conflict-predicate.test.ts` covers the PREDICATE — given an error, is it
  * the conflict. **This covers the SERVICE — given that error, what does it do**,
  * which is a different question and the one that was open: the predicate can be
  * right while the branch answers 500, logs at the wrong level, or writes the
@@ -35,7 +38,7 @@ import { createMyBusiness } from './businesses.service.ts';
  * No database, no network: a unit test.
  */
 
-/** The shape `pg` raises. Same fields `businesses.conflict.test.ts` uses. */
+/** The shape `pg` raises. Same fields `businesses.conflict-predicate.test.ts` uses. */
 function pgError(code: string, constraint: string): Error {
   return Object.assign(
     new Error('duplicate key value violates unique constraint'),
@@ -51,7 +54,7 @@ function pgError(code: string, constraint: string): Error {
  *
  * The error is typed `Error` because `pg` raises one — the code and constraint
  * ride on it as extra fields, which is the shape `isSecondBusinessConflict`
- * reads and the shape `businesses.conflict.test.ts` already asserts against.
+ * reads and the shape `businesses.conflict-predicate.test.ts` already asserts against.
  */
 function repositoryThatFailsInsert(error: Error): BusinessRepository {
   return {

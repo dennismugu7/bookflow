@@ -4,6 +4,7 @@ import 'package:bookflow/features/profile/profile_models.dart';
 import 'package:bookflow/features/profile/profile_providers.dart';
 import 'package:bookflow/theme/tokens.dart';
 import 'package:bookflow/ui/async_value_view.dart';
+import 'package:bookflow/ui/initials_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -92,21 +93,9 @@ class _ProfileAvatar extends ConsumerWidget {
         key: const Key('dashboard-avatar'),
         customBorder: const CircleBorder(),
         onTap: () => context.push('/account'),
-        child: Container(
-          width: BookflowSizes.avatarSmall,
-          height: BookflowSizes.avatarSmall,
-          decoration: const BoxDecoration(
-            color: BookflowColors.avatarGreen,
-            shape: BoxShape.circle,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            initials,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: BookflowColors.textOnBrand,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+        child: InitialsAvatar(
+          initials: initials,
+          diameter: BookflowSizes.avatarSmall,
         ),
       ),
     );

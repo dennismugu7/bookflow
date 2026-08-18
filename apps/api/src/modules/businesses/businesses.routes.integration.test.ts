@@ -10,7 +10,20 @@ import { useTransaction } from '../../../test/integration/harness.ts';
 import { unrelatedAccountWithBusiness } from '../../../test/integration/accounts.ts';
 
 /**
- * The pierce's API layer, driven through the real app with a real token.
+ * Every business route, driven through the real app against the real database
+ * with a real token.
+ *
+ * ══ WHAT IS IN HERE ═════════════════════════════════════════════════════════
+ *
+ * Six blocks, because the header used to describe only the first and this file
+ * has since grown to 1,000 lines:
+ *
+ *   POST /v1/businesses                    creation, the membership, the 409
+ *   GET  /v1/me/business                   the caller's own business
+ *   PATCH /v1/businesses/:businessId       rename, and the scoped 404
+ *   creation and rename validate identically
+ *   decision 9 — the trimming boundaries, through the route
+ *   the events this module logs
  *
  * ══ THE COUNTER IS DRIVEN, NOT ASSERTED FROM ONE SIDE ═══════════════════════
  *
@@ -914,7 +927,7 @@ describe('decision 9 — the trimming boundaries, through the route', () => {
  * **Two of the three are reachable here. The third is not, and it is the same
  * limitation as criterion 49**: `business.conflict_constraint` fires only when
  * the pre-check loses a race, and the harness has one connection per test. Its
- * predicate is unit-tested in `businesses.conflict.test.ts`; the event on that
+ * predicate is unit-tested in `businesses.conflict-predicate.test.ts`; the event on that
  * branch is unproved for exactly the reason the branch itself is.
  */
 describe('the events this module logs', () => {

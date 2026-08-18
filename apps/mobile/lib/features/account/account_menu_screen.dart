@@ -2,6 +2,7 @@ import 'package:bookflow/features/profile/profile_models.dart';
 import 'package:bookflow/features/profile/profile_providers.dart';
 import 'package:bookflow/platform/providers.dart';
 import 'package:bookflow/theme/tokens.dart';
+import 'package:bookflow/ui/initials_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -115,21 +116,9 @@ class _Header extends StatelessWidget {
       ),
       data: (OwnerProfile value) => Column(
         children: <Widget>[
-          Container(
-            width: BookflowSizes.avatarSmall,
-            height: BookflowSizes.avatarSmall,
-            decoration: const BoxDecoration(
-              color: BookflowColors.avatarGreen,
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              value.initials,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: BookflowColors.textOnBrand,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+          InitialsAvatar(
+            initials: value.initials,
+            diameter: BookflowSizes.avatarSmall,
           ),
           const SizedBox(height: BookflowSpacing.sm),
           Text(value.fullName, style: theme.textTheme.titleMedium),

@@ -42,7 +42,7 @@ final FutureProvider<BusinessStatus> myBusinessProvider =
 /// So the submission's `AsyncValue` is held here and consumed *within* the
 /// section, rather than being handed to `AsyncValueView`. The exhaustiveness
 /// that ADR-028 wants is unchanged — the screen still handles loading, error and
-/// data — it just does so inside one card instead of instead of the page.
+/// data — it just does so inside one card instead of across the whole page.
 class RenameBusinessController extends AutoDisposeNotifier<AsyncValue<void>> {
   @override
   AsyncValue<void> build() => const AsyncData<void>(null);
