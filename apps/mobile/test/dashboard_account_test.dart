@@ -8,6 +8,7 @@ import 'package:bookflow/features/dashboard/dashboard_screen.dart';
 import 'package:bookflow/features/profile/profile_models.dart';
 import 'package:bookflow/features/profile/profile_providers.dart';
 import 'package:bookflow/features/profile/profile_repository.dart';
+import 'package:bookflow/features/profile/profile_screen.dart';
 import 'package:bookflow/platform/auth_gateway.dart';
 import 'package:bookflow/platform/providers.dart';
 import 'package:bookflow/platform/router.dart';
@@ -214,8 +215,18 @@ void main() {
     });
   });
 
-  group('the chain — criteria 55, 58', () {
-    testWidgets('55, 58 — dashboard to account to profile, and back again', (
+  group('the chain', () {
+    // NAMED WRONGLY WHEN WRITTEN, and the grep caught it: this was
+    // '55, 58 — …', without the word "criterion", so the mapping query in
+    // `01-acceptance-criteria.md` could not see it. A criterion the grep cannot
+    // see is a criterion the DoD cannot count.
+    //
+    // **Only 55 is claimed.** The earlier name also said 58, and that would
+    // have been a FALSE mapping: this test pushes a profile STUB, not the real
+    // `ProfileScreen`, so it cannot assert anything about #20's back
+    // affordance. The naming rule warns about exactly this — a number in a test
+    // name is a claim, and a false one is worse than no mapping.
+    testWidgets('criterion 55 — dashboard to account to profile is reachable', (
       WidgetTester tester,
     ) async {
       final GoRouter router = GoRouter(
@@ -267,10 +278,71 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('profile-stub')), findsOneWidget);
 
-      // Criterion 58's half is asserted on the real screen in
-      // `profile_screen_test.dart`; here the chain is what matters — that the
-      // avatar leads somewhere and the menu leads on.
+      // Criterion 58 is asserted below, on the REAL screen — this one pushes a
+      // stub, so it can say nothing about #20's back affordance.
     });
+
+    testWidgets(
+      'criterion 58 — screen #20 back returns to #17 and does not sign out',
+      (WidgetTester tester) async {
+        final _FakeGateway gateway = _FakeGateway();
+        final GoRouter router = GoRouter(
+          initialLocation: '/account',
+          routes: <RouteBase>[
+            GoRoute(
+              path: '/account',
+              builder: (BuildContext c, GoRouterState s) =>
+                  const AccountMenuScreen(),
+            ),
+            GoRoute(
+              path: '/profile',
+              // The real screen, because the assertion is about ITS back
+              // affordance and a stub would prove nothing.
+              builder: (BuildContext c, GoRouterState s) =>
+                  const ProfileScreen(),
+            ),
+          ],
+        );
+        addTearDown(router.dispose);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: <Override>[
+              businessRepositoryProvider.overrideWithValue(
+                _StubBusiness(status: const HasBusiness(vera)),
+              ),
+              profileRepositoryProvider.overrideWithValue(const _StubProfile()),
+              authGatewayProvider.overrideWithValue(gateway),
+              sessionEmailProvider.overrideWithValue('owner@bookflow.test'),
+            ],
+            child: MaterialApp.router(
+              theme: BookflowTheme.light(),
+              routerConfig: router,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('account-profile')));
+        await tester.pumpAndSettle();
+        expect(find.text('My profile'), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('profile-back')));
+        await tester.pumpAndSettle();
+
+        // Back to #17 …
+        expect(find.text('Account'), findsOneWidget);
+        expect(find.text('My profile'), findsNothing);
+        // … and NOT signed out. This is the half that fails if the old
+        // sign-out callback survives the change: the user would appear to have
+        // "gone back" while their session ended underneath them.
+        expect(
+          gateway.signOutCalls,
+          0,
+          reason: 'back must navigate, not end the session',
+        );
+      },
+    );
   });
 
   test('the pushed routes are declared to the redirect (ADR-042)', () {
