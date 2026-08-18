@@ -169,6 +169,20 @@ All six questions this frame raised are answered. Each carries its reason.
     `DD-Bookflow-Native.md:973` already calls its destination: **the Personal/Business
     Information Management page.** A business section sits beneath the personal one, carrying the
     business name and its own edit affordance.
+    **CITATION CORRECTED 2026-08-18 — the quote is real and the line number is wrong. It is at
+    `:962`, not `:973`.** Line 962 is interaction B of screen #17: *"**Frontend Action:**
+    Navigates to the Personal/Business Information Management page."* **Line 973 is the Settings
+    action** — *"Loads local/remote app configurations (e.g., notification preferences, currency
+    settings, timezone, security/2FA settings)"* — which is a different row of the same menu, and
+    the one decision 11 explicitly rejected as the rename surface. **The decision is unaffected**:
+    it rests on the design naming *Business* as living behind the Profile row, and the design does.
+    `business_section.dart` repeated the same `:973` and is corrected with it.
+    **Why this is written down rather than quietly fixed.** A wrong line number in a Phase 0 record
+    survives precisely because it looks like diligence — a reader who checks the *quote* finds it
+    verbatim in the document and stops. The one who follows the *number* lands on an unrelated
+    action and has to decide whether the decision was built on it. This slice's standing rule is
+    that an obligation attributed to a document must be quoted from it; **this is the same rule
+    applied to a pointer, which is the half that rule does not cover.**
     **Reason:** #20 is the only real screen already built, so this adds a **section** rather than
     a screen. The design's own routing text already names *Business* as living there — the
     obligation in §5.3 was that no design named a surface, and this one half-names it.

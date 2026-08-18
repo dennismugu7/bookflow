@@ -119,6 +119,12 @@ grep -rhoE "'criterion [0-9]+(, [0-9]+)*" apps/api/src apps/api/test apps/mobile
 **The denominator moved too** — 60 at close, **61** now: criterion 61 was appended with T6, for
 the half of sign-out that criterion 57 does not cover.
 
+**UPDATED THE SAME DAY, which is the point rather than an embarrassment: 60 of 62.** T11's
+reconciliation appended **criterion 62** — screen #17's return to screen #12 — and its named test
+in the same commit. **A number written here goes stale the moment the next criterion lands**, and
+this one lasted hours; the durable form is the command above, and the reason `00-frame.md` §7 was
+corrected by deleting its totals rather than by replacing them.
+
 **Unmapped: 48 and 49, and nothing else.** They are the two the criteria file already records as
 **"UNPROVABLE IN THIS HARNESS, and that is a finding rather than work nobody got to"** — 48's
 concurrent half needs a second connection the harness does not have, and 49's second clause
@@ -283,3 +289,20 @@ relies on, and two of them shaped work: the ADR-014 misreading made a routine sl
 like an ADR-level event for a day, and the ADR-039 one deferred a live constraint — *"Generation B
 is a structural reference; colour is never sampled"* — behind a step that did not exist. **A false
 obligation is more expensive than a missed one, because nobody audits work that looks careful.**
+
+---
+
+**An affordance can be held in place by a framework default rather than by a decision, and a test
+that never drives it will not notice when the default stops applying.**
+
+Screen #17's back arrow came from `AppBar.automaticallyImplyLeading` and existed only because
+`/account` was reached by `push`; routing it with `go` would have removed the only way back with
+nothing failing.
+
+**Third instance of the same family in this slice**, after the orphaned screen #20 and screen #5's
+missing exit — **the first two were absences, this was an unchosen presence.** That is what makes
+it the hardest of the three to find: an absence is discoverable by asking what is missing, and a
+presence that nobody chose answers that question with a yes.
+
+*Found 2026-08-18, while ruling on whether screen #17 needs the design's Home button. Pinned by
+criterion 62; the affordance is now explicit in `account_menu_screen.dart`.*

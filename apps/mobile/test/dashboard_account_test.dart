@@ -282,6 +282,68 @@ void main() {
       // stub, so it can say nothing about #20's back affordance.
     });
 
+    // FOUND BY A PROBE, NOT BY READING. Before this test existed the arrow on
+    // #17 was real but undeclared — `AppBar.automaticallyImplyLeading` supplies
+    // one when the route can pop, so the screen worked and nothing held it
+    // that way. The probe counted `backButtons=1` with `onAccount=1` as its
+    // control; the affordance is now explicit and this asserts it.
+    //
+    // **It asserts the ARRIVAL, not the tap.** A test that only tapped back
+    // would pass against a control that pops to anywhere, including nowhere.
+    testWidgets('criterion 62 — screen #17 returns to screen #12', (
+      WidgetTester tester,
+    ) async {
+      final GoRouter router = GoRouter(
+        initialLocation: '/home',
+        routes: <RouteBase>[
+          GoRoute(
+            path: '/home',
+            builder: (BuildContext c, GoRouterState s) =>
+                const DashboardScreen(),
+          ),
+          GoRoute(
+            path: '/account',
+            builder: (BuildContext c, GoRouterState s) =>
+                const AccountMenuScreen(),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: <Override>[
+            businessRepositoryProvider.overrideWithValue(
+              _StubBusiness(status: const HasBusiness(vera)),
+            ),
+            profileRepositoryProvider.overrideWithValue(const _StubProfile()),
+            authGatewayProvider.overrideWithValue(_FakeGateway()),
+          ],
+          child: MaterialApp.router(
+            theme: BookflowTheme.light(),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // The dashboard first, so "we got back" means something. Without this the
+      // final assertion is satisfied by never having left.
+      expect(find.byKey(const Key('setup-continuation')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('dashboard-avatar')));
+      await tester.pumpAndSettle();
+      expect(find.text('Account'), findsOneWidget);
+      expect(find.byKey(const Key('setup-continuation')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('account-back')));
+      await tester.pumpAndSettle();
+
+      // Back on #12, and not signed out — the two ways this could go wrong.
+      expect(find.byKey(const Key('setup-continuation')), findsOneWidget);
+      expect(find.text('Account'), findsNothing);
+    });
+
     testWidgets(
       'criterion 58 — screen #20 back returns to #17 and does not sign out',
       (WidgetTester tester) async {

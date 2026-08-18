@@ -56,7 +56,13 @@ profile screen the corpus no longer contains.
 | 8 | `native-20` (screen #20, My Profile Details) shows a **violet** "Edit" link, a **pink** avatar with one lowercase initial, and **pure black** headings. | **A green `#5FBF3F` avatar with two-letter initials and `#3A3A3A` text.** Layout, field order, the divider, the centred avatar above the name, and the copy are taken from the screenshot unchanged. | `native-20` is Generation B, which ADR-039 rules is not the design system. Four independent signals place it there: zero pixels of action blue, a `#5A40D8` link, a `#000000` heading, and a `#EC407A` avatar that appears in no other screenshot in the corpus. **The built screen will not match its own screenshot, and that is expected** — a reviewer comparing the two should not raise it as a defect. `docs/designs/built/native-20-profile.png` is the built screen, rendered, for that comparison. | ADR-039 |
 | 9 | `native-20` shows an **"Edit" link** in the card's top-right and a **pencil badge** on the avatar. | **Neither is rendered.** The screen is read-only. | There is no `PATCH /v1/me` and no avatar-upload endpoint, so nothing either control could do exists. **A visible control that does nothing is worse than an absent one** — it is a promise the app does not keep, and it costs a support conversation rather than a missing feature. Deferred to the profile-editing slice with the endpoints it needs; tracked as **K75**. Note this is a deviation of a *different kind* from the rest of this file: not "the design says X and we build Y", but "the design says X and we build nothing yet". | PR 3b |
 
-## The business-setup slice — seven, and where each was recorded before this
+## The business-setup slice — ten entries, and where each was recorded before this
+
+**Ten, in two groups.** Entries **10–16** are the seven the slice had already decided, reconciled
+from the documents and the code below. Entries **17–19**, in the section after them, are three
+differences the reconciliation *found* — real, visible, and decided by nobody — which were ruled
+on the following day. **The second group is the argument for the first:** counting produced three
+decisions that would otherwise have gone on being defaults.
 
 Entries 10–16 are the business-setup slice's, added by task T11. **They were reconciled before
 they were written, and the reconciliation is the part worth keeping**: five of the seven were
@@ -80,36 +86,30 @@ first through seventh are entries **10 through 16**, in that order.
 | 15 | Screen #5's only specified exit is the back arrow (`:173`, `:203`). With that arrow gone by entry 11, the design leaves the screen with **no exit at all**. | **A "Sign out" control at the foot of the form.** | `/setup` is the only destination the redirect allows an owner with no business, so a screen with no exit is an app with no exit **for that owner**. The stub this screen replaces carried the only sign-out they could reach, and removing it silently would have been a regression nothing tested for — criterion 57 covers only an owner *with* a business. **Criterion 61 was appended for exactly this half**, and pins it. | Business setup, T6 — until now recorded only in `create_business_screen.dart` |
 | 16 | `:581-586` — the dashboard's top navigation bar is a **pill segmented control** — "Bookings" (selected), "Contacts", "Calendar" — with the profile avatar on the far right. | **The avatar only**, under an app bar titled "Bookflow". | All three tabs lead to dashboard views this slice excludes, so decision 12's rule for screen #17's rows applies unchanged: a control whose destination does not exist is omitted, not drawn inert. It would be entry 14's promise three times over, on a different screen, for the same reason. **No criterion pins this one** — it is asserted by the test named *"the seventh deviation — no Bookings, Contacts or Calendar tabs"* in `dashboard_account_test.dart`, and that test name is the only thing standing between this and an oversight. | Business setup, T7+T8 — until now recorded only in `dashboard_screen.dart` |
 
-### Found in the same pass, NOT entered above, and awaiting a ruling
+### Three more, found in the same pass and ruled on the next day
 
-**Three further differences between `native-04`/`native-16` and the build turned up while
-reconciling the seven. No ADR, no document and no source comment decides any of them**, so they
-are named here rather than entered: this file's rule is that an entry is deliberate and cites what
-decided it, and inventing a decision to make a row look complete is the failure the register
-exists to catch. **Until each is ruled on, they are what an unlisted difference means here — a
-bug or an oversight.**
+**These three were found while reconciling the seven above, and for one day they sat in this file
+as named-but-not-entered**, because no ADR, document or source comment decided any of them and
+entering an undecided difference as a deviation invents the decision this register exists to
+catch. **Dennis ruled on all three on 2026-08-18**, and they are entries 17–19. The paragraph
+above is kept rather than replaced by the answers, because the interval is the record: a
+difference can be real, visible in the build, and decided by nobody, and the only reason these
+three are not still in that state is that somebody counted.
 
-1. **Screen #5 is a full-screen route, not a sheet.** `:172` specifies a *"Sheet Interface:
-   Slide-up bottom sheet with a grab handle indicator centered at the top"*; the build is a
-   `Scaffold` with an app bar titled "Your business", a title the design does not contain.
-   ADR-042 arguably forces it — `/setup` is a computed **shell**, and a sheet slides up over
-   something, which a shell destination has nothing of — but ADR-042 does not say so and nothing
-   else does either. `00-frame.md` §3's non-goal covers *"the multi-step sheet flow itself —
-   back-navigation between onboarding steps and preservation of partially-entered data"*, which
-   is the flow, not the presentation.
-2. **Screen #17's Log out has no confirmation.** `:980` specifies *"Shows a confirmation
-   alert/dialog (e.g., 'Are you sure you want to log out?'). Upon confirmation, clears local
-   storage/tokens"*, and `native-19` is a whole screenshot of that modal. The build signs out on
-   tap. Criterion 57 asks only that sign-out is reachable and returns to the signed-out shell,
-   which an unconfirmed sign-out satisfies.
-3. **Screen #17 has no bottom global navigation.** `:953-954` specifies a *"Bottom Global
-   Navigation"* with a centred *"Home"* icon button. The build relies on the app bar's back
-   affordance to pop to the dashboard — the same destination by a different control.
+**One of them could not be ruled on as asked, and that is where criterion 62 came from.** Entry
+19's reason is that the app bar's back affordance makes the design's Home button redundant — a
+reason that rests on the back path existing. **It did exist and nothing held it there:** screen
+#17 declared no `leading:`, and the arrow came from `AppBar.automaticallyImplyLeading`, which
+supplies one only while the route can pop. A probe confirmed it was rendering
+(`onAccount=1 backButtons=1 arrowIcons=1`, the first count being the control). The affordance is
+now explicit in `account_menu_screen.dart` and pinned by **criterion 62**, so entry 19's reason is
+now a property something asserts rather than a framework default nobody had noticed.
 
-**Why they are recorded here rather than in `docs/analysis/05-triage.md`, which is the better
-home:** that file cannot be edited on this branch without a conflict against PR #14, which is
-`00-frame.md` §5.1's whole reason for deferring. They move there with §5.1 if they are still open
-when it merges.
+| # | Design says | Build does | Why | Decided by |
+|---|---|---|---|---|
+| 17 | `:172` — screen #5 is a *"**Sheet Interface:** Slide-up bottom sheet with a grab handle indicator centered at the top"*, whose back arrow *"Returns to the previous onboarding step, **dismissing this sheet**"* (`:203`). | **A full-screen route** at `/setup`, with an app bar titled "Your business" — a title the design does not contain — and no grab handle. | **A sheet is presented over something, and there is nothing behind this one.** An owner arriving from sign-up has no previous onboarding step: entry 11 removed the back arrow for that reason, and the same fact removes the surface the sheet would slide up over. ADR-042 settles what `/setup` is — a **shell**, selected by the redirect because the account has no membership, not a thing pushed over a screen the owner was looking at. A sheet over an empty backdrop is a full screen wearing a grab handle. **This becomes reviewable again when screens #6–#8 exist**: with a multi-step flow there is a sheet stack to belong to, and the presentation is worth revisiting then rather than now. | Dennis, 2026-08-18 · ADR-042 |
+| 18 | `:980` — Log out *"Shows a confirmation alert/dialog (e.g., 'Are you sure you want to log out?'). Upon confirmation, clears local storage/tokens and redirects to Screen 2"*, and `native-19` is a whole screenshot of that modal. | **Sign-out on tap, with no confirmation.** | **DEFERRED, NOT REJECTED — and the distinction is the entry.** Sign-out has never been confirmed in this app: before this slice it was screen #20's back arrow, which signed out immediately and said so in a comment. **So nothing regresses here** — the control moved to the row the design puts it on, and kept the behaviour it already had. The confirmation is a screen of its own (`native-19`) and belongs with the slice that builds #17's other three rows, where it is one modal among several rather than a modal built for one row. **What makes this safe to defer is that sign-out is not destructive**: it ends a session, and the owner signs back in. It would not be deferrable on `native-25`–`27`, the deletion screens. | Dennis, 2026-08-18 |
+| 19 | `:953-954` — screen #17 carries a *"**Bottom Global Navigation:** Home Icon Button: Centered navigation icon labeled **'Home'**"*. | **No bottom navigation.** The app bar's back affordance returns to the dashboard. | **Home and back go to the same place, so the second control is redundant rather than missing.** #17 is reached by pushing from #12 (decision 12), so back *is* the way home; a Home button beside it would be two controls with one destination, on a menu whose whole design principle in this slice is that no control is drawn twice or drawn dead (entries 14 and 16). **The reason depends on the back path, so the back path is now declared and pinned** — `Key('account-back')` calling `context.pop()`, asserted by criterion 62, which also asserts the *arrival* on #12 rather than merely the tap. **A bottom global navigation bar becomes a real question when there is more than one destination to put in it**, which is the dashboard slice's problem, not this one's. | Dennis, 2026-08-18 · criterion 62 |
 
 ## How to add an entry
 

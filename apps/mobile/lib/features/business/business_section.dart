@@ -7,9 +7,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Screen #20's business section (decision 11).
 ///
-/// `DD-Bookflow-Native.md:973` already calls #20's destination the
-/// "Personal/Business Information Management page". This is the Business half:
-/// the name, and an edit affordance that renames it.
+/// `DD-Bookflow-Native.md:962` already calls #20's destination the
+/// "Personal/Business Information Management page" — screen #17's Profile row.
+/// This is the Business half: the name, and an edit affordance that renames it.
+///
+/// **This said `:973` until 2026-08-18, copied from `00-frame.md` decision 11,
+/// which said the same.** The quote was right and the pointer was wrong: `:973`
+/// is the Settings action, a different row of the same menu. Both are corrected;
+/// the decision rests on the quote and is unaffected.
 ///
 /// ── WHY IT SITS BENEATH THE PERSONAL SECTION ────────────────────────────────
 ///

@@ -363,6 +363,13 @@ hazard is structural rather than careless:**
 > `01-acceptance-criteria.md`. Appending without classifying is an incomplete change, not a
 > follow-up.**
 
+**CRITERION 62, APPENDED AND CLASSIFIED IN THE SAME COMMIT — the rule's first application, and
+it worked.** T11's reconciliation found that nothing pinned screen #17's return to screen #12;
+criterion 62 pins it. **It joins the CANNOT-satisfy list** with 55–61, for the identical reason:
+no endpoint is involved in whether a screen has a way back. **The totals are 32 satisfiable + 30
+not = 62.** The classification cost one paragraph because the step that appended the criterion was
+already in this document — which is the entire mechanism the rule is trying to buy.
+
 This is R4's own "cheapest real fix is procedural", promoted from a risk note to a rule stated
 where the drift happens. **It is not enforced by anything** — no test can know whether a
 classification is *correct*, only whether a number was updated — so it holds by review, and the
@@ -400,6 +407,11 @@ this document.** The rule puts the reason in the step.
   involved, and none could be** — an owner with no business has nothing this contract can be
   asked about. `/setup` is their only destination, so this is the criterion that pins that the
   app has an exit for them at all.
+- **62 (screen #17 returns to screen #12) — CLASSIFIED 2026-08-18, in the commit that appended
+  it.** Routing, and the last unpinned leg of decision 12's chain: 55 pins the way in, 58 the way
+  back from #20, and nothing pinned the way back from #17. **The contract is not involved at
+  all** — the same category as 55–60, and the reason `pushedRouteShells` rather than any endpoint
+  is what makes it work.
 - **41 and 42 (the membership status reports the business, and survives a restart).** `GET
   /v1/me/business` is necessary and not sufficient: 41 needs the Flutter repository to replace
   its `MembershipStatus.none` constant, and 42 needs session restore to re-issue the call.

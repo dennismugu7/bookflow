@@ -221,6 +221,14 @@ appears here, deliberately.
     half that was missing: `/setup` is the sole destination the redirect allows an owner without
     one, so an exit there is the only exit they have.
 
+### The return leg (T11)
+
+62. An owner looking at screen #17 can return to screen #12 from a control on that screen, and
+    arrives at the dashboard — not signed out, and not still on the account menu. **Criterion 58
+    pins the same property one screen further in — #20 returning to #17 — and nothing pinned this
+    leg**, which is the third gap of this shape after §5.3's unnamed rename surface and criterion
+    55's unpinned reachability.
+
 ## Notes on individual criteria
 
 **Criterion 32 — where the no-echo rule comes from.** It is not introduced here. It restates a
@@ -334,6 +342,33 @@ at screen #20 and none said how they arrived; 25 pins only that they leave the s
 gap surfaced when §C.5 proposed giving `/home` to screen #12 — which would have left #20, and
 with it sign-out, with no path at all. **55 is written first in its group for that reason**, and
 it is the second gap of this shape after §5.3's unnamed rename surface.
+
+**Criterion 62 is the third, and it was found the same way — by asking a question about a screen
+rather than by reading what was written about it.** Criterion 55 pins the way *in* (#12 → #17 →
+#20) and 58 pins the way *back* from #20 to #17. **Nothing pinned the way back from #17 to #12**,
+and screen #17 was the only screen in the chain whose back affordance the code did not declare:
+`profile_screen.dart` builds an explicit `leading:` calling `context.pop()`, and
+`account_menu_screen.dart` built `AppBar(title: Text('Account'))` and nothing else.
+
+**What was actually there, established by a probe rather than by reasoning about Flutter.** The
+probe pushed #17 from #12 and counted: `onAccount=1 backButtons=1 arrowIcons=1`. **The affordance
+existed** — `AppBar.automaticallyImplyLeading` supplies a `BackButton` when the route can pop —
+**so this was never a broken screen.** The `onAccount=1` is the control: without it, a zero count
+would have been consistent with the probe never reaching the screen.
+
+**It was still a gap, and precisely of the kind this list exists to catch.** The arrow was
+supplied by the framework on the condition that `/account` is *pushed*. Nothing in the repository
+recorded that dependency, no test asserted the arrow, and no criterion named the property — so a
+later change routing to `/account` with `go` instead of `push`, or promoting it to a shell, would
+have removed the only way back to the dashboard **silently**, and every existing test would still
+pass. That is the screen-#20-orphan failure exactly, with a framework default standing in for the
+missing decision.
+
+**Entry 19 of `docs/analysis/08-design-deviations.md` also depends on it.** The design gives #17 a
+bottom global navigation with a Home button; the ruling that omits it reasons that the back path
+makes Home redundant. **A deviation whose stated reason rests on an untested property is the same
+failure shape as an obligation attributed to a document nobody quoted** — so the property is now
+declared in the widget, pinned by this criterion, and named by a test.
 
 ## Deliberately not covered
 

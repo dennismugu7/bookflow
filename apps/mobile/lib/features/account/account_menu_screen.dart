@@ -24,6 +24,18 @@ import 'package:go_router/go_router.dart';
 /// pill buttons and pink avatar are **not sampled** — every colour here comes
 /// from `tokens.dart`.
 ///
+/// ══ THE WAY BACK IS DECLARED, NOT INHERITED (criterion 62) ══════════════════
+///
+/// This screen used to carry no `leading:` at all, and an arrow appeared anyway:
+/// `AppBar.automaticallyImplyLeading` supplies a `BackButton` whenever the route
+/// can pop. **It worked, and it was a guarantee nobody held.** The arrow was
+/// conditional on `/account` being reached by `push` — route it with `go`, or
+/// promote it to a shell, and the only way back to the dashboard disappears
+/// with no test failing. That is the same failure as screen #20 losing its path
+/// when `/home` moved, which criterion 55 exists to catch.
+///
+/// So it is explicit here, as it is on #20, and criterion 62 pins it.
+///
 /// ══ THE HEADER MAY DEGRADE; THE ROWS MAY NOT ════════════════════════════════
 ///
 /// The profile read feeds the header only. **`AsyncValueView` is deliberately
@@ -39,7 +51,15 @@ class AccountMenuScreen extends ConsumerWidget {
     final AsyncValue<OwnerProfile> profile = ref.watch(myProfileProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Account')),
+      appBar: AppBar(
+        leading: IconButton(
+          key: const Key('account-back'),
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.pop(),
+          tooltip: 'Back',
+        ),
+        title: const Text('Account'),
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(BookflowSpacing.lg),
