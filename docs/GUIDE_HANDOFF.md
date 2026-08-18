@@ -126,6 +126,21 @@ These were learned by being wrong. None of them are obvious from the repository.
   asking "what is missing?" answers no. What found it was asking a question about a screen rather
   than reading what had been written about it, and what settled it was a probe that counted
   (`onAccount=1 backButtons=1 arrowIcons=1`) rather than an argument about Flutter.
+- **A redaction is not a rotation. A rotation is not a retirement.** A password was committed to
+  `docs/spikes/001-platform.md` in August, redacted the same day, and rotated on discovery — and
+  the spike's amendment argued, correctly, that rewriting published history to hide a **dead**
+  credential teaches the wrong lesson. **On 2026-08-18 that same value was chosen again**, as the
+  first password for the second staging e2e account. Not copied out of the history: recalled and
+  typed, which is the same failure mode as the original incident. It was live for under an hour
+  and was rotated with a generated value. **The point is what "rotated" had meant in between:** the
+  string was recoverable from **seven pushed commit trees** the entire time, and its inertness was
+  never a property of the string — only of nothing currently accepting it. **The moment something
+  accepted it again, every one of those trees became a live credential store**, with no commit, no
+  diff and no alert to mark the change. So the decision to leave published history alone is
+  **conditional on nobody re-selecting the value**, which is a human commitment and not a control.
+  **Practical form: a credential is never CHOSEN, only GENERATED** — anything typed, recalled or
+  recognised is wrong by definition, because what matters is not strength but never having existed
+  anywhere before. Full reasoning in `docs/spikes/001-platform.md`, 2026-08-18 amendment.
 - **A gate whose RESULT never reached you is a gate that did not run**, and it fails in two ways.
   **First, the result is never produced.** On 2026-08-18 a batch of work landed and was pushed
   while one of its four checks — re-deriving the criteria mapping after a `git mv` — had never
