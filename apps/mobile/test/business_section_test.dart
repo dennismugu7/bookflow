@@ -207,6 +207,10 @@ class _StubRepository implements BusinessRepository {
   }
 
   @override
+  Future<OwnedBusiness> create(String name) =>
+      throw UnimplementedError('the business section never creates');
+
+  @override
   Future<OwnedBusiness> rename({required String id, required String name}) {
     renameCalls += 1;
     if (failRename) {

@@ -1,6 +1,6 @@
+import 'package:bookflow/features/business/create_business_screen.dart';
 import 'package:bookflow/features/membership/membership_repository.dart';
 import 'package:bookflow/features/profile/profile_screen.dart';
-import 'package:bookflow/features/setup/setup_required_screen.dart';
 import 'package:bookflow/features/signed_out/signed_out_screen.dart';
 import 'package:bookflow/features/startup/startup_screen.dart';
 import 'package:bookflow/features/startup/unavailable_screen.dart';
@@ -204,8 +204,12 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
       ),
       GoRoute(
         path: AppDestination.setupRequired.path,
+        // Screen #5 replaces ADR-032's stub, which said in terms that it was
+        // "deliberate debt … replaced by the onboarding slice". This is that
+        // slice. `/setup` remains a computed shell (ADR-042 level 1): an owner
+        // is here because they have no membership, not because they tapped.
         builder: (BuildContext context, GoRouterState state) =>
-            const SetupRequiredScreen(),
+            const CreateBusinessScreen(),
       ),
       GoRoute(
         path: AppDestination.home.path,

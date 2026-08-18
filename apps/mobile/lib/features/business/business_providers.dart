@@ -63,6 +63,42 @@ class RenameBusinessController extends AutoDisposeNotifier<AsyncValue<void>> {
   }
 }
 
+/// The creation submission.
+///
+/// Same shape as the rename controller and for the same reason (see above): the
+/// form must stay on screen with what the owner typed while the request runs,
+/// so this is held here and consumed inside the screen rather than handed to
+/// `AsyncValueView`.
+///
+/// **On success it invalidates the membership status**, which is what carries
+/// the owner off `/setup`. `appDestinationProvider` recomputes,
+/// `MembershipStatus` becomes `member`, and the EXISTING redirect moves them to
+/// `/home` — no new routing rule, which is why criterion 25 needs none.
+class CreateBusinessController extends AutoDisposeNotifier<AsyncValue<void>> {
+  @override
+  AsyncValue<void> build() => const AsyncData<void>(null);
+
+  Future<void> create(String name) async {
+    state = const AsyncLoading<void>();
+
+    state = await AsyncValue.guard<void>(() async {
+      await ref.read(businessRepositoryProvider).create(name);
+      // Both, in this order: the business read is what screens display, the
+      // membership status is what the redirect decides on. Invalidating only
+      // the first would leave the owner on `/setup` looking at nothing.
+      ref.invalidate(myBusinessProvider);
+      ref.invalidate(membershipStatusProvider);
+      await ref.read(membershipStatusProvider.future);
+    });
+  }
+}
+
+final AutoDisposeNotifierProvider<CreateBusinessController, AsyncValue<void>>
+createBusinessControllerProvider =
+    AutoDisposeNotifierProvider<CreateBusinessController, AsyncValue<void>>(
+      CreateBusinessController.new,
+    );
+
 final AutoDisposeNotifierProvider<RenameBusinessController, AsyncValue<void>>
 renameBusinessControllerProvider =
     AutoDisposeNotifierProvider<RenameBusinessController, AsyncValue<void>>(

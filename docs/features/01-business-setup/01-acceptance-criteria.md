@@ -214,6 +214,13 @@ appears here, deliberately.
 60. When screen #17's header profile fails to load, the rows are still present and Log out still
     works.
 
+### The other half of sign-out (T6)
+
+61. An owner with **no** business can reach sign-out, and signing out returns them to the
+    signed-out shell. **Criterion 57 covers only an owner *with* a business**, and this is the
+    half that was missing: `/setup` is the sole destination the redirect allows an owner without
+    one, so an exit there is the only exit they have.
+
 ## Notes on individual criteria
 
 **Criterion 32 — where the no-echo rule comes from.** It is not introduced here. It restates a

@@ -16,6 +16,9 @@ abstract interface class BusinessRepository {
 
   /// Renames the caller's business and returns it as stored.
   Future<OwnedBusiness> rename({required String id, required String name});
+
+  /// Creates the caller's business and returns it as stored.
+  Future<OwnedBusiness> create(String name);
 }
 
 class ApiBusinessRepository implements BusinessRepository {
@@ -92,6 +95,27 @@ class ApiBusinessRepository implements BusinessRepository {
     final Business? business = response.data;
     if (business == null) {
       throw StateError('PATCH /v1/businesses/{id} returned no body');
+    }
+
+    return _toModel(business);
+  }
+
+  @override
+  Future<OwnedBusiness> create(String name) async {
+    // Not caught. A 409 here means the account already has one — a real
+    // failure for a screen whose whole purpose is creating the first, and
+    // nothing like the 404 above that means "not yet".
+    final Response<Business> response = await _api
+        .getBusinessesApi()
+        .createBusiness(
+          createBusinessRequestInput: CreateBusinessRequestInput(
+            (CreateBusinessRequestInputBuilder b) => b.name = name,
+          ),
+        );
+
+    final Business? business = response.data;
+    if (business == null) {
+      throw StateError('POST /v1/businesses returned no body');
     }
 
     return _toModel(business);

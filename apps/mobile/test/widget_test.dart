@@ -58,9 +58,13 @@ void main() {
     expect(find.text('Sign in'), findsOneWidget);
   });
 
-  testWidgets('a user with no business sees the setup stub', (
+  testWidgets('a user with no business is sent to create one', (
     WidgetTester tester,
   ) async {
+    // Was "sees the setup stub", asserting "Finish setting up" and "Your
+    // account is ready". ADR-032 called that stub "deliberate debt … replaced
+    // by the onboarding slice", and this is that slice — the destination is
+    // unchanged, its content is not.
     await tester.pumpWidget(
       appWith(
         session: SessionStatus.signedIn,
@@ -69,8 +73,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Finish setting up'), findsOneWidget);
-    expect(find.text('Your account is ready'), findsOneWidget);
+    expect(find.text('Your business'), findsOneWidget);
+    expect(find.byKey(const Key('create-business-name')), findsOneWidget);
   });
 
   testWidgets('a user with a business gets past the stub', (
