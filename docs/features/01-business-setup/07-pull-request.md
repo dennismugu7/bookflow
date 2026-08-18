@@ -8,9 +8,23 @@
 ---
 
 Phase 4's first feature slice: **an owner can create a business, and stops being routed to the
-"finish setting up" stub forever.** 48 commits, 81 files, +10,779 / −128. A migration, three API
-routes, three new screens and one widened, and six documents under
+"finish setting up" stub forever.** 50 commits, 82 files, +11,012 / −128 **as of `fe689cd`**. A
+migration, three API routes, three new screens and one widened, and seven documents under
 `docs/features/01-business-setup/`.
+
+> **EVERY COUNT IN THIS FILE IS ANCHORED TO A COMMIT AND DECAYS AFTER IT.** This description is
+> pasted verbatim rather than re-derived, so it cannot run a command the way the rest of this
+> repository's records can — which makes it the one document where a stale number ships. **Re-run
+> these immediately before opening the PR and update every figure below:**
+>
+> ```
+> git rev-list --count origin/main..HEAD                                    # commits
+> git diff --shortstat origin/main...HEAD                                   # files, +/−
+> grep -rhoE "'criterion [0-9]+(, [0-9]+)*" apps/api/src apps/api/test apps/mobile/test \
+>   | grep -oE "[0-9]+" | sort -n | uniq | wc -l                            # criteria mapped
+> gh api "repos/dennismugu7/bookflow/actions/workflows/331331404/runs?branch=feat/business-setup-frame" --jq '.total_count'
+> npm run verify && cd apps/mobile && flutter test                          # the test counts
+> ```
 
 ## Read it in this order
 
@@ -74,12 +88,13 @@ grep -rhoE "'criterion [0-9]+(, [0-9]+)*" apps/api/src apps/api/test apps/mobile
   | grep -oE "[0-9]+" | sort -n | uniq
 ```
 
-**60 of 62.** The two unmapped are 48 and 49 — see below.
+**60 of 62 as of `fe689cd`.** The two unmapped are 48 and 49 — see below. The denominator is the
+highest number in `01-acceptance-criteria.md`, which is append-only.
 
 ## CI HAS NEVER RUN ON THIS BRANCH
 
-**Zero runs across all 48 commits.** Verified with the per-workflow query, paired with a control
-so the zero means something:
+**Zero runs across all 50 commits, as of `fe689cd`.** Verified with the per-workflow query, paired
+with a control so the zero means something:
 
 ```
 gh api "repos/dennismugu7/bookflow/actions/workflows/331331404/runs?branch=feat/business-setup-frame" --jq '.total_count'   # 0
@@ -113,7 +128,8 @@ unreachable while `ck_memberships_role` permits only `'owner'`, so it carries a 
 proxy** whose own test name says so: `criterion 50 — the index is partial on role = owner (SCHEMA
 proxy, not the behaviour)`. All three are recorded in `01-acceptance-criteria.md`'s notes.
 
-**3. Seven design deviations — register entries 10–16, plus three rulings at 17–19.** A reviewer
+**3. Seven design deviations — register entries 10–16, plus three rulings at 17–19, as of
+`fe689cd`.** A reviewer
 comparing the build to `native-04` and `native-11` will find controls missing. They are decisions:
 screen #5 ships one field of four and no back arrow, screen #12 omits the Bookings/Contacts/
 Calendar tabs, screen #17 ships two rows of five, screen #5 gains a sign-out the design does not
@@ -182,7 +198,7 @@ to `main`"*, so `main`'s history is one commit per slice. **Delete the branch af
 ### Rebase risk — do not trust the "conflicts with nothing" claim
 
 `GUIDE_HANDOFF.md` §5 records that this branch *"conflicts with nothing"*. **That was written when
-it was ten commits of documents, and it is now 48 commits including code.** PR #14 merges first.
+it was ten commits of documents, and it is now 50 including code (`fe689cd`).** PR #14 merges first.
 Both branches edit:
 
 - **`docs/ENVIRONMENT.md`** — #14 adds the e2e account rows and the identity check; this branch
