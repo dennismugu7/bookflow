@@ -1,3 +1,5 @@
+import { Writable } from 'node:stream';
+
 import { sql } from 'kysely';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -898,5 +900,136 @@ describe('decision 9 — the trimming boundaries, through the route', () => {
     expect(response.statusCode).toBe(400);
     // The submitted name must not be echoed back — criterion 32.
     expect(Object.keys(body).sort()).toEqual(['status', 'title', 'type']);
+  });
+});
+
+/**
+ * ══ THE EVENTS THIS MODULE LOGS ═════════════════════════════════════════════
+ *
+ * Asserted rather than assumed, for the reason `app.ts` gives where it exposes
+ * `logStream`: *"an unasserted log line is exactly the thing that stops working
+ * without anyone noticing"*. These events exist to be queried by an operator; a
+ * renamed key or a dropped call is invisible until the day someone needs them.
+ *
+ * **Two of the three are reachable here. The third is not, and it is the same
+ * limitation as criterion 49**: `business.conflict_constraint` fires only when
+ * the pre-check loses a race, and the harness has one connection per test. Its
+ * predicate is unit-tested in `businesses.conflict.test.ts`; the event on that
+ * branch is unproved for exactly the reason the branch itself is.
+ */
+describe('the events this module logs', () => {
+  /**
+   * The fields these events are asserted on. Declared rather than indexed off
+   * `Record<string, unknown>` so a renamed key is a type error here, not a
+   * silently-undefined comparison that passes.
+   */
+  interface LoggedEvent {
+    readonly event?: string;
+    readonly outcome?: string;
+    readonly userId?: string;
+    readonly businessId?: string;
+    readonly level?: number;
+  }
+
+  /** Every structured log line the app wrote that carries an `event`. */
+  function eventsIn(lines: string[]): LoggedEvent[] {
+    return lines
+      .flatMap((line) => line.split('\n'))
+      .filter((line) => line.trim() !== '')
+      .map((line) => JSON.parse(line) as LoggedEvent)
+      .filter((entry) => typeof entry.event === 'string');
+  }
+
+  async function appWritingTo(lines: string[]): Promise<FastifyInstance> {
+    const stream = new Writable({
+      write(chunk, _encoding, callback): void {
+        lines.push(String(chunk));
+        callback();
+      },
+    });
+    const instance = await buildApp(config, {
+      db: () => ctx.db,
+      logStream: stream,
+    });
+    await instance.ready();
+    return instance;
+  }
+
+  it('logs business.conflict_precheck when an account that has one posts again', async () => {
+    const lines: string[] = [];
+    const logged = await appWritingTo(lines);
+
+    try {
+      const response = await logged.inject({
+        method: 'POST',
+        url: '/v1/businesses',
+        headers: bearer(),
+        payload: { name: 'A Second Salon' },
+      });
+      expect(response.statusCode).toBe(409);
+
+      const events = eventsIn(lines);
+      const conflict = events.find(
+        (entry) => entry.event === 'business.conflict_precheck',
+      );
+
+      expect(conflict).toBeDefined();
+      expect(conflict?.userId).toBe(SEEDED_USER);
+      // INFO: an ordinary refusal, not a fault. 30 is pino's info level.
+      expect(conflict?.level).toBe(30);
+      // THE NO-ECHO RULE APPLIES TO THE LOG. The submitted name must appear in
+      // no field of any event — a log line is a reflected value with a longer
+      // life than a response body.
+      expect(JSON.stringify(events)).not.toContain('A Second Salon');
+    } finally {
+      await logged.close();
+    }
+  });
+
+  it('logs business.scoped_miss and distinguishes not-yours from no-such-business', async () => {
+    const lines: string[] = [];
+    const logged = await appWritingTo(lines);
+
+    try {
+      const stranger = await unrelatedAccountWithBusiness(
+        ctx,
+        { userId: SEEDED_USER, email: 'owner@bookflow.test' },
+        'Stranger Salon',
+      );
+      const absent = '00000000-0000-4000-8000-0000000000ff';
+
+      const notYours = await logged.inject({
+        method: 'GET',
+        url: `/v1/businesses/${stranger.businessId}`,
+        headers: bearer(),
+      });
+      const noSuch = await logged.inject({
+        method: 'GET',
+        url: `/v1/businesses/${absent}`,
+        headers: bearer(),
+      });
+
+      // THE RESPONSES STAY BYTE-IDENTICAL. The whole point is that the
+      // distinction lives in the log and nowhere the caller can see it.
+      expect(notYours.statusCode).toBe(404);
+      expect(noSuch.statusCode).toBe(404);
+      expect(notYours.body).toBe(noSuch.body);
+
+      const misses = eventsIn(lines).filter(
+        (entry) => entry.event === 'business.scoped_miss',
+      );
+
+      expect(misses).toHaveLength(2);
+      // Driven both ways round: one outcome observed twice would pass an
+      // implementation that always reports the same thing.
+      expect(misses.map((entry) => entry.outcome)).toEqual([
+        'not-yours',
+        'no-such-business',
+      ]);
+      expect(misses.every((entry) => entry.userId === SEEDED_USER)).toBe(true);
+      expect(misses[0]?.businessId).toBe(stranger.businessId);
+    } finally {
+      await logged.close();
+    }
   });
 });

@@ -13,6 +13,7 @@ import {
 import {
   createMyBusiness,
   getMyBusiness,
+  logScopedMiss,
   renameMyBusiness,
 } from './businesses.service.ts';
 
@@ -64,6 +65,11 @@ export function registerBusinessRoutes(
         // `undefined` for both — so this is not a decision a route can get
         // wrong by accident. `schema.integration.test.ts` asserts the two
         // response bodies are byte-identical, not just both 404.
+        //
+        // The distinction the RESPONSE withholds is recorded in the log, where
+        // it costs the caller nothing and tells an operator whether this is a
+        // stale id or a real one in the wrong hands. See `logScopedMiss`.
+        await logScopedMiss(db(), request.log, { userId, businessId });
         throw new ProblemError('not-found', 'no such business for this user');
       }
 
@@ -94,7 +100,14 @@ export function registerBusinessRoutes(
       // Zod has already run, so `name` arrives trimmed (decision 9).
       const { name } = request.body;
 
-      const business = await createMyBusiness(db(), { userId }, name);
+      // `request.log` rather than the app logger: it carries `reqId`, so a
+      // conflict event can be joined to the request that caused it.
+      const business = await createMyBusiness(
+        db(),
+        request.log,
+        { userId },
+        name,
+      );
 
       // The service throws `business-already-exists` for the conflict, from
       // either the pre-check or the index, so this handler has no conflict
@@ -188,6 +201,10 @@ export function registerBusinessRoutes(
         // refuses to distinguish "not yours" from "does not exist" — the
         // membership predicate is inside the UPDATE's `where`, so a business
         // that is not the caller's simply matches no row.
+        //
+        // Logged with the same distinction as the read, for the same reason: a
+        // rename aimed at somebody else's business is worth being able to count.
+        await logScopedMiss(db(), request.log, { userId, businessId });
         throw new ProblemError('not-found', 'no such business for this user');
       }
 

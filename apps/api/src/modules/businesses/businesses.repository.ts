@@ -44,6 +44,53 @@ export async function findBusinessForUser(
 }
 
 /**
+ * Whether a business row exists at all, ignoring membership.
+ *
+ * ── THIS IS THE ONE UNSCOPED READ IN THE MODULE, AND IT EXISTS FOR THE LOG ──
+ *
+ * **DO-NOT-VIBE: the membership scoping rule (`CLAUDE.md` §6).** Every other
+ * read here traverses `user → membership → business`. This one does not, and
+ * that is the whole reason it is written separately, named awkwardly, and
+ * documented at this length rather than folded into a helper someone can reach
+ * for without noticing.
+ *
+ * **What it is for.** `findBusinessForUser` conflates "no such business" with
+ * "not yours" so that no caller can surface the difference — which is right for
+ * the *response* and leaves the server unable to tell an operator which of the
+ * two just happened. A 404 rate that is entirely "not yours" means something
+ * very different from one that is entirely "no such id", and only one of those
+ * is worth waking up for. This answers that question **for the log only**.
+ *
+ * ── THE CONSTRAINTS ON USING IT, WHICH ARE THE POINT ────────────────────────
+ *
+ * - **Its result must never reach a response**, in any form: not a status code,
+ *   not a message, not a timing difference the caller can measure by design.
+ *   The 404 is byte-identical either way and `schema.integration.test.ts`
+ *   asserts that.
+ * - **It returns a boolean, never a row.** There is nothing here to leak even
+ *   if someone did misuse it — no name, no `published`, no id beyond the one
+ *   the caller already supplied.
+ * - **It runs only on a path that has already failed the scoped read**, so it
+ *   costs one primary-key lookup on an error path and nothing on the happy one.
+ *
+ * The alternative was to log "scoped miss" without distinguishing the two, and
+ * that was rejected: it records that something was refused while discarding the
+ * only fact that says whether anything is wrong.
+ */
+export async function businessExistsUnscoped(
+  executor: Executor,
+  businessId: string,
+): Promise<boolean> {
+  const row = await executor
+    .selectFrom('businesses')
+    .where('businesses.id', '=', sql<string>`${businessId}::uuid`)
+    .select('businesses.id')
+    .executeTakeFirst();
+
+  return row !== undefined;
+}
+
+/**
  * The caller's own business, without being told which one it is.
  *
  * `findBusinessForUser` answers "may this user see THAT business" and needs the
