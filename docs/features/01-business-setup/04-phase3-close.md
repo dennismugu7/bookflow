@@ -277,7 +277,7 @@ down" look identical once the line is gone.
 | Quote the obligation or it is not one | **FLUSHED 2026-08-18** to `docs/GUIDE_HANDOFF.md` §2, on `docs/guide-handoff-refresh` |
 | An affordance held by a framework default | **FLUSHED 2026-08-18** to `docs/GUIDE_HANDOFF.md` §2, same pass |
 | The log level silences the events | **STILL QUEUED.** Not a lesson — a triage item for the §5.1 pass, deliberately left here |
-| A redaction is not a rotation; a rotation is not a retirement | **QUEUED 2026-08-18** for §2 of the handoff |
+| A redaction is not a rotation; a rotation is not a retirement | **FLUSHED 2026-08-18** to `docs/GUIDE_HANDOFF.md` §2 in `e2a5509`, carrying the never-chosen-only-generated form |
 | A credential is never chosen, only generated | **QUEUED 2026-08-18** as a triage-item candidate for the §5.1 pass |
 | A gate whose result was never reported is a gate that did not run | **FLUSHED 2026-08-18** to `docs/GUIDE_HANDOFF.md` §2 in `b25a43f`, both mechanisms, with the lossy-channel form |
 
@@ -326,7 +326,13 @@ criterion 62; the affordance is now explicit in `account_menu_screen.dart`.*
 
 ---
 
-**QUEUED 2026-08-18, for §2 — a redaction is not a rotation; a rotation is not a retirement.**
+**~~QUEUED~~ — FLUSHED 2026-08-18 to `docs/GUIDE_HANDOFF.md` §2 in `e2a5509`. A redaction is not
+a rotation; a rotation is not a retirement.**
+
+**It was missed on the first flush pass**, and the way it was missed is the one already recorded
+two entries below: the queue table said `QUEUED` while the closing report said two entries
+remained when three did. **The table was right and the summary was wrong** — which is why the
+table exists.
 
 A credential committed in August, redacted the same day and rotated on discovery, was **chosen
 again** as the first password for the second staging e2e account on 2026-08-18. It was live for
