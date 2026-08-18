@@ -38,8 +38,11 @@ void main() {
   }
 
   test(
-    'criterion 41 — after creating a business the status reports it, not none',
+    'criterion 41, 25 — after creating a business the status reports it and the owner leaves /setup',
     () async {
+      // Criterion 25 was already asserted here before it was named — the
+      // destination is checked as `setupRequired` before and `home` after. That
+      // was a NAMING gap, not a coverage gap, and the grep could not see it.
       // A backend that starts empty, exactly as a newly signed-up account is.
       final _MutableBackend backend = _MutableBackend();
       final ProviderContainer container = containerWith(backend);

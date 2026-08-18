@@ -256,6 +256,35 @@ future change to `ck_memberships_role` would not fail that proxy**, which is exa
 limitation — the proxy cannot notice the day the real behaviour becomes testable. Criterion 50 is
 left as written, and this note is the record of what is and is not being demonstrated.
 
+**Criteria 48 and 49 are UNPROVABLE IN THIS HARNESS, and that is a finding rather than work
+nobody got to.** Both were attempted. Recorded so neither reads as an omission:
+
+- **48's concurrent half needs a second connection.** The harness gives one transaction per test,
+  by design. What the partial unique index guarantees — at most one owner membership per user, at
+  commit time, whatever the interleaving — **is** proved, sequentially, in
+  `one-owner-membership.integration.test.ts`. What is not proved is PostgreSQL blocking the second
+  inserter, which is PostgreSQL's own property tested by PostgreSQL; spike 001/C1 took the same
+  position for the exclusion constraint. **48's sequential half is covered by criterion 22's test.**
+- **49's second clause — "no attempt both fails and leaves a business behind" — cannot be
+  observed at all.** Fault injection was tried: a `not valid` check constraint making the
+  membership insert fail after the business insert. The failed statement **aborts the
+  transaction**, so the counting query cannot run; the only way to make it usable again is
+  `rollback to savepoint`, which **erases the business row whether or not the statement was
+  atomic**. Every arrangement that lets you look has already destroyed the evidence. The property
+  holds **by construction** — both inserts are a single CTE, and PostgreSQL executes one statement
+  atomically — and `createBusinessForUser` documents that as the reason for its shape. The test
+  asserts only what is observable: the request fails rather than returning 201.
+
+**They become provable when the harness gains a second connection**, which is the same capability
+A14 will need for the booking slice's contention question. Until then they are the two criteria
+this slice cannot close, and the reason is the instrument.
+
+**Criterion 39's comparison half is DISCHARGED.** The note above recorded that "a rename trims
+identically to creation" could not be proved until `POST` existed, because there was nothing to
+compare against. It exists, and `criterion 39 — a padded name is stored identically by both`
+compares the two stored values **to each other** rather than each to a literal — which would have
+passed even if one route trimmed and the other merely received an already-trimmed value.
+
 **Criterion 22 was correct and unachievable, and that is how the gap was found.** It says an
 account that already has a business "does not acquire a second". When it was written, **nothing
 in the schema or the code enforced that** — `uq_memberships_user_business` forbids a repeat join

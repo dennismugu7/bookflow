@@ -858,7 +858,7 @@ app in a runnable state."*
 | **T6** | Screen #5 and the business feature | `features/business/`, the form, `POST` wired | T4, T5 | 29, 30, 33, 43, 44 | **yes** |
 | **T7+T8** | **One task, deliberately.** Dashboard at `/home`, account menu, avatar, sign-out moved, #20's back affordance | screens #12 and #17, the first push route | T4, T5, T6 | 25, 26, 27, 28, 45, 46, 47, 55, 56, 57, 58, 59, 60 | **yes — only because they are one task** |
 | **T9** | Membership status | `features/membership/`'s constant replaced by a real call over `GET /v1/me/business`; the 404 mapping (§C.6) | T4, T7+T8 | 41, 42 | **yes** |
-| **T10** | Screen #20's business section | The section, its edit affordance, `PATCH` wired | T4, T7+T8 | 52, 53, 54 | **yes** |
+| **T10** | Screen #20's business section | The section, its edit affordance, `PATCH` wired | T4, T7+T8 | 52, 53, 54 | **yes** — **DONE, by the pierce; see below** |
 | **T11** | Design-system and deviation records | ADR-039 classification for #5, #12, #17; the five deviations into `08-design-deviations.md` | T6, T7+T8, T10 | none — it is the record | **yes** |
 
 ### E.2 Runnable at every step — checked, not asserted
@@ -958,3 +958,19 @@ oversight — **every one is thickening, in §E's existing order**:
 
 **After the pierce, everything is thickening rather than construction**, which is the manual's own
 test for having finished this phase.
+
+### E.5 T10 was completed by the pierce — recorded rather than re-invented
+
+**T10 has nothing left in it.** §E scheduled "screen #20's business section — the section, its
+edit affordance, `PATCH` wired" as a task, and then §E.4 chose exactly that as the first vertical
+pierce. The pierce built it: `business_section.dart`, the edit affordance, `PATCH` wired end to
+end, and criteria **52, 53 and 54** mapped and green.
+
+**This is recorded rather than resolved by inventing work to match the task name.** The pierce
+pulled T10 forward by design — it was picked *because* screen #20 was reachable and needed no
+routing change — and §E's table was written before that decision existed. A task list and a
+decision taken later disagreed, and the decision is the one that happened.
+
+**What T10's dependencies were really protecting** still held: it lists T4 and T7+T8, and the
+section's `PATCH` did need T4. T7+T8 it did not need, because #20 was at `/home` when the pierce
+built it; that dependency was about #20 *after* the move, and it is satisfied now either way.

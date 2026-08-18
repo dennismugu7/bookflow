@@ -652,6 +652,126 @@ describe('PATCH /v1/businesses/:businessId', () => {
   });
 });
 
+describe('creation and rename validate identically', () => {
+  /**
+   * ══ THESE COMPARE THE TWO ROUTES; THEY DO NOT RE-TEST EITHER ══════════════
+   *
+   * Criteria 15 and 39 are **comparisons**: "a rename is validated identically
+   * to creation", and "a rename trims identically to creation". Until
+   * `POST /v1/businesses` existed there was nothing to compare against, and the
+   * criteria file recorded 39's comparison half as unprovable for exactly that
+   * reason. **POST has shipped, so that note is discharged.**
+   *
+   * The existing per-route tests assert each side's behaviour separately. Two
+   * tests can both pass while the routes disagree — which is what a shared
+   * `businessName` chain is supposed to prevent and what nothing was checking.
+   * These assert the two answers are **equal to each other**, so they keep
+   * holding if the rule itself changes.
+   */
+
+  async function clearSeededMembership(): Promise<void> {
+    await sql`delete from public.memberships where user_id = ${SEEDED_USER}::uuid`.execute(
+      ctx.db,
+    );
+  }
+
+  /** The status `POST` gives this name, with the account starting empty. */
+  async function statusFromCreate(name: string): Promise<number> {
+    await clearSeededMembership();
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/businesses',
+      headers: bearer(),
+      payload: { name },
+    });
+    return response.statusCode;
+  }
+
+  /** The status `PATCH` gives the same name, on an existing business. */
+  async function statusFromRename(name: string): Promise<number> {
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/v1/businesses/${SEEDED_BUSINESS}`,
+      headers: bearer(),
+      payload: { name },
+    });
+    return response.statusCode;
+  }
+
+  it('criterion 15 — the same name is accepted or rejected by both, at every boundary', async () => {
+    const cases: Array<{ label: string; name: string }> = [
+      { label: 'one character', name: 'V' },
+      { label: '200 characters', name: 'a'.repeat(200) },
+      { label: '200 characters with padding', name: `  ${'a'.repeat(200)}  ` },
+      { label: '201 characters', name: 'a'.repeat(201) },
+      { label: 'empty', name: '' },
+      { label: 'whitespace only', name: '   ' },
+      { label: 'padded ordinary name', name: '   Vera’s Salon   ' },
+    ];
+
+    for (const { label, name } of cases) {
+      const rename = await statusFromRename(name);
+      const create = await statusFromCreate(name);
+
+      // Compared to EACH OTHER, not to expected constants. If the shared
+      // `businessName` chain is ever forked, this fails whichever way the two
+      // diverge — including if both become wrong in the same direction, which
+      // a pair of independent expectations would not catch.
+      expect(
+        create === 201 ? 'accepted' : 'rejected',
+        `${label}: create and rename must agree`,
+      ).toBe(rename === 200 ? 'accepted' : 'rejected');
+
+      // Restore the SEEDED business for the next iteration's rename.
+      //
+      // Unconditional delete-then-insert, deliberately. An `insert … where not
+      // exists` was tried and is wrong: a successful `POST` leaves the owner a
+      // member of the NEWLY created business, so the guard sees a membership,
+      // skips, and the next rename targets a business the owner no longer
+      // belongs to — a 404 that looks exactly like a validation rejection.
+      // That failure was real and it was the test's, not the route's.
+      await clearSeededMembership();
+      await sql`
+        insert into public.memberships (user_id, business_id)
+        values (${SEEDED_USER}::uuid, ${SEEDED_BUSINESS}::uuid)
+      `.execute(ctx.db);
+    }
+  });
+
+  it('criterion 39 — a padded name is stored identically by both', async () => {
+    const padded = '   Vera’s Salon   ';
+
+    const renamed = await app.inject({
+      method: 'PATCH',
+      url: `/v1/businesses/${SEEDED_BUSINESS}`,
+      headers: bearer(),
+      payload: { name: padded },
+    });
+    const afterRename = await storedName(SEEDED_BUSINESS);
+
+    await clearSeededMembership();
+    const created = await app.inject({
+      method: 'POST',
+      url: '/v1/businesses',
+      headers: bearer(),
+      payload: { name: padded },
+    });
+    const createdBody: { id: string } = created.json();
+    const afterCreate = await storedName(createdBody.id);
+
+    expect(renamed.statusCode).toBe(200);
+    expect(created.statusCode).toBe(201);
+
+    // The comparison the criterion actually asks for. Asserting each equals
+    // "Vera’s Salon" separately would pass even if one route trimmed and the
+    // other happened to receive an already-trimmed value.
+    expect(afterCreate, 'creation and rename must store the same name').toBe(
+      afterRename,
+    );
+    expect(afterCreate).toBe('Vera’s Salon');
+  });
+});
+
 describe('decision 9 — the trimming boundaries, through the route', () => {
   it('criterion 37, 39 — stores a padded name trimmed, on a rename', async () => {
     const response = await app.inject({
