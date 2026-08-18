@@ -44,6 +44,50 @@ A diff this size has no useful entry point, so here is one. Each step makes the 
    (`5ec5a0c`), then the membership status ceasing to be a constant (`410e2d4`).
 6. **`05-phase4-close.md` and `06-phase6-close.md`** — what is proved, what is not, and what the
    self-review changed and deliberately did not.
+7. **`docs/decisions/ADR-043-v1-platform-target.md`, then the `ios-build` removal in
+   `.github/workflows/ci.yml`** — **read this last, and read the ADR before the diff.** It is a
+   platform decision inside a business-setup PR; the section below says why it is here.
+
+## There is a platform decision in this PR, and it is not business setup
+
+**ADR-043 makes Android the v1 target, puts iOS out of scope for v1, and deletes the `ios-build`
+CI job.** A reviewer will find that in a branch named for a feature slice, so here is why.
+
+**It arose mid-slice.** An audit of the GitHub Actions allowance — prompted by the branch being
+unable to run CI at all — asked which jobs consume it. `ios-build` is the repository's only
+macOS job and bills at **10×**. Asking why it existed produced the finding ADR-043 rests on:
+**no ADR had ever named iOS as a target.** ADR-015 chose Flutter and stated a constraint on how
+iOS would be built *if* built; ADR-005 says "Kenya only for v1" and names no platform; the design
+documents contain zero matches for iOS, Android, App Store or Play Store.
+
+**It is separable in principle and was not separated.** It touches no file this slice touches
+except `04-phase3-close.md` §8, and it could have been its own branch. It landed here because
+this is where the work was and the branch cannot merge for other reasons anyway — **which is a
+convenience, not a justification, and it is recorded as one.** A reviewer who wants it split
+should say so; the cost is one cherry-pick, and nothing in the slice depends on it.
+
+**Read ADR-043 rather than this summary.** The reasoning that matters — why this is not a
+weakened gate under `CLAUDE.md` §6, why ADR-015 is not amended, why `apps/mobile/ios/` stays in
+the tree unbuilt — is argued there and is not restated here.
+
+**One thing it settles that outlives it:** `DEFINITION_OF_DONE.md`'s *"including the build step"*
+now reads *"for each platform the project targets"*. The item had been read two ways in one day,
+and the rejected reading would have made the Definition of Done depend on `ci.yml`'s contents —
+adding a job would silently raise the bar and removing one would lower it.
+
+### The consequence: neither the decision nor the saving lands until this merges
+
+**ADR-043 is Accepted and inert.** The job is deleted on this branch and nowhere else. **`main`
+still carries `ios-build`, and so does every unmerged branch** — including `feat/phase3-e2e`
+(PR #14), whose head predates ADR-043 and still declares `runs-on: macos-latest` with
+`flutter build ios --no-codesign`. **Confirmed by reading that branch's `ci.yml`, not inferred:**
+when #14's dispatch run happens after the reset, it will run `ios-build` and pay the macOS rate
+once. That is expected and changes nothing — it is written down so the first bill is not a
+surprise.
+
+**So the 10× usage ends when this PR merges, and not before.** If the allowance is the reason
+this branch has never been built, that is a circularity worth naming rather than discovering:
+**the change that reduces CI cost is itself waiting on CI.**
 
 ## What it does
 
