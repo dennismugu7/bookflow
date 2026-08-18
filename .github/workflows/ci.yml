@@ -2,9 +2,14 @@ name: CI
 
 # ADR-024: GitHub Actions, one CI system for everything.
 #
-# Three independent jobs: `verify` (TypeScript), `mobile` (Dart on Linux) and
-# `ios-build` (Dart on macOS). None depends on another, so one failure never
-# hides another's result.
+# SEVEN jobs, all on Ubuntu: `verify` (TypeScript), `mobile` (Dart, including
+# the Android build), `contracts`, `migrate-staging`, `deploy-staging`,
+# `smoke-staging`, and `e2e-staging` where it exists. None of the first three
+# depends on another, so one failure never hides another's result.
+#
+# There was an eighth, `ios-build` on macOS. ADR-043 removed it — see the note
+# where it stood. This comment is the count's only home in this file, so it is
+# the one to update when a job is added or removed.
 #
 # Still missing from ADR-024: the contract drift check, which needs ADR-025's
 # generation pipeline, and the Fly.io deploy, which belongs after there is
@@ -216,47 +221,24 @@ jobs:
       - name: Build Android (debug)
         run: flutter build apk --debug
 
-  # ── iOS ────────────────────────────────────────────────────────────────────
-  # Proves the iOS target compiles. It cannot do more than that: there is no
-  # Apple Developer account, so --no-codesign is the ceiling and signing stays
-  # open as K53 in docs/analysis/05-triage.md.
+  # ── iOS — REMOVED by ADR-043 ───────────────────────────────────────────────
+  # There was an `ios-build` job here: `flutter build ios --no-codesign` on
+  # macos-latest, the repository's only 10x runner.
   #
-  # COST. macOS runners bill at 10x the Linux rate against this private
-  # repository's included allowance, so this job is deliberately NOT run on
-  # every push:
-  #   - always on push to main, where the result matters;
-  #   - on demand via workflow_dispatch;
-  #   - on a pull request ONLY when it carries the `ios` label, so a PR that
-  #     touches iOS can opt in and everything else pays nothing.
-  ios:
-    name: ios-build
-    if: >-
-      github.event_name == 'push' ||
-      github.event_name == 'workflow_dispatch' ||
-      contains(github.event.pull_request.labels.*.name, 'ios')
-    runs-on: macos-latest
-    timeout-minutes: 45
-
-    defaults:
-      run:
-        working-directory: apps/mobile
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: 3.44.8
-          channel: stable
-          cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build iOS (unsigned)
-        run: flutter build ios --no-codesign
+  # ADR-043 makes Android the v1 platform target and puts iOS out of scope, on
+  # the finding that NO ADR EVER NAMED iOS AS A TARGET — ADR-015 chose Flutter
+  # and stated how iOS would be built if built; ADR-005 says "Kenya only for
+  # v1" and names no platform; the design documents contain zero matches for
+  # iOS, Android, App Store or Play Store. The job existed because
+  # `flutter create` makes an ios/ directory.
+  #
+  # This note is left rather than the lines simply deleted: a job vanishing from
+  # a workflow reads as an accident, and the next person to wonder where the iOS
+  # build went should find the answer here rather than in the log.
+  #
+  # `apps/mobile/ios/` REMAINS and is not built. Its presence is scaffolding,
+  # not support. Reversing costs `flutter create --platforms=ios` plus whatever
+  # plugin configuration is then needed — the same as it would cost today.
 
   # ── Contract drift ─────────────────────────────────────────────────────────
   # Its own job rather than a step inside `verify`, for two reasons.

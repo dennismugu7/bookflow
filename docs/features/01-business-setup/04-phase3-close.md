@@ -279,6 +279,7 @@ down" look identical once the line is gone.
 | The log level silences the events | **STILL QUEUED.** Not a lesson — a triage item for the §5.1 pass, deliberately left here |
 | A redaction is not a rotation; a rotation is not a retirement | **FLUSHED 2026-08-18** to `docs/GUIDE_HANDOFF.md` §2 in `e2a5509`, carrying the never-chosen-only-generated form |
 | A credential is never chosen, only generated | **QUEUED 2026-08-18** as a triage-item candidate for the §5.1 pass |
+| ADR-043 removed `ios-build` — four stale job references, K53, and a branch | **QUEUED 2026-08-18** for the passes that own each file |
 | A gate whose result was never reported is a gate that did not run | **FLUSHED 2026-08-18** to `docs/GUIDE_HANDOFF.md` §2 in `b25a43f`, both mechanisms, with the lossy-channel form |
 
 ---
@@ -379,6 +380,39 @@ that arrived empty, and two "verbatim" sections printed by pointing at the `Read
 rather than transcribed into the reply. **The verbatim rule already says a quote must be copied
 from the artefact rather than re-rendered — this is its other half: copied INTO the report, where
 the reader is.**
+
+---
+
+**QUEUED 2026-08-18 — ADR-043 removed the `ios-build` job, and four records still describe it.**
+
+Android is the v1 target and iOS is out of scope (ADR-043). The job is deleted, `ci.yml`'s header
+is corrected, ADR-024 carries an amendment, and `DEFINITION_OF_DONE.md` line 26 is clarified —
+**all on this branch.** What is listed here is what this branch must not touch, with the pass that
+owns each:
+
+| Where | What it says | Owned by |
+|---|---|---|
+| `docs/BUILD_LOG.md:87` | *"four jobs"* including `ios-build` — **already stale at four; it was seven, now six on this branch's `ci.yml`** | `ci/ios-build-cadence`, which carries §8 |
+| `docs/analysis/06-guide-orientation.md:326` | the same "four jobs" sentence | the analysis pass; `CLAUDE.md` forbids editing `docs/analysis/` to reflect a new decision |
+| `docs/analysis/06-guide-orientation.md:660` · `docs/ENVIRONMENT.md:100` | the workflow row describing the job set | §5.5's `ENVIRONMENT.md` pass, after PR #14 |
+| `GUIDE_HANDOFF.md` §4 | *"Eight CI jobs"*, listing `ios-build` | the next handoff pass, on `docs/guide-handoff-refresh` |
+
+**`docs/analysis/09-phase3-close.md:340` is deliberately NOT on this list.** It records how the
+Definition of Done's build item was satisfied at Phase 3's close, naming `ios-build` and
+explaining what it did. **It is a point-in-time record and stays as written** — that run included
+an Android build, which is what the item required then and requires now under ADR-043's settled
+reading. Explaining the least self-evident job in a list is not depending on it.
+
+**TWO CONSEQUENCES THAT ARE NOT REFERENCE FIXES:**
+
+- **K53 stops being an `S` item for v1 and needs RECLASSIFYING, not closing.** It asks which cloud
+  CI provider builds and signs iOS and how the signing credentials are managed. It cannot block a
+  slice for a platform v1 does not target — and it becomes live again the day iOS does. For the
+  §5.1 triage pass.
+- **`ci/ios-build-cadence`'s primary purpose has evaporated.** It exists to move `ios-build` to a
+  weekly schedule and there is no job to schedule. **It is not wholly redundant** — it also
+  carries `BUILD_LOG.md` §8 and a fold-in of a stray ADR-024 amendment — so **whoever merges
+  PR #14 owns reconciling it**, rather than merging it or deleting it on autopilot.
 
 ---
 
