@@ -279,7 +279,7 @@ down" look identical once the line is gone.
 | The log level silences the events | **STILL QUEUED.** Not a lesson — a triage item for the §5.1 pass, deliberately left here |
 | A redaction is not a rotation; a rotation is not a retirement | **QUEUED 2026-08-18** for §2 of the handoff |
 | A credential is never chosen, only generated | **QUEUED 2026-08-18** as a triage-item candidate for the §5.1 pass |
-| A gate whose result was never reported is a gate that did not run | **QUEUED 2026-08-18** for §2 of the handoff |
+| A gate whose result was never reported is a gate that did not run | **FLUSHED 2026-08-18** to `docs/GUIDE_HANDOFF.md` §2 in `b25a43f`, both mechanisms, with the lossy-channel form |
 
 ---
 
@@ -344,7 +344,8 @@ commitment rather than a control. Full reasoning in that file's 2026-08-18 amend
 
 ---
 
-**QUEUED 2026-08-18, for §2 — a gate whose RESULT was never reported is a gate that did not run.**
+**~~QUEUED~~ — FLUSHED 2026-08-18 to `docs/GUIDE_HANDOFF.md` §2 in `b25a43f`, both mechanisms
+and the lossy-channel form. A gate whose RESULT was never reported is a gate that did not run.**
 
 A response reporting a batch of work was swallowed by a duplicated paste. **The work in it had
 landed and been pushed**, so nothing was lost and nothing was wrong — but one of the four checks
