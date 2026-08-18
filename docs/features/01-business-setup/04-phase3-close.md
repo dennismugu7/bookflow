@@ -268,7 +268,20 @@ leaving a copy in two places.
 
 ### Pending
 
-**An obligation attributed to a document must be QUOTED from it, or it is not an obligation.**
+**Two entries below are FLUSHED and one is not. They are struck rather than deleted:** a queue
+that silently empties cannot be audited, and "this was carried over" and "this was never written
+down" look identical once the line is gone.
+
+| Entry | State |
+|---|---|
+| Quote the obligation or it is not one | **FLUSHED 2026-08-18** to `docs/GUIDE_HANDOFF.md` §2, on `docs/guide-handoff-refresh` |
+| An affordance held by a framework default | **FLUSHED 2026-08-18** to `docs/GUIDE_HANDOFF.md` §2, same pass |
+| The log level silences the events | **STILL QUEUED.** Not a lesson — a triage item for the §5.1 pass, deliberately left here |
+
+---
+
+**~~PENDING~~ — FLUSHED 2026-08-18. An obligation attributed to a document must be QUOTED from
+it, or it is not an obligation.**
 
 Three instances on 2026-08-17, all in this slice, all by the same session:
 
@@ -292,8 +305,9 @@ obligation is more expensive than a missed one, because nobody audits work that 
 
 ---
 
-**An affordance can be held in place by a framework default rather than by a decision, and a test
-that never drives it will not notice when the default stops applying.**
+**~~PENDING~~ — FLUSHED 2026-08-18. An affordance can be held in place by a framework default
+rather than by a decision, and a test that never drives it will not notice when the default stops
+applying.**
 
 Screen #17's back arrow came from `AppBar.automaticallyImplyLeading` and existed only because
 `/account` was reached by `push`; routing it with `go` would have removed the only way back with
@@ -309,8 +323,10 @@ criterion 62; the affordance is now explicit in `account_menu_screen.dart`.*
 
 ---
 
-**The log level silences the events in every environment where real users exist. This becomes a
-triage item the moment `05-triage.md` is editable.**
+**STILL QUEUED — the log level silences the events in every environment where real users exist.
+This becomes a triage item the moment `05-triage.md` is editable.** Deliberately not flushed to
+`GUIDE_HANDOFF.md` in the 2026-08-18 pass: it is a defect awaiting a decision, not a lesson about
+how to verify things, and putting it in §2 would have filed it where nobody would act on it.
 
 `app.ts` sets the logger level to `info` only when `APP_ENV === 'local'`, and `warn` everywhere
 else. So of the three events the businesses module now emits, **`business.conflict_precheck` and
