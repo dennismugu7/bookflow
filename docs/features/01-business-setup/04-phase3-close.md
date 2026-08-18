@@ -103,6 +103,39 @@ have:
 43 are blocked on code, not on being ill-posed. That is the check §3 of the criteria file exists
 to make possible, and it passes.
 
+**SUPERSEDED 2026-08-18 — 17 of 60 was true when written and is not the number now. The original
+stands above deliberately**, because this section is the record of what was measured at Phase 3's
+close and a point-in-time measurement that gets overwritten stops being one. **The number moved
+because the code arrived, which is what it was measuring.**
+
+**59 of 61 map to a named test.** Re-derived on 2026-08-18 by the criteria file's own command,
+not by counting:
+
+```
+grep -rhoE "'criterion [0-9]+(, [0-9]+)*" apps/api/src apps/api/test apps/mobile/test \
+  | grep -oE "[0-9]+" | sort -n | uniq
+```
+
+**The denominator moved too** — 60 at close, **61** now: criterion 61 was appended with T6, for
+the half of sign-out that criterion 57 does not cover.
+
+**Unmapped: 48 and 49, and nothing else.** They are the two the criteria file already records as
+**"UNPROVABLE IN THIS HARNESS, and that is a finding rather than work nobody got to"** — 48's
+concurrent half needs a second connection the harness does not have, and 49's second clause
+cannot be observed without destroying the evidence it would be read from. **So the derived gap
+and the documented gap are the same two criteria; there is no unexplained shortfall.**
+
+**The six that were testable-today-and-untested are all closed** — 8, 11, 14, 16, 17 and 40 each
+carry a named test now. That list was the useful half of this section, and counting is what
+produced it: reading would not have.
+
+**One limitation of the number, stated because a bare 59/61 overstates it.** Criterion 50 is
+mapped by a declared **schema proxy** — the test asserts `uq_memberships_one_owner_per_user`
+exists, is unique and carries `where role = 'owner'`, and its own name says
+`(SCHEMA proxy, not the behaviour)`. The behaviour it describes cannot be observed while
+`ck_memberships_role` permits only `'owner'`. The criteria file carries the full reasoning; the
+count cannot.
+
 ## 4. Still owed
 
 **~~The ADR-039 classification.~~ NOT OWED — CORRECTED 2026-08-17.** This said a classification
@@ -124,6 +157,27 @@ are **never sampled from the screenshot**. See `02-design.md` §C.8.
 - **§5.4** — decision 10's migration, and applying it via `migrate-staging`. Task T2, and it
   needs minutes.
 - **§5.5** — `docs/ENVIRONMENT.md` §4 is stale about `seed.sql`. Waits on PR #14 with §5.1.
+
+**CORRECTED 2026-08-18 — the §5.2 line above is wrong, and it contradicts `00-frame.md`.**
+`business-already-exists` **is** in `PROBLEM_TYPES` (`apps/api/src/platform/problem.ts`, status
+409), landed by T3 in `f0e950d`, and `00-frame.md` §5.2 has read **"Status: DISCHARGED
+2026-08-17"** since that commit. This file was written before it and never revisited.
+
+**The current state of the five, on 2026-08-18:**
+
+| | State |
+|---|---|
+| §5.1 — triage update | **OUTSTANDING.** PR #14 is still `OPEN` |
+| §5.2 — the conflict slug | **DISCHARGED**, verified in `problem.ts` |
+| §5.3 — the rename surface | **DISCHARGED** by decision 11 |
+| §5.4 — the migration on staging | **OUTSTANDING.** Written and applied locally; never applied to staging, and cannot be from here (ADR-034) |
+| §5.5 — `ENVIRONMENT.md` §4 on `seed.sql` | **OUTSTANDING.** Still present; waits on PR #14 with §5.1 |
+
+**Note which way the error ran.** It reported an obligation as owed that had been discharged —
+the cheap direction, but not free: a session reading this list would have gone looking for work
+that was done, and `00-frame.md` §5.2 is where the honest answer already sat. **The rule this
+file's own §8 records applies to a status exactly as it applies to an obligation: check the
+document that owns it rather than the summary of it.**
 
 **R3's staging account** — the e2e account cannot demonstrate criteria 41 and 42 (K78), and E14
 makes a replacement non-trivial. Still undecided, and it blocks the e2e gate if left.
@@ -154,6 +208,32 @@ which is the reason it was fixed in the helper rather than worked around in this
 
 Everything from here is **thickening rather than construction**, which is the manual's own test
 for having finished this phase.
+
+**CORRECTED 2026-08-18. The list above was true at Phase 3's close and is now stale by six
+tasks. Only T11 remains, and it is being written in the commit that carries this correction.**
+
+| Task | State | Landed as |
+|---|---|---|
+| T2 — the partial unique index | **done locally**, not on staging | `a94cfb0`, `supabase/migrations/20260817160430_one_owner_membership_per_user.sql` |
+| T3 — the conflict slug | **done** | `f0e950d`, `business-already-exists` in `PROBLEM_TYPES` |
+| T4 — the API vertical | **done** | `bb54a7e`, spec and Dart client regenerated in `642aeb0` |
+| T5 — ADR-042's redirect | **done** | `d940d89` |
+| T6 — screen #5 | **done** | `b502a23` |
+| T7+T8 — dashboard, account menu, navigation chain | **done** | `5ec5a0c` |
+| T9 — membership status | **done** | `410e2d4` |
+| T10 — screen #20's business section | **done by the pierce**, recorded in `3cc935c` | `02-design.md` §E.5 |
+| T11 — the deviation records | **in the commit carrying this correction** | `docs/analysis/08-design-deviations.md` entries 10–16 |
+
+**T2 keeps a residual half that is not a task and must not be read as one:** the index exists in
+the repository and is applied to the **local** database, and it has never been applied to staging.
+That is `00-frame.md` §5.4, it goes through ADR-034's `migrate-staging` job, and it waits on
+Actions minutes. **A green local suite is not evidence about staging's schema.**
+
+**Why the list went stale is the ordinary reason and worth naming:** it is a hand-maintained
+enumeration in a point-in-time document, read by later sessions as current state. The same shape
+as `02-design.md` §B.9's mapping (R4) and `00-frame.md` §7's criteria count, both corrected in
+the same pass. **The count that cannot go stale is the one a command derives** — for tasks there
+is no such command, which is why this table cites the commit for each.
 
 ## 7. Counts at close
 

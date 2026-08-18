@@ -493,6 +493,25 @@ tag that has never been cut.
   an estimate — and it is the first slice where that number can exist at all, Phase 3 having
   had no criteria to count against (ADR-040 §3.1, K77).
 
+**CORRECTED 2026-08-18 — both bullets above say 42, and the file holds 61.** They were written
+when 42 was the count, and 43–61 were appended afterwards: 43–47 (loading, empty and error per
+screen), 48–51 (decision 10's index), 52–54 (the rename surface, decision 11), 55–60 (the
+navigation chain, decision 12) and 61 (sign-out for an owner with no business, T6). **Read "the
+61 acceptance criteria" and "the gap between 61 and that count" in both places.**
+
+**This is the same defect as `02-design.md` §B.9's, in the same slice, from the same cause** — a
+hand-written total describing an append-only list, in a document the appending step had no reason
+to open. §B.9 now carries the rule that answers it: a criterion is classified in the same commit
+that appends it. **The parallel rule for this section is to stop writing the total at all.**
+Neither bullet needs one: what they assert is that the criteria are observed against deployed
+staging, and that the mapped-versus-unmapped split is derivable rather than estimated. **The
+count is a `grep`, and `01-acceptance-criteria.md` carries the command.** A number copied here
+can only go stale; the command cannot.
+
+*The original wording is left standing above rather than edited, because it records what the
+frame believed when the scope was pinned, and the growth from 42 to 61 is itself the honest
+history of the slice.*
+
 **What is deliberately not proposed:** owner-funnel metrics, completion rates, time-to-first-
 business, drop-off between sign-up and business creation. Every one of them needs real owners on
 a production deployment. They become answerable when production exists, and inventing a

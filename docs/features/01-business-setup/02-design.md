@@ -349,6 +349,28 @@ are UI. **The mapping drifts every time criteria are appended in a step that doe
 it**, which is a standing hazard of an append-only list read by a section that summarises it, and
 the reason the totals are stated rather than left implicit. **32 satisfiable + 28 not = 60.**
 
+**CORRECTED A THIRD TIME, 2026-08-18 — and R4 named this before it happened.** Criterion **61**
+was appended by T6 and never classified here, so the totals above described a file holding 61.
+**It belongs in the CANNOT-satisfy list**, with 55–60 and for the same reason: sign-out for an
+owner with no business is reachability and routing, and **no endpoint is involved in whether a
+screen has an exit**. It is classified in the bullet below. **The totals are now 32 satisfiable +
+29 not = 61.**
+
+**THE RULE THIS SECTION NOW CARRIES, because three corrections is enough evidence that the
+hazard is structural rather than careless:**
+
+> **A criterion is classified in §B.9 in the same commit that appends it to
+> `01-acceptance-criteria.md`. Appending without classifying is an incomplete change, not a
+> follow-up.**
+
+This is R4's own "cheapest real fix is procedural", promoted from a risk note to a rule stated
+where the drift happens. **It is not enforced by anything** — no test can know whether a
+classification is *correct*, only whether a number was updated — so it holds by review, and the
+totals stay stated explicitly so that a reader can subtract and catch the next one. Each of the
+three misses shares one shape: **the criteria were appended by the step that needed them (the
+rename surface, the navigation chain, T6's sign-out half) and that step had no reason to open
+this document.** The rule puts the reason in the step.
+
 - **22 — CORRECTED 2026-08-17. This was listed as satisfiable and is not.** Criterion 22 reads
   *"after **any** further creation attempt"*, and a concurrent double-submit is one. **The
   distinction:** the contract satisfies 22's **sequential** case entirely — a second request
@@ -372,6 +394,12 @@ the reason the totals are stated rather than left implicit. **32 satisfiable + 2
   **The contract is not even necessary for these** — no endpoint is involved in whether a screen
   can be opened, whether a menu omits a row, or whether sign-out is reachable. They are the
   criteria furthest from this section, which is precisely why the mapping lost them.
+- **61 (sign-out for an owner with no business) — CLASSIFIED 2026-08-18**, the third correction
+  above. The same shape as 55–60 and one degree further out: it is satisfied by a control on
+  screen #5, on the one shell an owner without a business is allowed to be in. **No endpoint is
+  involved, and none could be** — an owner with no business has nothing this contract can be
+  asked about. `/setup` is their only destination, so this is the criterion that pins that the
+  app has an exit for them at all.
 - **41 and 42 (the membership status reports the business, and survives a restart).** `GET
   /v1/me/business` is necessary and not sufficient: 41 needs the Flutter repository to replace
   its `MembershipStatus.none` constant, and 42 needs session restore to re-issue the call.
@@ -860,6 +888,27 @@ app in a runnable state."*
 | **T9** | Membership status | `features/membership/`'s constant replaced by a real call over `GET /v1/me/business`; the 404 mapping (§C.6) | T4, T7+T8 | 41, 42 | **yes** |
 | **T10** | Screen #20's business section | The section, its edit affordance, `PATCH` wired | T4, T7+T8 | 52, 53, 54 | **yes** — **DONE, by the pierce; see below** |
 | **T11** | Design-system and deviation records | ADR-039 classification for #5, #12, #17; the five deviations into `08-design-deviations.md` | T6, T7+T8, T10 | none — it is the record | **yes** |
+
+**T11 CORRECTED 2026-08-18 — it is seven deviations, not five, and the table's "five" is the
+error that made the reconciliation worth doing.** The row above was written from this slice's
+Phase 0 and Phase 1 documents, which name five. **Two more were decided while the widgets were
+built and recorded only in Dart source comments** — screen #5's sign-out control
+(`create_business_screen.dart`, "the sixth recorded design deviation") and screen #12's omitted
+Bookings/Contacts/Calendar tabs (`dashboard_screen.dart`, "the seventh"). Both are real
+decisions with stated reasoning; neither was in any document, so a count taken from the documents
+was short by two and looked complete. **All seven are now entries 10–16 of
+`docs/analysis/08-design-deviations.md`.**
+
+**The ADR-039 half of T11 was already discharged** and the row overstates it: §C.8 records that
+ADR-039 classifies all three screens by name — `native-04` and `native-11` Generation A,
+`native-16` Generation B — so nothing was owed there.
+
+**Three further design differences surfaced during that reconciliation and are NOT entered**,
+because no ADR, document or comment decided any of them: screen #5 being a full-screen route
+rather than the specified slide-up sheet, screen #17's Log out having no confirmation modal, and
+screen #17 having no bottom global navigation. They are named at the foot of the deviations file
+and need a ruling. **They are not part of T11** — T11 records decisions, and inventing one to
+close a row is the failure the register exists to catch.
 
 ### E.2 Runnable at every step — checked, not asserted
 

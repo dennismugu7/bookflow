@@ -191,30 +191,22 @@ revoked or missing grant now fails in seconds, locally, instead of in `migrate-s
 permits only `'owner'`, so the row that would distinguish a partial unique index from a plain one
 cannot be inserted at all. It is a schema limit, not a missing fixture.
 
-### E.7 `contracts:generate` is not reliably atomic on this machine
+### E.5 The seed contradicts a decision made after it — recorded, not fixed
 
-**Two failure modes, both seen on 2026-08-17, and neither reads as what it is.**
+`supabase/seed.sql`'s business has **`published = true` and zero services.** §5's K27 answer makes
+that state **impossible** once the publishing slice enforces its precondition: a business may not
+be published until it has at least one service.
 
-**It deletes every model `.g.dart` and may not re-emit them.** The generator wipes
-`packages/bookflow_api/` and rebuilds; `build_runner` is supposed to follow. Once it did not, and
-the symptom was `flutter analyze` failing on `Undefined class
-'RenameBusinessRequestInputBuilder'` — which looks like a code error in `apps/mobile`, not a
-generation failure two packages away. **Check for `.g.dart` files after regenerating**:
-`find packages/bookflow_api -name "*.g.dart" | wc -l` should not be zero.
+**Nothing to fix now.** The seed is local-only — it writes to `auth.users` directly and its own
+header says so — nothing in CI or on staging runs it, and it predates the decision by a fortnight.
+Its comment already anticipates the shape of the problem: *"services, team members, opening hours
+and bookings have no tables yet … This file seeds what exists — one owner, one business, one
+membership — and grows with each slice that adds a table."*
 
-**It fails with `EPERM` on `rmSync` when a `build_runner` daemon holds the directory open**, and
-`contracts:check` reports that as exit 1 — **indistinguishable from drift unless you read the
-output.** `build_runner` leaves a daemon behind; Windows will not delete a directory a process
-has open. **An exit 1 from `contracts:check` is not evidence of drift until the message has been
-read.**
-
-**The remedy for both, and the order matters:** stop stray `dart`/`build_runner` processes, then
-regenerate through **`npm run contracts:generate`** — never `build_runner` on its own.
-
-**Running `build_runner` directly skips the pipeline's final `dart format`**, and the difference
-is not cosmetic: it produced **real drift across 46 files** that `contracts:check` correctly
-refused, on trailing-newline differences alone. The manual command looks like a subset of the
-pipeline and is not one.
+**Recorded so the publishing slice does not inherit a fixture that contradicts it.** The moment
+services exist, this row is either given one or its `published` flag comes off; leaving it as it
+is would mean the first local test of the precondition fails against seed data rather than
+against a bug, which is the most expensive kind of false positive.
 
 ### E.6 The local database is shared across branches; the code is not
 
@@ -243,19 +235,27 @@ out `feat/phase3-e2e`, `ci/ios-build-cadence` and `docs/guide-handoff-refresh` �
 its suite until the database is reset, and the failure will look like a defect in the branch being
 merged rather than like an artefact of the machine. **Reset first, then read the failure.**
 
-### E.5 The seed contradicts a decision made after it — recorded, not fixed
+### E.7 `contracts:generate` is not reliably atomic on this machine
 
-`supabase/seed.sql`'s business has **`published = true` and zero services.** §5's K27 answer makes
-that state **impossible** once the publishing slice enforces its precondition: a business may not
-be published until it has at least one service.
+**Two failure modes, both seen on 2026-08-17, and neither reads as what it is.**
 
-**Nothing to fix now.** The seed is local-only — it writes to `auth.users` directly and its own
-header says so — nothing in CI or on staging runs it, and it predates the decision by a fortnight.
-Its comment already anticipates the shape of the problem: *"services, team members, opening hours
-and bookings have no tables yet … This file seeds what exists — one owner, one business, one
-membership — and grows with each slice that adds a table."*
+**It deletes every model `.g.dart` and may not re-emit them.** The generator wipes
+`packages/bookflow_api/` and rebuilds; `build_runner` is supposed to follow. Once it did not, and
+the symptom was `flutter analyze` failing on `Undefined class
+'RenameBusinessRequestInputBuilder'` — which looks like a code error in `apps/mobile`, not a
+generation failure two packages away. **Check for `.g.dart` files after regenerating**:
+`find packages/bookflow_api -name "*.g.dart" | wc -l` should not be zero.
 
-**Recorded so the publishing slice does not inherit a fixture that contradicts it.** The moment
-services exist, this row is either given one or its `published` flag comes off; leaving it as it
-is would mean the first local test of the precondition fails against seed data rather than
-against a bug, which is the most expensive kind of false positive.
+**It fails with `EPERM` on `rmSync` when a `build_runner` daemon holds the directory open**, and
+`contracts:check` reports that as exit 1 — **indistinguishable from drift unless you read the
+output.** `build_runner` leaves a daemon behind; Windows will not delete a directory a process
+has open. **An exit 1 from `contracts:check` is not evidence of drift until the message has been
+read.**
+
+**The remedy for both, and the order matters:** stop stray `dart`/`build_runner` processes, then
+regenerate through **`npm run contracts:generate`** — never `build_runner` on its own.
+
+**Running `build_runner` directly skips the pipeline's final `dart format`**, and the difference
+is not cosmetic: it produced **real drift across 46 files** that `contracts:check` correctly
+refused, on trailing-newline differences alone. The manual command looks like a subset of the
+pipeline and is not one.
