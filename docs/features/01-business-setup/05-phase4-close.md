@@ -62,8 +62,8 @@ grep -rhoE "'criterion [0-9]+(, [0-9]+)*" apps/api/src apps/api/test apps/mobile
 - **The seam.** Every layer passes its own gate and the two halves have never met in a running
   process. The Flutter widgets are proved against stubbed repositories; the generated Dio client,
   the base URL, the auth interceptor on these routes and the JSON actually deserialising have
-  been exercised by nothing. **Nobody has watched it run.** Three routes would close it and
-  Dennis has not chosen one; two need no CI minutes.
+  been exercised by nothing. **Nobody has watched it run.** It now closes at `e2e-staging` after
+  the reset, by default rather than by choice — §5.1.
 
 ## 4. The seven design deviations, by register entry
 
@@ -96,11 +96,37 @@ of entry 19's ruling** — its reason rested on a back path that existed only as
 | **§5.5** — `ENVIRONMENT.md` §4 is stale about `seed.sql` | PR #14, same pass as §5.1 |
 | **R3** — the staging account criteria 41 and 42 need | A decision. K78 forbids using the e2e account; E14 means a replacement must be admin-created |
 | **The log-level gap** | `05-triage.md` being editable — queued in `04-phase3-close.md` §8 |
-| **The seam** | Dennis choosing one of the three routes |
+| **The seam** | `e2e-staging`, after the Actions reset — **decided by default, see §5.1** |
 | **The Do-Not-Vibe review** | A human reading the migration and the membership-scoping surfaces line by line, recorded as a PR comment before merge |
 
 **§5.2 and §5.3 are discharged.** The conflict slug is in `PROBLEM_TYPES`; the rename surface is
 screen #20 by decision 11.
+
+### 5.1 The seam closes at `e2e-staging` — and that is a default, not a preference
+
+**Recorded 2026-08-18.** `04-phase3-close.md` §2 named three routes to close the seam and asked
+for one to be chosen. **Two of them were local, available immediately, and needed no CI minutes:**
+
+1. **A physical Android phone over USB**, with the app pointed at the API over the LAN.
+2. **A local Android emulator**, reaching the host API at `10.0.2.2`.
+
+**Neither was taken.** So the seam closes by the third route — **`e2e-staging` after the Actions
+reset (~2026-08-31)** — which is the one `DEFINITION_OF_DONE.md` actually requires and also the
+slowest. **This is written down as a default rather than a preference** because the difference
+matters to whoever reads it next: nobody argued that the local routes were wrong, and **either
+remains available to anyone who wants the seam closed sooner.** Taking one would not replace the
+e2e gate; it would answer the question days earlier, which is exactly what §2 said.
+
+**The consequence is that R3 is now on the critical path, and it was not before.** With two local
+routes live, the seam had an answer that did not depend on staging at all. With only `e2e-staging`
+left, **the seam's sole remaining route runs through the one gate that cannot demonstrate
+criteria 41 and 42 on the account it has**: K78's standing rule forbids giving the staging e2e
+account a membership, and 41 and 42 are precisely about an account acquiring one. E14 compounds
+it — staging's sender reaches one inbox, so a replacement must be admin-created with
+`email_confirmed_at` set, as the existing one was.
+
+**So R3 stops being a Phase 5 detail and becomes a precondition of closing the seam at all.** It
+costs nothing to decide today and blocks the gate if left until the gate is written.
 
 ## 6. What Phase 4 does not close
 
