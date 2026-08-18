@@ -98,13 +98,16 @@ given here, deliberately, so this table cannot drift from the lockfile.
 | Default branch `main` | trunk; ADR-024 deploys staging on merge to it | ADR-026 | **exists — renamed from `master` and set as the GitHub default, 2026-08-10.** Local `main` tracks `origin/main`. | `git branch --show-current` · `gh repo view dennismugu7/bookflow --json defaultBranchRef --jq '.defaultBranchRef.name'` |
 | Branch protection on `main` | enforce ADR-026's PR-then-squash-merge, and require CI green | ADR-026, ADR-024 | **DEFERRED, DELIBERATELY — see "Accepted risk" below.** Attempted 2026-08-10 via both mechanisms; both return `403 Upgrade to GitHub Pro or make this repository public to enable this feature`. Free personal plan, private repository. Not a TODO: GitHub Pro is not being bought at this stage, and the pre-push hook is the compensating control. | `gh api repos/dennismugu7/bookflow/branches/main/protection` · `gh api repos/dennismugu7/bookflow/rulesets` |
 | GitHub Actions workflows | ADR-024's CI | ADR-024 | **exists — 2026-08-10.** `.github/workflows/ci.yml`, job `verify`, on push to `main` and on PRs targeting it. Runs `npm run verify` against a real Supabase stack (database + gotrue only). ~2m40s. Observed failing and passing, deliberately. Four jobs: `verify` (TypeScript), `mobile` (Dart on Linux), `ios-build` (unsigned, macOS, runs only on `main`, `workflow_dispatch`, or a PR labelled `ios`), and `contracts` (regenerates the spec and Dart client, fails on drift). A fifth job, `migrate-staging`, applies migrations to staging on push to `main` only, gated on `verify` and `contracts` (ADR-034). **Not yet covered:** the Fly.io deploy — Phase 3. | `gh run list --branch main` · `gh workflow view CI` |
-| GitHub Actions secrets | staging/production credentials, Apple signing | ADR-023, ADR-024, ADR-038 | **two exist.** `STAGING_DATABASE_URL` — the **migration** credential, connects as `postgres`, used only by the `migrate-staging` job. `STAGING_APP_DATABASE_URL` — the **application** credential, connects as `bookflow_api` (CRUD, no DDL, `BYPASSRLS`), set 2026-08-11. Both generated at creation time, never displayed, never written to disk, never on a development machine. Apple signing secrets: still none. | `gh secret list` |
+| GitHub Actions secrets | staging/production credentials, Apple signing | ADR-023, ADR-024, ADR-038 | **COUNT CORRECTED 2026-08-18 — `gh secret list` returns NINE, not two.** The two below are the two this branch knew about; the e2e and Render secrets were added on `feat/phase3-e2e` and are documented in that branch's copy of this file, and the two business-account secrets are the row added below. **A count in this column is exactly the thing that goes stale**, which is why the verify command is the authority. *Original text follows.* **two exist.** `STAGING_DATABASE_URL` — the **migration** credential, connects as `postgres`, used only by the `migrate-staging` job. `STAGING_APP_DATABASE_URL` — the **application** credential, connects as `bookflow_api` (CRUD, no DDL, `BYPASSRLS`), set 2026-08-11. Both generated at creation time, never displayed, never written to disk, never on a development machine. Apple signing secrets: still none. | `gh secret list` |
 | Local Supabase stack | development database; integration tests | ADR-022, ADR-023 | **exists — 2026-08-10.** `supabase/config.toml` committed, Postgres **17.6** (the line spike 001 ran against), one migration applied. Endpoints: API `54321`, DB `54322`, Studio `54323`, Mailpit `54324`. | `npm run db:start` then `supabase status`; `docker ps` shows `supabase_db_bookflow` |
 | Local stack credentials | — | ADR-023 | **not secrets.** The anon, service-role, publishable, secret and S3 keys the CLI prints are fixed, well-known development values, identical on every machine. They are not in `.env.example` and must never be reused for a hosted project. | `supabase status` reprints them at any time |
 | Supabase organisation | owns the hosted projects | ADR-023 | **exists** — `mugu-labs` (`ggvjgvsymgczpyopnljp`), the only org on the account | `supabase orgs list` |
 | Staging Supabase project | hosted staging (ADR-023) | ADR-023 | **exists — created 2026-08-11.** `bookflow-staging`, ref **`vvborjxraxdeflrllqwh`**, region `eu-central-1`, PostgreSQL 17.6, `ACTIVE_HEALTHY`. Migrations applied, including the `bookflow_api` application role (ADR-038) whose password is set out of band and held only in Actions secrets. The ref is an identifier, not a secret. | `supabase projects list` |
 | Open sign-up on `bookflow-staging` | ADR-037 requires that **only our API** creates accounts | ADR-037 | **closed, and verified behaviourally — 2026-08-14.** Anon `POST /auth/v1/signup` returns **422 `signup_disabled`** ("Signups not allowed for this instance"). The distinction is the whole test: spike 002 (S1) saw **400 `email_address_invalid`** for the same undeliverable address, which *proved the flag was unset*, because address validation is only reached when `signup_disabled` has not already fired. Verified in the same run that the admin path is **not** locked out — see the row below. | `curl -s -o /dev/null -w '%{http_code}' -X POST "https://vvborjxraxdeflrllqwh.supabase.co/auth/v1/signup" -H "apikey: $ANON" -H 'Content-Type: application/json' -d '{"email":"probe@bookflow.test","password":"x"}'` → `422`, body `signup_disabled` |
 | Service-role account creation on `bookflow-staging` | ADR-037's mechanism: our API creates users through the admin API | ADR-037 | **works — verified 2026-08-14.** Service-role `POST /auth/v1/admin/users` returned **200** and created the user while open sign-up was closed. Checked *before* the email test, because a lockout here makes mediated sign-up impossible and everything downstream moot. | `POST {project}/auth/v1/admin/users` with the service-role key → `200` |
+| **The staging e2e BUSINESS account** | the credential the business-setup e2e journey signs in with — **the one account permitted to hold a membership** | ADR-033 amendment, ADR-037, K78 | **exists — 2026-08-18.** Address `e2e-owner-business@bookflow.test`, on `bookflow-staging`. **Admin-created with `email_confirmed_at` set at creation** (dashboard *Add user → Create new user* with **Auto Confirm User** ticked), for E14's reason: staging's sender is Resend's test address and reaches exactly one inbox, so an account that must click a link can never be used from CI. **Created through the admin path, never through `POST /v1/auth/signup`**, which compensates and deletes the user when the mail fails. **Why it exists at all: K78 forbids giving the ORIGINAL `e2e-owner@bookflow.test` a membership, and criteria 41 and 42 are precisely about an account acquiring one** — so they can be demonstrated only here. **Its `auth.users` id is OWED — see "The identity check" below.** | `GET /auth/v1/admin/users` with the staging service-role key |
+| **K78's rule, restated because two accounts is where it gets forgotten** | keeping the original e2e account's meaning intact | K78 | **`e2e-owner@bookflow.test` NEVER GETS A MEMBERSHIP.** Its whole value to the Phase 3 gate is that it is an owner with none; give it one and `profile_e2e_test.dart`'s premise changes silently and the redirect it exercises stops being the one it was written for. **The business account is the only one that may hold a membership, and this row exists so that a future session adding a membership "to the e2e account" has to notice there are two.** | the original's id must hold no row in `public.memberships` on staging |
+| **Two Actions secrets carry the business account's credentials** | what a business-journey e2e job needs to sign in | ADR-023 | **exist — 2026-08-18.** `E2E_BUSINESS_EMAIL` and `E2E_BUSINESS_PASSWORD`, named to match the existing `E2E_STAGING_*` pair rather than reusing it: **a shared secret is how two accounts silently become one.** The password was generated in the dashboard, written to GitHub over stdin, and **is in no file, no log and no commit** — it cannot be read back, and **if CI cannot sign in the answer is rotation, not recovery.** | `gh secret list` shows both names; values are unreadable by design |
 | Custom SMTP on `bookflow-staging` | GoTrue sends auth email (ADR-027); the built-in sender proved unusable | ADR-023, ADR-027 | **configured and verified — 2026-08-14.** Provider **Resend**, sender **`onboarding@resend.dev`**. Verified by delivery, not from the dashboard: admin-created a user, then **one** `POST /auth/v1/resend type=signup` returned **200** and `confirmation_sent_at` moved from absent to `2026-08-14T18:19:03Z`. Spike 002 (S5) got `429 over_email_send_rate_limit` on the *first* attempt from the built-in sender, with `confirmation_sent_at` staying null — so this row records a real change, not a re-test. **The sender is a Resend test address and delivers only to the account owner's own inbox.** That is sufficient for staging and **insufficient for real owners**: the domain-verified sender ADR-027 anticipates is still owed, before the first real owner signs up. **That message landed in Gmail's SPAM folder, not the inbox** — recorded because dispatch is not arrival, and the row would otherwise read as a clean pass. `onboarding@resend.dev` has **no SPF, DKIM or DMARC alignment with any domain we control**, so receiving servers distrust it by construction; this is structural, not a fault in Resend. Staging is unaffected and the mechanism is proved. For a real owner it is severe — an activation mail in spam is an owner who never finishes sign-up and never reports it, and the same sender would later carry booking confirmations to their clients. Evidence is recorded against **E2** in `docs/analysis/05-triage.md`. | `POST {project}/auth/v1/resend` `{"type":"signup","email":"<existing unconfirmed user>"}` with the anon key → `200`, and that user's `confirmation_sent_at` is non-null |
 | Production Supabase project | hosted production (ADR-023) | ADR-023 | **not yet, and it does not fit.** The org is on the **free plan** — confirmed by the API refusing `--size` with *"Instance size cannot be specified for free plan organizations"* — which allows two active projects. `Dashboard X` and `bookflow-staging` occupy both. Production is a spend decision, not a provisioning step. | `supabase projects list` |
 | `bookflow-spike` Supabase project (`iohxfurykkocqfagdkzy`) | spike 001's throwaway project; held credentials that appeared in a transcript | ADR-023 marks it for deletion | **deleted — verified 2026-08-10.** The ref is absent from the authenticated project list. Deleting it did **not** retire its password, contrary to ADR-023's expectation: that password was reused from other accounts rather than generated for this project, and was rotated separately on discovery. See the spike's Amendments. | `supabase projects list` — `iohxfurykkocqfagdkzy` must not appear |
@@ -132,6 +135,59 @@ for the delivery check — and **both were deleted**. `DELETE /auth/v1/admin/use
 user that no longer exists and is therefore dead. No credential was written to disk or displayed
 at any point: both keys were read from `supabase projects api-keys` into process memory and used
 there (ADR-023 — this is the failure mode that cost `bookflow-spike` its existence).
+
+### The identity check on staging's `auth.users` — TWO accounts now, and the id of the second is OWED
+
+**Added 2026-08-18, with the business account. Read this before running any residue check.**
+
+**The check is an identity, not a count.** Its purpose is to answer *are there any users other than
+the ones that are supposed to be there* — a probe some script failed to delete, or a sign-up whose
+compensation did not run.
+
+```
+GET /auth/v1/admin/users
+→ every row's id must be one of:
+    9b5bdc22-4250-4213-88fd-08c519d5d53f   e2e-owner@bookflow.test          (never a member, K78)
+    <OWED>                                 e2e-owner-business@bookflow.test (the only member)
+```
+
+**Expected total: 2.**
+
+**THE SECOND ID IS NOT RECORDED, AND NO ID HAS BEEN INVENTED TO FILL THE GAP.** The id supplied
+when this account was reported was `9b5bdc22-4250-4213-88fd-08c519d5d53f` — **which is the FIRST
+account's id, already recorded above.** Two rows cannot share one, so it was a copy of the wrong
+row rather than the new account's id. It could not be resolved from this machine: the local `.env`
+points `SUPABASE_URL` at `http://127.0.0.1:54321`, so there is no staging service-role key here and
+the admin API cannot be queried. **Run the command above against `bookflow-staging` and paste the
+id for `e2e-owner-business@bookflow.test`; it replaces `<OWED>` in the same commit that reads it.**
+Until then the allowlist is keyed on the address for that entry, which still detects a third row
+and still detects a stranger — it is weaker only in that it cannot detect the business account
+being replaced by a different account at the same address.
+
+**Why this is written on `feat/business-setup-frame` and not where the check currently lives.**
+The original identity check — *"every row's id must be `9b5bdc22-…`"* and **"Expected total: 1"** —
+**exists only on `feat/phase3-e2e`, PR #14.** It is not in this file on `main` or on this branch,
+so there is no "Expected total: 1" here to rewrite. **The inversion risk goes live the moment #14
+merges**, and whoever merges it must carry this section across in the same operation. Two
+statements of one check, in one file, disagreeing about the expected total, would be worse than
+either alone.
+
+### This is a deliberate exception to `00-frame.md` §5.5's deferral, and the reason is the direction of the failure
+
+§5.5 defers this file's corrections until PR #14 merges, because #14 also edits it and a conflict
+in the one document whose whole value is being readable about the state of the world is worse than
+a fortnight of staleness. **That reasoning holds for a stale entry and does not hold for this one.**
+
+**A stale `seed.sql` entry degrades the check: it describes a file as unwritable that is written,
+and a reader loses information. A stale expected-total INVERTS it: it reports a legitimate account
+as residue.** The A15 accounting exists to catch leftover users, and after today it would flag the
+business account as exactly that — so the next person to run it either chases a ghost or, worse,
+deletes the account the e2e business journey depends on. **A check that reports the wrong answer
+confidently is more dangerous than no check**, and that is the whole reason this file's own rule
+says a new account's row is written *in the same commit that creates the account*.
+
+The conflict cost is accepted and bounded: #14 edits §4 about `seed.sql`, this edits §3's table and
+adds this section. They are different regions of the file and a hand resolution is cheap.
 
 ### The write-only-secret rule — write a credential to every consumer at the moment you generate it
 
