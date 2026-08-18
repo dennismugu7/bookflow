@@ -318,3 +318,41 @@ is unchanged. Only the value is gone.
 therefore sharper than when written: the next environments are a local Docker stack and two
 hosted projects that do not exist yet. `pg_cron` availability was verified on the deleted
 project and should be re-checked on staging before anything depends on it.
+
+**2026-08-18 — the redacted credential came back, and the rule above needed sharpening.**
+
+The amendment above reasons that rewriting published history to hide a **dead** credential
+teaches the wrong lesson, and states in terms that *"a live credential is never handled this
+way."* **Both halves held. What neither anticipated is the value being made live again.**
+
+**What happened.** The second staging e2e account — `e2e-owner-business@bookflow.test`, created
+for R3 so criteria 41 and 42 have an account that may hold a membership — was given, as its first
+password, **the same string this file committed in August.** It was not copied out of the history;
+it was recalled and typed, which is the same failure mode the original incident had. It was live
+for well under an hour, and was rotated with a generated value the same day. It is inert again.
+
+**The three facts the original amendment recorded are unchanged and still true.** What is added is
+the fourth, and it is the one that turns a closed incident into a standing rule:
+
+4. **A rotation ends a credential's USE. It does not end its EXISTENCE.** The string stayed
+   recoverable from **seven pushed commit trees** the entire time — `641d167` through `7f94b7d` —
+   and its inertness was never a property of the string. It was a property of nothing currently
+   accepting it. **The moment anything accepted it again, every one of those trees became a live
+   credential store**, with no commit, no diff and no alert to say so.
+
+**So the ladder, stated once so it can be cited:**
+
+> **A redaction is not a rotation. A rotation is not a retirement.**
+> Redaction changes what the current tree shows. Rotation changes what the system accepts.
+> **Only never choosing the value again keeps it dead** — and nothing mechanical enforces that.
+
+**Why this belongs here rather than only in the environment file.** This file is where the
+original argument for leaving history alone was made, and that argument is now conditional in a
+way it did not say: **leaving published history unrewritten is safe exactly as long as nobody
+re-selects the value.** That is a human commitment, not a technical control, and a reader deciding
+what to do about a committed secret should meet the condition in the same place as the conclusion.
+
+**History is still not being rewritten**, and the reason is unchanged: the value is dead again,
+PR #14 is open against `main`, and a rewrite would invalidate a reviewed head to hide a string
+that no longer opens anything. **That decision would reverse the instant the value were live**,
+which is precisely what the original amendment said and what today tested.

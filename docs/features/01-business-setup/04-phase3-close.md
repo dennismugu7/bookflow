@@ -277,6 +277,8 @@ down" look identical once the line is gone.
 | Quote the obligation or it is not one | **FLUSHED 2026-08-18** to `docs/GUIDE_HANDOFF.md` §2, on `docs/guide-handoff-refresh` |
 | An affordance held by a framework default | **FLUSHED 2026-08-18** to `docs/GUIDE_HANDOFF.md` §2, same pass |
 | The log level silences the events | **STILL QUEUED.** Not a lesson — a triage item for the §5.1 pass, deliberately left here |
+| A redaction is not a rotation; a rotation is not a retirement | **QUEUED 2026-08-18** for §2 of the handoff |
+| A credential is never chosen, only generated | **QUEUED 2026-08-18** as a triage-item candidate for the §5.1 pass |
 
 ---
 
@@ -320,6 +322,48 @@ presence that nobody chose answers that question with a yes.
 
 *Found 2026-08-18, while ruling on whether screen #17 needs the design's Home button. Pinned by
 criterion 62; the affordance is now explicit in `account_menu_screen.dart`.*
+
+---
+
+**QUEUED 2026-08-18, for §2 — a redaction is not a rotation; a rotation is not a retirement.**
+
+A credential committed in August, redacted the same day and rotated on discovery, was **chosen
+again** as the first password for the second staging e2e account on 2026-08-18. It was live for
+under an hour and is rotated again.
+
+**The lesson is not "do not commit secrets", which was already learned.** It is that **a rotation
+ends a credential's use, not its existence.** The string stayed recoverable from seven pushed
+commit trees the whole time, and its inertness was never a property of the string — only of
+nothing currently accepting it. **The moment it was selected for a new account, every one of those
+trees became a live credential store**, with no commit, no diff and no alert to mark the change.
+
+The decision to leave published history unrewritten — argued in `docs/spikes/001-platform.md` and
+still correct — is therefore **conditional on nobody re-selecting the value**, which is a human
+commitment rather than a control. Full reasoning in that file's 2026-08-18 amendment.
+
+---
+
+**QUEUED 2026-08-18, as a TRIAGE-ITEM CANDIDATE for the §5.1 pass — a credential is never chosen,
+only generated.**
+
+The procedure written for this account said to use the dashboard's **Generate a password** control.
+**That step was skipped, under fatigue, and the password was typed from memory instead** — which is
+how the August value came back. The procedure was not unclear and was not disputed; it was one
+step in a list at the end of a long session.
+
+**So the requirement is that this control be harder to skip, not stated more loudly.** Restating an
+instruction that was read and skipped produces a longer instruction that is read and skipped.
+
+**The durable form of the rule, which is what the triage item should carry:**
+
+> **A credential is never CHOSEN, only GENERATED. Anything typed, recalled, or recognised is wrong
+> by definition — not weak, wrong** — because the property that matters is not strength but never
+> having existed anywhere before.
+
+**The fix is deliberately not invented here.** Whether it is a generator step in the procedure, a
+refusal to accept a pasted value, a check against known-committed strings, or something else is a
+decision for whoever takes the triage item — and inventing one now would be the same shape of
+error as answering an open triage item by implementation.
 
 ---
 
