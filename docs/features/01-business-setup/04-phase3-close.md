@@ -306,3 +306,31 @@ presence that nobody chose answers that question with a yes.
 
 *Found 2026-08-18, while ruling on whether screen #17 needs the design's Home button. Pinned by
 criterion 62; the affordance is now explicit in `account_menu_screen.dart`.*
+
+---
+
+**The log level silences the events in every environment where real users exist. This becomes a
+triage item the moment `05-triage.md` is editable.**
+
+`app.ts` sets the logger level to `info` only when `APP_ENV === 'local'`, and `warn` everywhere
+else. So of the three events the businesses module now emits, **`business.conflict_precheck` and
+`business.scoped_miss` are dropped in staging and production**, and only
+`business.conflict_constraint` survives. **The events written for production debugging are the
+ones production will not have.**
+
+**Pre-existing and project-wide, not introduced here.** `signup.password_breached` is `info` and
+has exactly the same fate, and it has since PR 2c. The pattern is that every event describing an
+*expected refusal* is filtered out, and only faults survive — which is a defensible logging
+policy and an indefensible observability one, because the refusal rate is the number that says
+whether a control is working.
+
+**Relabelling refusals as warnings to defeat the filter was considered and REJECTED.** It would
+make the two events visible tomorrow at the cost of making `warn` meaningless: a level that
+contains both "an owner tapped Create twice" and "the pre-check lost a race" cannot be alerted on,
+and the second event's entire value is that it is rare. The honest fix is a decision about levels
+per environment — most likely `info` in staging, where there are no real users and the volume is
+ours — and that is a decision, not an implementation detail.
+
+*Found 2026-08-18, while adding the events. Not fixed here; `05-triage.md` cannot be edited on
+this branch without conflicting with PR #14, which is `00-frame.md` §5.1's whole reason for
+deferring.*

@@ -72,6 +72,23 @@ export async function findBusinessForUser(
  *   the caller already supplied.
  * - **It runs only on a path that has already failed the scoped read**, so it
  *   costs one primary-key lookup on an error path and nothing on the happy one.
+ * - **It has exactly one permitted caller: `logScopedMiss`**, which returns
+ *   `Promise<void>`. Nothing else in this module or any other may call it, and
+ *   no new caller may be added without the same review the Do-Not-Vibe rule
+ *   requires of the original.
+ *
+ * ── THE CONSTRAINTS ARE ENFORCED, NOT REQUESTED ─────────────────────────────
+ *
+ * A comment asking people not to misuse something is a comment. **`businesses.
+ * boundaries.test.ts` reads this source tree and fails** if this function
+ * acquires a second caller, is imported from outside `modules/businesses/`, or
+ * if `logScopedMiss` stops returning `Promise<void>` — the type that makes it
+ * impossible for this answer to be returned to a caller rather than merely
+ * unlikely.
+ *
+ * **It exists solely so a log can record a distinction the response
+ * deliberately hides.** If that reason ever stops being true, the right change
+ * is to delete this function, not to widen it.
  *
  * The alternative was to log "scoped miss" without distinguishing the two, and
  * that was rejected: it records that something was refused while discarding the
