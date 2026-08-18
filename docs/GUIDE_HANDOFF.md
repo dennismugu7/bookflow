@@ -126,6 +126,25 @@ These were learned by being wrong. None of them are obvious from the repository.
   asking "what is missing?" answers no. What found it was asking a question about a screen rather
   than reading what had been written about it, and what settled it was a probe that counted
   (`onAccount=1 backButtons=1 arrowIcons=1`) rather than an argument about Flutter.
+- **A gate whose RESULT never reached you is a gate that did not run**, and it fails in two ways.
+  **First, the result is never produced.** On 2026-08-18 a batch of work landed and was pushed
+  while one of its four checks — re-deriving the criteria mapping after a `git mv` — had never
+  been run; the renames moved files rather than test names, so the mapping held, which is **luck
+  rather than process**. It surfaced only because a later session died and forced a status
+  recovery. **Second, and harder to see, the result IS produced — into a channel you cannot
+  read.** Three artefacts were "printed" on the same day and never arrived: `STAT` and `LOG` into
+  fenced blocks that came out empty, and two sections asked for verbatim that were shown through
+  the editing tool's own display panel. **The operator sees those panels; you do not.** The
+  session had no signal anything was missing, which is what makes it worse than silence — it
+  feels like reporting.
+  **The mechanism is not the panel.** It is that **every channel between you and that session is
+  lossy, and length is what breaks it** — long reports truncate (§3 records this), pastes get
+  duplicated or clipped, and a rendered artefact is not text in a message. **So: results that must
+  cross the gap are reported SHORT — a count, a sha, an exit code, one line each — and long
+  artefacts are CITED BY PATH AND COMMIT rather than transcribed.** *"See
+  `docs/features/01-business-setup/07-pull-request.md` §Rebase risk at `ce4437d`"* survives the
+  crossing; two hundred pasted lines may not. **This is the other half of the verbatim rule
+  above:** copied *from* the artefact, and copied *into* the report, where the reader is.
 - **A shell does what it is told, not what was meant.** A commit message containing backticks was
   executed as command substitution — it re-invoked the CLI and mangled the `git add` beside it.
   Nothing was damaged only because state was checked before retrying. **Write any message
