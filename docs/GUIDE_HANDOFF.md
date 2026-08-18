@@ -102,6 +102,30 @@ These were learned by being wrong. None of them are obvious from the repository.
   claimed. **Before asserting what a schema or an invariant guarantees, grep the tests for what
   they already say about it** — a passing test is a claim somebody verified, and it outranks a
   document that merely asserts.
+- **An obligation attributed to a document must be QUOTED from it, or it is not an obligation.**
+  Three instances on 2026-08-17, all in one slice, all by the same session. **ADR-003** was said
+  to be enforced by `uq_memberships_user_business` — that constraint forbids a repeat join to the
+  *same* business and enforces nothing about the rule; **nothing enforced it**, and a partial
+  unique index had to be added. **ADR-014** was said to enumerate the problem-type slugs, making
+  an addition a contract change needing an amendment — it enumerates none, states a property, and
+  `problem.ts` is the registry, which sanctions addition explicitly. **ADR-039** was said to leave
+  screens #5, #12 and #17 unclassified — it classifies all three by name. **Each was settled in
+  about a minute by reading the Decision section**; none needed research, a spike, or a judgement
+  call. The propagation is the part that matters: all three reached documents the guiding session
+  relies on, and two shaped work — the ADR-014 misreading made a routine slug addition look like
+  an ADR-level event for a day, and the ADR-039 one deferred a live constraint behind a step that
+  did not exist. **A false obligation is more expensive than a missed one, because nobody audits
+  work that looks careful.**
+- **An affordance can be held in place by a framework default rather than by a decision, and a
+  test that never drives it will not notice when the default stops applying.** Screen #17's back
+  arrow was real and undeclared: `AppBar.automaticallyImplyLeading` supplies one whenever the
+  route can pop, so it existed only because `/account` was reached by `push`. Routing it with `go`
+  would have removed the only way back to the dashboard **with nothing failing**. **Third instance
+  of one family** — the orphaned screen #20 and screen #5's missing exit were the first two. Those
+  were **absences**; this was an **unchosen presence**, which is the harder kind to find, because
+  asking "what is missing?" answers no. What found it was asking a question about a screen rather
+  than reading what had been written about it, and what settled it was a probe that counted
+  (`onAccount=1 backButtons=1 arrowIcons=1`) rather than an argument about Flutter.
 - **A shell does what it is told, not what was meant.** A commit message containing backticks was
   executed as command substitution — it re-invoked the CLI and mangled the `git add` beside it.
   Nothing was damaged only because state was checked before retrying. **Write any message
@@ -184,10 +208,60 @@ What exists and works:
   `deploy-staging` (a broken deploy), `smoke-staging` (a suspended service) and
   `e2e-staging` (a broken field the screen reads). Do not extend that claim to the other
   three without evidence.
-- **39 ADRs** in `docs/decisions/` **on `main`**, an append-only register. **Two more exist on
-  unmerged branches**: ADR-040 on `feat/phase3-e2e`, ADR-041 on `feat/business-setup-frame`, so
-  it is **41 once both merge**. The directory listing is the count; do not trust a number
+- **39 ADRs** in `docs/decisions/` **on `main`**, an append-only register. **Three more exist on
+  unmerged branches**: ADR-040 on `feat/phase3-e2e`, and **ADR-041 and ADR-042** on
+  `feat/business-setup-frame`, so it is **42 once both merge**. *(Was "41 once both merge" —
+  ADR-042 landed after that was written. Counted 2026-08-18 with
+  `git ls-tree -r --name-only origin/<branch> docs/decisions/ | wc -l`, which is the only reason
+  to believe any of these numbers.)* The directory listing is the count; do not trust a number
   written anywhere, including here. All foundation-level (F) triage items are closed.
+- **ADR-042 — two levels of navigation.** Shell selection is computed from state and enforced by
+  the router's redirect (ADR-028, unchanged); movement *within* the signed-in shell is by push,
+  from a tap. The boundary is a question rather than a list: *"A destination is a shell if the
+  answer to 'why am I here?' is a fact about the user's account that the app computed. It is a
+  pushed screen if the answer is 'because I tapped something.'"* It supersedes nothing — ADR-028
+  was silent on within-shell navigation, not wrong about it.
+
+### Phase 4's business-setup slice — built, unmerged, and never once built by CI
+
+**Phases 0 through 4 are complete against the feature manual**, on
+`feat/business-setup-frame`. **Phase 5's unit and integration layers are done; its end-to-end and
+manual-QA layers are gated** — e2e needs Actions minutes and a staging account that does not yet
+exist, and manual QA needs a device this machine does not have.
+
+**The branch is 42 commits ahead of `main` and has had ZERO CI runs.** Not one commit on it has
+ever been built by GitHub Actions. Verified 2026-08-18 with the per-workflow query in §6, paired
+with its control: this branch returns `0` and `feat/phase3-e2e` returns `8`. **Everything below
+is therefore proved locally and only locally.**
+
+What it now contains beyond documents — **this branch is no longer documents-only**: a migration
+(`uq_memberships_one_owner_per_user`, a partial unique index, and the reason `memberships` now
+carries four migrations where every other branch carries three), a `modules/businesses/` API
+vertical with three new routes, a `features/business/` Flutter feature, and screens #5, #12 and
+#17 built with #20 widened.
+
+**Six documents under `docs/features/01-business-setup/`**, and they are the slice:
+
+| File | What it is |
+|---|---|
+| `00-frame.md` | Phase 0. §4 is **twelve** decisions, §5 the two caught `S` items, **§5.1–§5.5 the obligations** — 5.2 and 5.3 discharged, three still open |
+| `01-acceptance-criteria.md` | The acceptance criteria, **append-only and never renumbered**, with the naming rule that makes coverage a `grep` |
+| `02-design.md` | Phase 1. §A data model, §B the API contract, §C the UI, §D risk, §E the task order |
+| `03-environment.md` | Phase 2. The green baseline, and the local hazards — including the shared database |
+| `04-phase3-close.md` | Phase 3's close. §8 is the pending-lessons queue this pass drained |
+| `05-phase4-close.md` | Phase 4's close, against the manual's seven requirements rather than against §E |
+
+**The criteria coverage is a COMMAND, not a number, and this is the one place that matters.**
+Every count written down in this project has gone stale — one of them within hours of being
+written. Run it:
+
+```
+grep -rhoE "'criterion [0-9]+(, [0-9]+)*" apps/api/src apps/api/test apps/mobile/test \
+  | grep -oE "[0-9]+" | sort -n | uniq
+```
+
+The denominator is the highest number in `01-acceptance-criteria.md`. **Two criteria are
+deliberately unmapped and both are named in that file** — see §7.
 
 **Read these to orient** (he can attach them or paste sections). **The `branch` column
 matters: most of these are not on `main`** — they are on the unmerged branches in §5, so
@@ -206,13 +280,17 @@ a file, and the wrong content, which is worse than an error.
 | `docs/analysis/09-phase3-close.md` | **`feat/phase3-e2e`** | Phase 3's close-out. §7 is the close itself. On `main` this file exists but still reads *Status: OPEN*, which is correct there. |
 | `docs/decisions/ADR-040-*.md` | **`feat/phase3-e2e`** | When a phase may close with unsatisfiable items. Read this before ever waiving a gate. Its Status still reads *Proposed* and must be flipped as part of the merge. |
 | `docs/decisions/ADR-041-*.md` | **`feat/business-setup-frame`** | The created-condition test — when descoping resolves an `S` triage item and when it does not. Read its **Amendments** section too; the rule failed twice within a day of being written. |
-| `docs/features/01-business-setup/00-frame.md` | **`feat/business-setup-frame`** | Phase 4's Phase 0 frame. §4 is the nine decisions, §5 the caught `S` items, **§5.1–§5.3 the three outstanding obligations**, §6 unknowns, §7 metrics. |
-| `docs/features/01-business-setup/01-acceptance-criteria.md` | **`feat/business-setup-frame`** | 47 acceptance criteria, **append-only and never renumbered** — the rule is stated in the file. Its "Deliberately not covered" and "Blocked" lists matter as much as the criteria. |
+| `docs/features/01-business-setup/00-frame.md` | **`feat/business-setup-frame`** | Phase 4's Phase 0 frame. §4 is **twelve** decisions, §5 the caught `S` items, **§5.1–§5.5 the obligations — three still open**, §6 unknowns, §7 metrics. |
+| `docs/features/01-business-setup/01-acceptance-criteria.md` | **`feat/business-setup-frame`** | The acceptance criteria, **append-only and never renumbered** — the rule is stated in the file. **It said 47 here and that was true when written**; criteria have been appended five times since, which is exactly why the count is a command now and not a number. Its "Deliberately not covered" and "Blocked" lists matter as much as the criteria. |
+| `docs/features/01-business-setup/05-phase4-close.md` | **`feat/business-setup-frame`** | Phase 4's close. The manual's seven requirements with evidence, what is not proved and why, the deviations by register entry, and the open obligations. **Start here** for the slice's current state. |
+| `docs/decisions/ADR-042-*.md` | **`feat/business-setup-frame`** | Two levels of navigation — shell selection by redirect, movement within a shell by push. Read before changing `platform/router.dart`. |
 
 ## 5. The immediate queue — four branches
 
-Nothing can merge until Actions minutes reset (~2026-08-31). Re-derived from `git branch -r`
-on 2026-08-17; all four are pushed and **none has a PR open**, deliberately — see §6.
+Nothing can merge until Actions minutes reset (~2026-08-31). **Re-derived from `git branch -r`
+again on 2026-08-18, not carried forward from the text below it:** the remote holds `main` plus
+`ci/ios-build-cadence`, `docs/guide-handoff-refresh`, `feat/business-setup-frame` and
+`feat/phase3-e2e` — **still four, unchanged, and only #14 has a PR open**, deliberately (see §6).
 
 1. **PR #14 (4c), branch `feat/phase3-e2e`** — the only one with a PR. The review record is
    posted (`5311554684`). What remains: **a genuine green on the head commit `607f03b`**, then
@@ -224,10 +302,15 @@ on 2026-08-17; all four are pushed and **none has a PR open**, deliberately — 
    Will need `main` refreshed after #14. Also carries `BUILD_LOG.md` §8 and a fix folding a
    stray ADR-024 amendment back into the real file. **Conflicts with #14 on `ci.yml` and on
    `docs/ENVIRONMENT.md`** — both confirmed by test-merge, not assumed.
-3. **`feat/business-setup-frame`** — Phase 4's Phase 0. Ten commits: the frame, the 47
-   acceptance criteria, ADR-041 and its amendment. **Documents only, no code.** Branches from
-   `main` and touches only new files under `docs/features/` plus one new ADR, so it conflicts
-   with nothing.
+3. **`feat/business-setup-frame`** — **Phase 4 entire, not Phase 0.** **42 commits**, and the
+   description this line carried until 2026-08-18 — *"Ten commits … documents only, no code"* —
+   is now wrong in both halves. It carries a **migration**, the `modules/businesses/` API
+   vertical, the `features/business/` Flutter feature, three new screens, ADR-041 **and ADR-042**,
+   and six documents under `docs/features/01-business-setup/`. It branches from `main` and still
+   touches only new paths plus files no other branch edits, **so it conflicts with nothing** —
+   test that assumption again before merging it, because it was true when the branch was
+   documents and is now a claim about a much larger diff. **It is the fourth migration that
+   matters most at merge time:** see §6's shared-database constraint.
 4. **`docs/guide-handoff-refresh`** — this document. Branches from `main`, one file.
    **It conflicts with branch 2**, which also rewrites this file. That is not optional to
    resolve: whichever merges second gets a conflict in `docs/GUIDE_HANDOFF.md`.
@@ -309,46 +392,66 @@ remote are the truth: `git branch -r`.** That rule has now paid for itself twice
 | **Eight screenshots** | Unclassified against ADR-039's two visual languages. Resolve as each screen is built. |
 | **ADR-041** | **The created-condition test.** Descoping resolves an `S` triage item *only* where the slice cannot produce the state that item asks about; where the slice does create it, the item must be answered in Phase 0 or waived on the record. Its **2026-08-16 amendment** adds the negative half — a placement, a limit, a format or a build strategy is not a state and can never be caught — and records the two ways the rule was misapplied within a day of being written. On `feat/business-setup-frame`. |
 | **Frame §5.1** | **Deferred:** K27 and K47 must move to Resolved in `05-triage.md`. Held back only because PR #14 also edits that file and touching it now guarantees a conflict. **Do it the moment #14 merges** — K27's obligation on the publishing slice travels on it, and is lost if it does not happen. |
-| **Frame §5.2** | **Owed:** no `PROBLEM_TYPES` entry covers a conflict, and decision 8 refuses a second business with one. Appending a slug is a change to ADR-014's error contract that both clients branch on, not a line in a route. |
-| **Frame §5.3** | **Owed:** the rename surface has no screen. Decision 4 implies one exists — an owner who mistypes the name must be able to fix it — but no design names which. A Phase 1 decision, and until it is made the loading and error criteria for that screen cannot be written. |
+| **Frame §5.2** | **DISCHARGED 2026-08-17.** `business-already-exists`, status 409, is in `PROBLEM_TYPES`. **And the reason recorded here was wrong**: appending a slug is *not* a change to ADR-014's contract — ADR-014 enumerates no slugs, and `problem.ts` sanctions addition in terms. See §2's quote-it-or-it-is-not-an-obligation lesson; this is one of its three instances. |
+| **Frame §5.3** | **DISCHARGED 2026-08-17** by frame decision 11. The rename surface is **screen #20**, widened to the "Personal/Business Information Management page" its own routing text already names. Criteria 52–54 are the loading, section and error criteria that could not be written until it had a name. |
+| **Frame §5.4** | **OPEN.** Decision 10's partial unique index exists and is applied to the **local** database; it has **never been applied to staging**, and ADR-034 forbids applying migrations from a development machine. Waits on Actions minutes and `migrate-staging`. A green local suite says nothing about staging's schema. |
+| **Frame §5.5** | **OPEN.** `docs/ENVIRONMENT.md` §4 still lists `supabase/seed.sql` under "Blocks Phase 2" and says it is not writable. The file exists, is 144 lines, and is covered by a test that signs the seeded owner in against real GoTrue. Held with §5.1 for the same reason: PR #14 also edits that file. |
+| **R3 — the staging account** | **OPEN, and now on the critical path.** Criteria 41 and 42 are about an account *acquiring* a membership, and **K78 forbids giving the staging e2e account one** — so they cannot be demonstrated on it. E14 compounds it: staging's sender reaches one inbox, so a replacement must be admin-created with `email_confirmed_at` set, as the existing one was. **It became critical when the seam decision landed** (below): the seam's only remaining route runs through `e2e-staging`, which is the one gate this account cannot satisfy. It costs nothing to decide today and blocks the gate if left. |
+| **The seam** | **A DEFAULT, NOT A PREFERENCE, and recorded as such** in `05-phase4-close.md` §5.1. Every layer of the slice passes its own gate and **the two halves have never met in a running process** — the Flutter widgets are proved against stubbed repositories, and the generated Dio client, the base URL, the auth interceptor and the JSON actually deserialising have been exercised by nothing. Three routes would close it. **Two were local and needed no minutes** — a USB Android phone against a LAN-reachable API, and an emulator at `10.0.2.2` — **and neither was taken**, so it closes at `e2e-staging` after the reset. Either local route remains available to anyone who wants it closed sooner. |
+| **Design deviations 10–19** | `docs/analysis/08-design-deviations.md` gained ten entries from this slice. **10–16 are the seven it decided**; **17–19 are three differences the reconciliation FOUND, decided by nobody until they were ruled on the next day.** Two of the seven — screen #5's sign-out control and screen #12's omitted tabs — had lived only in a Dart source comment, so a count taken from the documents was short by two and looked complete. **Nobody reviewing the design against the build opens a widget to find out what was deliberate.** |
+| **Criteria 48 and 49** | **Unprovable in this harness, which is a finding rather than work nobody did.** 48's concurrent half needs a second connection and the harness gives one transaction per test; 49's second clause cannot be observed at all — every arrangement that lets you look has already destroyed the evidence. The property holds by construction: both inserts are a single statement. They become provable when the harness gains a second connection, **which is the same capability A14 needs for the booking slice.** Do not read them as an outstanding task. |
 | **Publishing precondition** | **A new cross-slice dependency.** A business may not be published until it has **at least one service** — that is how K27 was answered, by making the empty-salon state unreachable. **The publishing slice must enforce it**, and nothing in the business-setup slice does. Its only carrier is the §5.1 triage update. |
 | **A governance gap** | `CLAUDE.md` §3 gives an ADR's `## Amendments` section two categories — a fact that has moved on, and not-a-reversal — and **has no category for an amendment that SHARPENS an under-specified rule.** ADR-041's amendment is exactly that: the decision did not change, it was found to be missing half of itself. It was filed as an amendment for want of anywhere better. Worth a ruling before the next one. |
 
 ## 8. What is next
 
-**Phase 4 is under way. The slice was chosen — BUSINESS SETUP — and its Phase 0 is
-COMPLETE**, on branch `feat/business-setup-frame`, entirely without CI.
+**This section previously said Phase 0 was complete and Phase 1 was next. Phases 0 through 4 are
+now complete**, on `feat/business-setup-frame`, **entirely without CI** — 42 commits, zero runs.
+The manual's Phase 4 close is `05-phase4-close.md`; read it rather than this summary if the two
+ever disagree.
 
-What Phase 0 produced, against the feature manual's own checklist:
+**Phase 5 is where the slice stands, and it splits cleanly in two.**
 
-- **Problem statement and user story** — an owner can create an account and then do nothing
-  with it; every signed-in user is routed to the "finish setting up" stub, permanently.
-- **Non-goals** — twelve, plus nineteen coverage exclusions in the criteria file.
-- **Nine decisions**, including: name only, no migration; the row written at the end of step
-  one; a name-only business *is* a real business; renaming in scope; names not unique; a second
-  business refused with a conflict; names stored trimmed.
-- **Two caught `S` items answered** — K27 and K47, caught by ADR-041's test.
-- **47 acceptance criteria**, append-only.
-- **Unknowns: none**, argued rather than asserted — the slice writes one row to a table that
-  already exists through a pattern already in production.
-- **Success metrics: unavailable**, argued — there is no production and no users, so there is
-  nothing to look at after release. What stands in is named instead.
+**Done, and local:** the unit layer and the integration layer. Both run against the real local
+Supabase stack, both are green, and the integration suite fails rather than skips when the
+database is unreachable.
 
-**A correction to what this section previously said.** It described Phase 0 as *"acceptance
-criteria, data model, API contract, task order"*. **That is wrong, and it matters because it
-would have produced design work a phase early.** `docs/source/Manual-Feature-Scaffolding.md`
-lines 10–28 asks for six things and ends at the sixth: the problem statement; the user story;
-the acceptance criteria; explicit non-goals; unknowns and spikes; and *"Decide success metrics.
-if it's a product feature — what you'll look at after release to know it worked."* **Data model
-and API contract are Phase 1**, not Phase 0. Quote the manual; do not reconstruct it.
+**Gated, and not by anything that can be worked around:**
 
-**Next is Phase 1 — technical design.** Its first job is the one Phase 0 could not do:
-**naming the rename surface** (frame §5.3). After that, the data model and the API contract,
-which is authored as code that generates the spec (`CLAUDE.md` §7, ADR-014).
+- **End-to-end.** ADR-033 reserves the term for Flutter `integration_test` driving a real build;
+  an API integration test is not one, *"however end-to-end it feels."* The precedent is
+  `integration_test/profile_e2e_test.dart` **on `feat/phase3-e2e`**, so writing this slice's
+  journey here would fork a file PR #14 introduces and guarantee a conflict in the one file that
+  defines the critical journey. **The order is: #14 merges, then extend that file.** Running it
+  needs minutes and R3's account.
+- **Manual QA.** The manual asks someone to *"actually use the feature … try to break it. Test on
+  the real target devices/browsers."* There is no emulator and no device on this machine and iOS
+  is impossible on Windows (ADR-015). **This is the seam wearing the manual's vocabulary**, and
+  both local routes that would have unblocked it were offered and declined — §7.
+
+**So the three things that unblock the most, in order of what they cost:**
+
+1. **Decide R3's staging account.** Costs nothing today, blocks the e2e gate if left, and is now
+   on the critical path because the seam runs through `e2e-staging` and nowhere else.
+2. **Merge PR #14 when a green on its head commit is possible.** It unblocks frame §5.1 and §5.5,
+   the log-level triage item, and the e2e file this slice needs to extend.
+3. **Apply frame §5.4's migration to staging** through `migrate-staging`, which is the same wall.
+
+**Then Phase 6 and 7** — quality gates, review, and the Do-Not-Vibe record. **That record is a
+comment on the PR, posted before merge, naming who read what.** This slice touches two surfaces:
+**migrations** (the partial unique index) and **the membership scoping rule** (the repository's
+scoping, and one deliberately unscoped read that exists so a log can record a distinction the
+response hides — `businessExistsUnscoped`, constrained by a test that reads the source tree).
 
 Roughly fifteen feature slices lie ahead: the owner app (~24 screens), the client web app
 (~11 pages), payments, and production release. The hard one is bookings and availability;
 the database constraint that makes it safe already exists, the logic around it does not.
+
+**A note on how this section keeps going wrong.** It has now been corrected twice — once for
+describing Phase 0 as including the data model and API contract (they are Phase 1), and once for
+saying Phase 0 was the current state when four phases were done. **Both times the section was
+written from memory of the work rather than from the manual and the branch.** Quote the manual;
+count the branch; do not reconstruct either.
 
 ## 9. How Dennis works
 
