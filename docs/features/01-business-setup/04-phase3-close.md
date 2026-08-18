@@ -279,6 +279,7 @@ down" look identical once the line is gone.
 | The log level silences the events | **STILL QUEUED.** Not a lesson — a triage item for the §5.1 pass, deliberately left here |
 | A redaction is not a rotation; a rotation is not a retirement | **QUEUED 2026-08-18** for §2 of the handoff |
 | A credential is never chosen, only generated | **QUEUED 2026-08-18** as a triage-item candidate for the §5.1 pass |
+| A gate whose result was never reported is a gate that did not run | **QUEUED 2026-08-18** for §2 of the handoff |
 
 ---
 
@@ -340,6 +341,26 @@ trees became a live credential store**, with no commit, no diff and no alert to 
 The decision to leave published history unrewritten — argued in `docs/spikes/001-platform.md` and
 still correct — is therefore **conditional on nobody re-selecting the value**, which is a human
 commitment rather than a control. Full reasoning in that file's 2026-08-18 amendment.
+
+---
+
+**QUEUED 2026-08-18, for §2 — a gate whose RESULT was never reported is a gate that did not run.**
+
+A response reporting a batch of work was swallowed by a duplicated paste. **The work in it had
+landed and been pushed**, so nothing was lost and nothing was wrong — but one of the four checks
+that response was going to report, **re-deriving the criteria mapping after a `git mv`**, had
+never actually been run. The renames were of files rather than of test names, so the mapping was
+intact; **that is luck, not process.** A rename that moved a test name would have broken the
+grep-derived coverage silently, and the gate that would have caught it did not exist as a run.
+
+**It surfaced only because a later session died and forced a status recovery** — which is to say,
+by accident. Nothing in the workflow would have raised it.
+
+**So the rule is about completion, not about diligence:** a step is not complete when its work is
+done, it is complete when its gate's **result has been read**. An unreported gate is
+indistinguishable from an unrun one, and this project already holds the same shape in three other
+places — the scripted replacement that exits zero, `gh run list`'s 404 that reads as "no runs",
+and a count that has only ever been observed at one value.
 
 ---
 
