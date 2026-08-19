@@ -238,6 +238,21 @@ appears here, deliberately.
     leg**, which is the third gap of this shape after §5.3's unnamed rename surface and criterion
     55's unpinned reachability.
 
+### The conflict an owner can read (K82, PR 5b)
+
+63. An owner whose creation is refused **because the account already has a business** is told
+    that, and not told to check their connection. The screen branches on the problem document's
+    `type` — `/problems/business-already-exists` — and shows different copy from every other
+    failure, which keeps *"That did not save. Check your connection and try again."*
+
+    **This criterion originates in the owner's review pass** (PR #15, comment 5343743009) **and
+    K82, not in a test.** The pass named the string by quotation — *"An owner who already has a
+    business reads a message about their connection"* — and made fixing it a condition of 5b.
+    **It is appended before the test exists, and the commit order is the evidence**, because
+    ADR-040 §3.1 and K77 hold that a criterion written after its test is derived from that test
+    and proves nothing: criteria constrain tests, never the reverse. Criteria 31 and 32 already
+    fix what the API sends; nothing until now fixed what the owner reads when it arrives.
+
 ## Notes on individual criteria
 
 **Criterion 32 — where the no-echo rule comes from.** It is not introduced here. It restates a
