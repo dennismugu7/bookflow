@@ -832,6 +832,60 @@ jobs:
 
           echo "cleared any business owned by $E2E_USER_ID"
 
+      # ── K83, mitigation 1 ───────────────────────────────────────────────────
+      #
+      # The AVD's userdata partition needs 7372.80 MB. On run 32271223400 the
+      # runner had 6912.73 MB and the emulator died on
+      #   FATAL | Not enough space to create userdata partition.
+      # 460 MB short. The runner ships large tool caches this job never opens,
+      # and reclaiming them moves the margin from "one bad draw from red" to
+      # several gigabytes of headroom WITHOUT changing the device under test —
+      # which is why this mitigation was taken and a smaller AVD was not.
+      #
+      # `du` before `rm` so the log carries the real figure rather than an
+      # expectation, and `df` on both sides of the deletion so the number that
+      # matters — free space where the AVD is created — is the one reported.
+      # Every path is `-f`-tolerant: a runner image that stops shipping one of
+      # these must not fail the gate.
+      - name: Reclaim the disk the emulator needs
+        run: |
+          set -euo pipefail
+
+          echo "── before ──"
+          df -h /home/runner
+
+          for path in \
+            /usr/local/lib/android/sdk/ndk \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL
+          do
+            if [ -e "$path" ]; then
+              echo "removing $(du -sh "$path" 2>/dev/null | cut -f1) at $path"
+              sudo rm -rf "$path"
+            else
+              echo "absent, nothing to remove: $path"
+            fi
+          done
+
+          echo "── after ──"
+          df -h /home/runner
+
+          # The emulator reads this as free space at ~/.android/avd. Assert it
+          # here so the requirement is checked ONCE, cheaply, and named — rather
+          # than discovered by an emulator that dies and an action that spends
+          # the boot timeout polling for a device that will never appear.
+          mkdir -p "$HOME/.android"
+          avail_mb=$(( $(df -Pk "$HOME/.android" | awk 'NR==2 {print $4}') / 1024 ))
+          echo "free at $HOME/.android: ${avail_mb} MB (userdata needs 7373 MB)"
+          if [ "$avail_mb" -lt 9000 ]; then
+            echo "::error title=Not enough disk for the AVD::${avail_mb} MB free at \
+          $HOME/.android. The userdata partition alone needs 7373 MB and this is the \
+          condition that killed run 32271223400 (K83). Failing here, before the \
+          emulator, so the message names the disk rather than a boot timeout."
+            exit 1
+          fi
+
       # The emulator needs KVM, and the runner's default udev rules do not grant
       # it to the unprivileged user the action runs as.
       - name: Enable KVM
@@ -863,6 +917,79 @@ jobs:
           emulator-options: >-
             -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
             -no-snapshot -camera-back none
+          # ── K83, mitigation 4 ─────────────────────────────────────────────
+          #
+          # The action's contract, from its own `action.yml`: this runs "after
+          # creating the AVD and before launching the emulator" — the only hook
+          # that exists between the two, and the reason a watchdog is possible
+          # at all.
+          #
+          # THE DEFECT THIS FIXES IS THE MESSAGE, NOT ONLY THE MINUTES. On run
+          # 32271223400 the emulator died 58 seconds in and the action then
+          # asked `adb ... getprop sys.boot_completed` every two seconds for the
+          # full 900-second timeout, each answer `device 'emulator-5554' not
+          # found`, and ended on "Timeout waiting for emulator to boot". That
+          # sentence is false: nothing timed out. A reader who trusts it goes
+          # looking at boot speed, at the runner's cores, at the API level —
+          # everywhere except the one line that said what happened.
+          #
+          # So the watchdog watches the PROCESS, not the port. If the emulator
+          # is gone before `sys.boot_completed`, it says so, prints the disk
+          # figures that are the known cause, points at the emulator's own FATAL
+          # in the log above, and terminates the action instead of letting it
+          # spend the remaining timeout interrogating a device that no longer
+          # exists. If boot succeeds it exits silently and costs nothing.
+          #
+          # `$PPID`'s parent is the action's node process — captured before
+          # backgrounding, so the kill targets the right process without
+          # matching on a path that changes with the action's version.
+          #
+          # THE REDIRECT IS LOAD-BEARING, not tidiness. A backgrounded child
+          # inherits this step's stdout, and the action's exec of this script
+          # does not return until that descriptor closes — so a watchdog holding
+          # it would deadlock: the action waiting to launch the emulator, the
+          # watchdog waiting for an emulator that was never launched. It writes
+          # to a file instead, the diagnosis also goes to the job summary, and
+          # the always-run step below puts the file in the log.
+          pre-emulator-launch-script: |
+            set -uo pipefail
+            action_pid=$(ps -o ppid= -p "$PPID" | tr -d ' ')
+            (
+              # The emulator does not exist yet; the action launches it the
+              # moment this script returns. Wait for it to appear before
+              # concluding anything from its absence.
+              for _ in $(seq 1 90); do
+                [ -n "$(pgrep -f -- '-avd test' || true)" ] && break
+                sleep 1
+              done
+
+              while :; do
+                booted=$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)
+                if [ "$booted" = "1" ]; then
+                  echo "the emulator booted; watchdog standing down"
+                  exit 0
+                fi
+                if [ -z "$(pgrep -f -- '-avd test' || true)" ]; then
+                  avail_mb=$(( $(df -Pk "$HOME/.android" | awk 'NR==2 {print $4}') / 1024 ))
+                  {
+                    echo "### The emulator exited before boot"
+                    echo
+                    echo "The emulator process is gone and \`sys.boot_completed\` never"
+                    echo "returned 1. **This is not a boot timeout** — the emulator failed"
+                    echo "and said why. Read the \`FATAL\` line in the emulator step's log;"
+                    echo "ignore the \`adb ... device not found\` polling that follows it,"
+                    echo "which is this action interrogating a device that no longer exists."
+                    echo
+                    echo "Free at \`\$HOME/.android\`: **${avail_mb} MB**. The userdata"
+                    echo "partition alone needs **7373 MB** — the cause on record for"
+                    echo "run 32271223400 (K83)."
+                  } | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
+                  kill -TERM "$action_pid" 2>/dev/null || true
+                  exit 1
+                fi
+                sleep 2
+              done
+            ) > "$RUNNER_TEMP/emulator-watchdog.log" 2>&1 &
           working-directory: apps/mobile
           # `timeout` because a FAILING run does not exit. Measured on run
           # 31902883567: the test reported "0 tests passed, 1 failed" and then
@@ -882,6 +1009,20 @@ jobs:
             timeout --preserve-status --signal=KILL 12m
             flutter test integration_test/business_setup_e2e_test.dart
             --dart-define-from-file=${{ steps.business.outputs.path }}
+
+      # The watchdog cannot write to the emulator step's log without deadlocking
+      # it (see the redirect above), so its file is emptied into the log here.
+      # `always()` because the case it exists for is the case where the step it
+      # watched was killed — and a diagnosis that only survives on the happy
+      # path is not a diagnosis.
+      - name: Say what the emulator watchdog saw
+        if: always()
+        run: |
+          if [ -s "$RUNNER_TEMP/emulator-watchdog.log" ]; then
+            cat "$RUNNER_TEMP/emulator-watchdog.log"
+          else
+            echo "the watchdog wrote nothing"
+          fi
 
       # Runs whether the gate passed or failed. A credential left on a runner
       # image is not made safe by the job having succeeded.
