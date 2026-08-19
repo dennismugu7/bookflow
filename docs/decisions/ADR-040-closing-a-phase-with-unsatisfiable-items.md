@@ -1,9 +1,9 @@
 # ADR-040 — Closing a phase with unsatisfiable Definition-of-Done items
 
-**Status:** Proposed — **this ADR must not merge in this state.** It flips to *Accepted*, dated
-and naming the PR, at the moment the owner's review record lands on PR 4c. A merged ADR that calls
-itself a proposal is a document nobody can act on: a later reader cannot tell whether the rule
-below is in force, and the safe reading — that it is not — silently unauthorises the close it
+**Status:** Accepted — **2026-08-19, on PR #14 (PR 4c), citing the owner's review record in
+comment 5311554684.** It stood as *Proposed* until that record existed, because a merged ADR that
+calls itself a proposal is a document nobody can act on: a later reader cannot tell whether the
+rule below is in force, and the safe reading — that it is not — silently unauthorises the close it
 exists to authorise.
 
 ## Context
