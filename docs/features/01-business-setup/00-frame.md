@@ -310,8 +310,10 @@ accurately.
 **When.** Immediately after PR #14 merges. K27 and K47 move to Resolved, citing this document and
 ADR-041.
 
-**Status: OUTSTANDING.** This slice's Definition of Done cannot be satisfied until it is done,
-and K27's obligation on the publishing slice travels on it.
+**Status: ~~OUTSTANDING~~ — DISCHARGED 2026-08-19**, the day PR #14 merged. K27 and K47 are in
+`05-triage.md`'s Resolved table, each citing this document and ADR-041. **K27's row carries the
+publishing slice's at-least-one-service obligation in its own words**, which is what this section
+said would be lost if the edit did not happen.
 
 ### 5.2 Outstanding obligation — the conflict slug does not exist
 
@@ -421,7 +423,10 @@ obligation rather than a note.
 about the state of the world is worse than a fortnight of staleness. **Both are corrected in one
 pass the moment #14 merges.**
 
-**Status: OUTSTANDING.**
+**Status: ~~OUTSTANDING~~ — DISCHARGED 2026-08-19**, in that same pass. `docs/ENVIRONMENT.md` §4's
+`seed.sql` row now records what the file does rather than that it cannot be written, and notes
+that ADR-026's full ask — one demo salon with bookings in every status — is still unmet because
+those tables do not exist.
 
 ## 6. Unknowns and spikes
 

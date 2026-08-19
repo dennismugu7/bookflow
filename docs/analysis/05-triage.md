@@ -65,13 +65,11 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 | K24 | K | How does the owner add a second team member — does the form repeat, or is there a roster screen? | DECISION | S | #6 |
 | K25 | K | Is the Google Maps field a pasted link or an in-app pin drop, and what does the client profile show when it is empty? | DECISION | S | #8; web Location section |
 | K26 | K | Must the owner enter all seven days one by one, or is there a default or copy-to-all-days shortcut? | DECISION | S | #8 |
-| K27 | K | What does the client webapp show for a salon with zero services, zero team members, or zero portfolio images? *Narrowed by ADR-004: a salon that published with empty sections, not one mid-setup.* | DECISION | S | #6, #7, #21; web Services, Team, Portfolio, Book Now entry point |
 | K28 | K | Can services be reordered, hidden or archived without deletion, and can a service be tied to specific team members? *Narrowed by ADR-006.* | DECISION | S | #21, #22; web Services, Select professional |
 | K29 | K | Does reinstating a booking return it to **Booked** or straight to **Confirmed**, and does it get its own confirmation step? *Narrowed by ADR-007.* | DECISION | S | #13 |
 | K30 | K | Is the status filter a server query or a client-side filter of an already-fetched list? *Narrowed by ADR-014: collections are cursor-paginated server resources.* | DECISION | S | #13 |
 | K31 | K | Does a new client booking reach the owner's calendar live, or only on refresh? *Narrowed by spike 001/C6: Realtime works for both anon and service_role, but there is a settle window after `SUBSCRIBED` during which changes are missed — a live calendar must fetch current state after subscribing. `replica identity full` is required for previous-value payloads.* | DECISION | S | #12, #16 |
 | K32 | K | What does a calendar block show and do — status colour, label, tap behaviour, and how a cancelled booking is treated? *Narrowed by ADR-007 (must also show expired) and ADR-006 (every block has a team member).* | DECISION | S | #16 |
-| K47 | K | **NEW (ADR-004).** What is the publish action, where does it live, and what does the dashboard show while unpublished? | DECISION | S | #12, #17, and a publish surface that does not exist |
 | K48 | K | **NEW (ADR-004).** Can a published business be unpublished, and what happens to its live share link and outstanding bookings? *Narrowed by ADR-021: the handle is not released on unpublish, so the link resolves to something even while hidden.* | DECISION | S | #12, #13; web salon profile, booking page |
 | K49 | K | **NEW (ADR-006).** How does the web "Select services" step become genuinely multi-select, given the design specifies single-select at `Web:832`? | DECISION | S | web Select services, Review and continue |
 | K50 | K | **NEW (ADR-007).** Where does the owner enter each team member's working days and times? No such screen exists in any design. | DECISION | S | #6, #8, #17 — the screen does not exist |
@@ -198,6 +196,8 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 | H1 | H | No client cancellation path | — | ADR-002 — the emailed link opens a booking page with a cancel action. |
 | H2 | H | Emails carry no mechanism | — | ADR-002 — every booking email carries the signed link. |
 | H3 | H | No booking reference surfaced | — | ADR-002 — the token is the reference. |
+| K27 | K | What does the client webapp show for a salon with zero services, zero team members, or zero portfolio images? | **S** | **Business setup Phase 0, `docs/features/01-business-setup/00-frame.md` §5; caught by ADR-041's created-condition test.** The state is made **unreachable**: **a business may not be published until it has at least one service**, so the webapp never renders a salon with nothing bookable. Zero team and zero portfolio already had answers in the design — *"skip 'Select professional' entirely when the salon has zero configured team members"* (`DD-Bookflow-Web.md:1011-1013`) and *"hide the gallery section entirely rather than showing a blank/broken grid"* (`DD-Bookflow-Native.md:408-412`); zero services was the only unaddressed case. **OBLIGATION ON A FUTURE SLICE, AND THIS ROW IS ITS ONLY CARRIER: the publishing slice must enforce the at-least-one-service precondition.** The business-setup slice does not implement it — publishing is a non-goal there, and a business it creates has no services at all, so it is unpublishable by construction until the services slice ships. `00-frame.md` §5 states in terms that if this row does not exist the obligation is lost, because it otherwise lives only in a file the publishing slice has no reason to open. |
+| K47 | K | What is the publish action, where does it live, and what does the dashboard show while unpublished? | **S** (the third clause only) | **Business setup Phase 0, `00-frame.md` §5; caught by ADR-041's created-condition test — that clause only.** ADR-041's 2026-08-16 amendment rules the other two clauses **clear**: what the publish action is and where it lives are *placement* questions, and a placement is not a state, so nothing can bring one into existence. **The caught clause is answered:** while the business is unpublished, screen #12 shows a **setup-continuation state** — where the owner is in setup and what remains — **not** the bookings empty state, and the share-link prompt and the *"Share your booking link ›"* button appear only once there is something to share. The designed empty state (`DD-Bookflow-Native.md:587-596`) tells a brand-new owner that *"appointments will land here automatically"* and offers a *"booking link"*; for a business with no services and nothing published **both statements are false**. Recorded as the third design deviation, entry 12 in `docs/analysis/08-design-deviations.md`. **The publish action itself remains unbuilt and is the publishing slice's work.** |
 
 ADR-001 resolves nothing; it sequences the work. ADR-016 resolves no tracked item — it settles the ID strategy, which the triage never captured, and records spike 001/C2's mitigation.
 
@@ -235,8 +235,20 @@ surfaced questions the first pass had not asked:
 - **E11** — what process runs the outbox worker.
 - **K51** — what process expires an unverified booking.
 
-**Thirty-one in total**, which is the row count in the Resolved table above. **The table is
-authoritative; this section summarises it.** Where they disagree, the table is correct.
+**Thirty-one in total** — **and that number never was the Resolved table's row count.** This
+sentence used to claim it was. Re-derived 2026-08-19 by counting rows rather than by adjusting a
+number, the table holds **67**:
+
+```
+awk '/^\| ID \| Cat \| Item \| Was \| Resolved by \|/{t=1;next} t&&/^\|---/{next} \
+     t&&/^\|/{c++} t&&!/^\|/{print c; exit}' docs/analysis/05-triage.md
+```
+
+**The claim was already false before this commit's two additions** — the table stood at 65, not
+33 — so the drift is not two rows of rounding but a sentence that was wrong for however long K
+items have been resolved alongside the original F set. **Thirty-one counts the original `F` set
+this section is about, and nothing else.** **The table is authoritative; this section summarises
+it.** Where they disagree, the table is correct — which is exactly what happened here.
 
 All thirty-one are settled, in `docs/decisions/ADR-001` through `ADR-021` and
 `docs/spikes/001-platform.md`.

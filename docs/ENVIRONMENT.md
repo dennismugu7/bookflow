@@ -143,30 +143,8 @@ it describes staging before this account existed. **It is not a check to re-run 
 same answer.** Anyone who does will read `1`, and the only sound conclusions from that are the
 two below.
 
-**The correct check now** is not a count but an identity — *are there any users other than the
-one that is supposed to be there?*
-
-> **SUPERSEDED 2026-08-19 — DO NOT RUN THE CHECK AS THIS SECTION STATES IT.** A second account
-> exists, so the one-id allowlist and the expected total below are both false. **The live check is
-> the next section, "The identity check on staging's `auth.users` — TWO accounts, both keyed by
-> id": two ids, expected total 2.** This section is kept because its reasoning — that a count was
-> standing in for an identity — is what the live check is built on, and because it records
-> correctly what was true between 2026-08-15 and 2026-08-18. Its own closing sentence anticipated
-> exactly this: *"If the e2e gate ever creates accounts of its own, this row is updated in the
-> same commit, because a stale expected-count here silently destroys the check."*
-
-*Superseded text, kept as the record of what was true from 2026-08-15:*
-
-```
-GET /auth/v1/admin/users
-→ every row's id must be 9b5bdc22-4250-4213-88fd-08c519d5d53f
-```
-
-A row that is not that id is residue: a probe some script failed to delete, or a sign-up whose
-compensation did not run — which is exactly what A15 exists to detect, and the property the count
-was standing in for all along. **Expected total: 1.** If the e2e gate ever creates accounts of its
-own, this row is updated in the same commit, because a stale expected-count here silently
-destroys the check.
+**The correct check is an identity, not a count, and it is stated in full in the next section** —
+*The identity check on staging's `auth.users`*. Two accounts, two ids, expected total 2.
 
 **The 2026-08-14 auth verification left no residue.** It created two users on staging — one
 throwaway at `@bookflow.test` for the admin-path check, one at the account owner's own address
@@ -185,6 +163,11 @@ there (ADR-023 — this is the failure mode that cost `bookflow-spike` its exist
 **The check is an identity, not a count.** Its purpose is to answer *are there any users other than
 the ones that are supposed to be there* — a probe some script failed to delete, or a sign-up whose
 compensation did not run.
+
+**Why a count was ever used, and why it stopped working, is in `docs/analysis/09-phase3-close.md`
+§2** — the A15 accounting, where `select count(*) from auth.users` returned 0 and the counter was
+proven honest by driving it 0 → 1 → 0 rather than trusted at a value it had only ever read. That
+file is append-only and keeps the history; this one keeps only what is currently true.
 
 ```
 GET /auth/v1/admin/users
@@ -333,7 +316,7 @@ a spend decision with a name.
 | Missing | Why it blocks |
 |---|---|
 | Apple Developer account and signing credentials | **K53, still open.** ADR-024 imports them as encrypted secrets at build time. Until then the iOS job runs `--no-codesign`, which proves the target compiles and nothing more — no installable artifact, no TestFlight, no device. |
-| `supabase/seed.sql` | ADR-026. `db reset` warns `no files matched pattern: supabase/seed.sql` on every run. Not writable yet — ADR-026 wants one demo salon with bookings in every status, which needs tables, which are Phase 3. |
+| ~~`supabase/seed.sql`~~ | **WRITTEN — this row is discharged, 2026-08-19.** It said the file was "not writable yet" and that `db reset` warned `no files matched pattern: supabase/seed.sql` on every run. **The file exists and is 144 lines.** It seeds one owner, one business and one membership at fixed ids; it is idempotent by `on conflict do nothing`; and it is applied by `supabase db reset` and by `npm run seed`. **It is covered by `seed.integration.test.ts`, which does not count rows** — it signs the seeded owner in against real GoTrue and asserts the token names them. ADR-026's full ask, one demo salon with bookings in every status, is still not met and cannot be: those tables do not exist. The file's own header says so — *"This file seeds what exists … and grows with each slice that adds a table."* |
 
 **Done since this file was written:** the `master` → `main` rename and the first push
 (ADR-026); `.env.example` (ADR-023); the npm workspace, the `apps/api` Fastify skeleton and
@@ -343,9 +326,10 @@ unit/integration test layering; GitHub Actions running `npm run verify` on every
 (ADR-024); and the Flutter skeleton in `apps/mobile` with its analyze / format / test / build
 jobs on Linux and an unsigned iOS build on macOS. See `docs/BUILD_LOG.md` §1.
 
-The remaining items need a decision or an account, not repository work: `seed.sql` waits on
-tables, signing waits on an Apple Developer account (K53), and branch protection waits on a
-purchase that is deliberately not being made yet — see the accepted risk in §3.
+The remaining items need a decision or an account, not repository work: signing waits on an Apple
+Developer account (K53), and branch protection waits on a purchase that is deliberately not being
+made yet — see the accepted risk in §3. **`seed.sql` is no longer among them** — it was written,
+and its row above records what it now does.
 
 ### Does not block Phase 2 — Phase 3 and later
 
