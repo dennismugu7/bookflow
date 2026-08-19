@@ -659,6 +659,78 @@ jobs:
           E2E_USER_ID="$(echo "$PAYLOAD" | base64 -d 2>/dev/null | jq -r '.sub // empty')"
           echo "user_id=$E2E_USER_ID" >> "$GITHUB_OUTPUT"
 
+      # ── The SECOND account, and why this is not one grant with two uses ────
+      #
+      # The two e2e tests run as DIFFERENT accounts and must:
+      #
+      #   profile_e2e_test.dart       e2e-owner@bookflow.test           9b5bdc22…
+      #   business_setup_e2e_test.dart  e2e-owner-business@bookflow.test  e508f672…
+      #
+      # **K78 forbids ever giving the first account a membership.** Running the
+      # business journey on its token would create one — which is exactly the
+      # rule the cleanup step's guard 2 exists to catch, and it did: wiring the
+      # business test to the existing defines file made that guard fail, because
+      # the `sub` in that token is 9b5bdc22 and the cleanup expects e508f672.
+      #
+      # So: a second grant, a second defines file, a second `sub`. Identical in
+      # shape to the step above, deliberately — the alternative was
+      # parameterising one step over two accounts, which couples the two tests
+      # in exactly the property that must differ between them.
+      - name: Mint the business account's session
+        id: business
+        env:
+          E2E_EMAIL: ${{ secrets.E2E_BUSINESS_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_BUSINESS_PASSWORD }}
+          SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+          API_BASE_URL: https://bookflow-api-staging-gabm.onrender.com
+        run: |
+          set -euo pipefail
+          for name in E2E_EMAIL E2E_PASSWORD SUPABASE_URL SUPABASE_ANON_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::secret $name is empty — see docs/ENVIRONMENT.md §3"
+              exit 1
+            fi
+          done
+
+          jq -n '{email: env.E2E_EMAIL, password: env.E2E_PASSWORD}' \
+            > "$RUNNER_TEMP/business-grant.json"
+          chmod 600 "$RUNNER_TEMP/business-grant.json"
+
+          curl -s -S --fail-with-body \
+            -X POST "$SUPABASE_URL/auth/v1/token?grant_type=password" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H 'content-type: application/json' \
+            --data-binary "@$RUNNER_TEMP/business-grant.json" \
+            -o "$RUNNER_TEMP/business-session.json"
+          rm -f "$RUNNER_TEMP/business-grant.json"
+
+          ACCESS_TOKEN="$(jq -r '.access_token // empty' "$RUNNER_TEMP/business-session.json")"
+          rm -f "$RUNNER_TEMP/business-session.json"
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "::error::the business account's password grant returned no access_token — rotate E2E_BUSINESS_PASSWORD (docs/ENVIRONMENT.md §3)"
+            exit 1
+          fi
+          echo "::add-mask::$ACCESS_TOKEN"
+
+          ACCESS_TOKEN="$ACCESS_TOKEN" jq -n '{
+            E2E_EMAIL: env.E2E_EMAIL,
+            E2E_ACCESS_TOKEN: env.ACCESS_TOKEN,
+            SUPABASE_URL: env.SUPABASE_URL,
+            SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY,
+            API_BASE_URL: env.API_BASE_URL
+          }' > "$RUNNER_TEMP/business-defines.json"
+          chmod 600 "$RUNNER_TEMP/business-defines.json"
+          echo "path=$RUNNER_TEMP/business-defines.json" >> "$GITHUB_OUTPUT"
+
+          PAYLOAD="$(echo "$ACCESS_TOKEN" | cut -d. -f2 | tr '_-' '/+')"
+          case $(( ${#PAYLOAD} % 4 )) in
+            2) PAYLOAD="$PAYLOAD==" ;;
+            3) PAYLOAD="$PAYLOAD=" ;;
+          esac
+          E2E_USER_ID="$(echo "$PAYLOAD" | base64 -d 2>/dev/null | jq -r '.sub // empty')"
+          echo "user_id=$E2E_USER_ID" >> "$GITHUB_OUTPUT"
+
       # ── Clear this account's business, BEFORE the build ────────────────────
       #
       # `uq_memberships_one_owner_per_user` means creation succeeds exactly once
@@ -688,7 +760,10 @@ jobs:
       - name: Clear the e2e business account's rows
         env:
           DB_URL: ${{ secrets.STAGING_APP_DATABASE_URL }}
-          E2E_USER_ID: ${{ steps.defines.outputs.user_id }}
+          # `steps.business`, NOT `steps.defines` — the business account's token,
+          # not the profile account's. Pointing this at the wrong grant is the
+          # mistake guard 2 below caught when this test was first wired.
+          E2E_USER_ID: ${{ steps.business.outputs.user_id }}
           EXPECTED_USER_ID: e508f672-dd11-4150-b686-cc06a525f749
         run: |
           set -euo pipefail
@@ -796,16 +871,23 @@ jobs:
           # A gate that takes half an hour to say "red" is a gate people turn
           # off. `--preserve-status` keeps the test's own exit code when it does
           # finish, so this bounds the hang without inventing a result.
+          # Two tests, two defines files, two accounts — see the business grant
+          # step above. Sequential and `&&`-joined: a failure in the first stops
+          # the second, and the emulator is booted once for both.
           script: >-
             timeout --preserve-status --signal=KILL 12m
             flutter test integration_test/profile_e2e_test.dart
             --dart-define-from-file=${{ steps.defines.outputs.path }}
+            &&
+            timeout --preserve-status --signal=KILL 12m
+            flutter test integration_test/business_setup_e2e_test.dart
+            --dart-define-from-file=${{ steps.business.outputs.path }}
 
       # Runs whether the gate passed or failed. A credential left on a runner
       # image is not made safe by the job having succeeded.
-      - name: Remove the defines file
+      - name: Remove the defines files
         if: always()
-        run: rm -f "$RUNNER_TEMP/e2e-defines.json"
+        run: rm -f "$RUNNER_TEMP/e2e-defines.json" "$RUNNER_TEMP/business-defines.json"
 
       # ══ BEFORE ADDING AN ARTIFACT UPLOAD BELOW THIS LINE ════════════════════
       #
