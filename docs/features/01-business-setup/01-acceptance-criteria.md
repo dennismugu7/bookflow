@@ -34,8 +34,17 @@ appears here, deliberately.
 >
 > ```
 > grep -rhoE "'criterion [0-9]+(, [0-9]+)*" apps/api/src apps/api/test apps/mobile/test \
->   | grep -oE "[0-9]+" | sort -n | uniq
+>   apps/mobile/integration_test | grep -oE "[0-9]+" | sort -n | uniq
 > ```
+>
+> **`apps/mobile/integration_test` was added 2026-08-19, and the count did not move.** It is the
+> e2e layer, and until that day nothing in it named a criterion: `profile_e2e_test.dart` names
+> **zero**, because Phase 3 produced no acceptance criteria to name (ADR-040 §3.1, K77). So the
+> path had never been missed — there was nothing there to miss. `business_setup_e2e_test.dart`
+> names 1, 3, 25, 41 and 42, all of which are also claimed by unit or integration tests, so the
+> total stayed at **60 before and after**. **A third path that changes no number is still worth
+> adding**: the next e2e test to claim a criterion nothing else covers would otherwise be
+> invisible to the one command this project trusts.
 >
 > **Two details in that command are load-bearing, both found by running it.**
 >

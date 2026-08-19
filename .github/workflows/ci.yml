@@ -731,6 +731,19 @@ jobs:
           # Idempotent: a clean slate deletes zero rows and succeeds. That is a
           # pass, not an error — the desired state is "no business", not "a
           # business was removed".
+          #
+          # ── IF YOU ARE ABOUT TO REWRITE THIS AS `psql -c`, DO NOT ───────────
+          #
+          # **psql interpolates `:'uid'` from a script on STDIN and NOT from a
+          # `-c` argument.** Verified by running both against a real database,
+          # not assumed: the `-c` form fails with `syntax error at or near ":"`.
+          #
+          # That error is the good case. The dangerous case is the edit that
+          # "fixes" it by dropping the variable and inlining the id, or by
+          # removing the `where` clause that no longer has a value to compare —
+          # **at which point this statement stops being scoped and clears every
+          # business on staging.** The heredoc is not a style preference; it is
+          # what makes the scoping work at all.
           psql "$DB_URL" -v ON_ERROR_STOP=1 -v uid="$E2E_USER_ID" <<'SQL'
           with owned as (
             select business_id from public.memberships where user_id = :'uid'::uuid
