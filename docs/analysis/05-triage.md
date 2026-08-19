@@ -12,7 +12,13 @@ Every unresolved item from `03-flagged-ambiguities.md` and `04-unstated-assumpti
 
 **Screen numbers** are `01-screen-inventory.md`'s. Web pages are named.
 
-**Status: no `F` items are open.** K72 and K73 were raised by the PR 1 migration review on 2026-08-11 and closed the same day by ADR-037 and ADR-038 — the second only after its central assumption was verified against the hosted project rather than asserted. Thirty-eight accepted decisions in `docs/decisions/`, plus **spike 001** (`docs/spikes/001-platform.md`), have closed every item that has blocked the foundation. Items each decision settles move to the Resolved table; items narrowed without being settled stay classified where they were, with an italic note; items created are marked **NEW**.
+**Status: no `F` items are open.** K72 and K73 were raised by the PR 1 migration review on 2026-08-11 and closed the same day by ADR-037 and ADR-038 — the second only after its central assumption was verified against the hosted project rather than asserted. **43** accepted decisions in `docs/decisions/`, plus **spike 001** (`docs/spikes/001-platform.md`), have closed every item that has blocked the foundation. **This sentence said "Thirty-eight" until 2026-08-19, and had been wrong since ADR-039.** Corrected the way the Resolved-table count below was — by deriving it rather than by adjusting the number, and by leaving the command here so the next reader does not have to trust this one:
+
+```
+grep -lE '^\*\*Status:\*\* Accepted' docs/decisions/ADR-*.md | wc -l
+```
+
+`grep -L` with the same pattern lists the ADRs that are **not** accepted; it currently prints nothing, which is why that count also equals the file count. Items each decision settles move to the Resolved table; items narrowed without being settled stay classified where they were, with an italic note; items created are marked **NEW**.
 
 ---
 
