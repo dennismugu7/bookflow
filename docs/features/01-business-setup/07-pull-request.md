@@ -178,7 +178,7 @@ criterion nothing else covers, which is what `feat/business-setup-e2e` does.*
 forward. The two unmapped are 48 and 49 — see below. The denominator is the
 highest number in `01-acceptance-criteria.md`, which is append-only.
 
-**61 of 63 as of `495e68a` on `feat/business-setup-e2e`** — re-derived by running the command,
+**61 of 63 as of `7712bca` on `feat/business-setup-e2e`** — re-derived by running the command,
 not by adding one to the number above. Criterion 63 (K82, the conflict copy) is appended and
 mapped; the numerator and denominator each moved by one and **the unmapped set is unchanged, still
 exactly 48 and 49**. Two directions were checked, because only one of them was the risk: no
