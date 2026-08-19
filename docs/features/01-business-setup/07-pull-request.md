@@ -223,6 +223,27 @@ covered three jobs, and all eight ran only on `main`.
 ending the repository's only 10× runner. A reviewer expecting eight jobs from earlier records is
 reading something written before that decision.
 
+### This PR BREAKS and then FIXES Phase 3's e2e gate — read this before trusting the greens
+
+**Decision 12 moved screen #20 from `/home` to `/profile`.** `integration_test/profile_e2e_test.dart`
+reached screen #20 by redirect and asserted against it, so the route move broke it: it would have
+waited ninety seconds for a first name on a screen rendering "Bookflow" and "Finish setting up",
+then failed with a message pointing at the deploy rather than at the route.
+
+**Five green `pull_request` runs on this branch say nothing about it.** `e2e-staging` runs only on
+push-to-`main` or `workflow_dispatch` and skipped on every one of them, and the local gate's
+`flutter test` does not include `integration_test/`. **The first red would have been on `main`,
+after merge.**
+
+**The fix is in this PR rather than in 5b**, because deferring it leaves `main` red in between.
+The test now drives the chain this slice built — land on `/home`, tap the avatar to reach screen
+#17, tap Profile to reach screen #20 — instead of deep-linking, which makes the navigation part of
+what is tested and gives ADR-042's push navigation its only e2e coverage.
+
+**What this means for the greens above:** they cover `verify`, `mobile` and `contracts` and
+nothing else. **`e2e-staging` has never run on this slice's code.** A `workflow_dispatch` is the
+only way to exercise it before merge.
+
 ## Five things the diff cannot show
 
 Each of these reads as a defect without the explanation.

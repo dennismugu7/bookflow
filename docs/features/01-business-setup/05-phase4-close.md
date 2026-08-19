@@ -102,6 +102,30 @@ of entry 19's ruling** — its reason rested on a back path that existed only as
 **§5.2 and §5.3 are discharged.** The conflict slug is in `PROBLEM_TYPES`; the rename surface is
 screen #20 by decision 11.
 
+### 5.0 `e2e-staging` was BROKEN by this slice, and is fixed in the same PR
+
+**Recorded 2026-08-19, before the sections below are read as claiming the gate passes.**
+
+Decision 12 moved screen #20 from `/home` to `/profile` and gave `/home` to the dashboard.
+**`integration_test/profile_e2e_test.dart` landed on screen #20 by redirect and asserted against
+it**, so from the moment that route moved, Phase 3's e2e gate was testing a screen that no longer
+appears where it looked. It would have waited ninety seconds for a first name on a screen
+rendering "Bookflow" and "Finish setting up", then failed with a message pointing at the deploy.
+
+**It was invisible to five consecutive green `pull_request` runs**, and the reason is structural
+rather than an oversight: `e2e-staging` runs only on push-to-`main` or `workflow_dispatch`, and the
+local gate's `flutter test` does not include `integration_test/`. **So nothing that ran before a
+merge could have caught it** — the first red would have been on `main`.
+
+**Fixed in PR 5a, not deferred to 5b**, because the alternative is a red `main` in between. The
+test now drives the chain this slice built — land on `/home`, tap the avatar to screen #17, tap
+Profile to screen #20 — rather than deep-linking, so the navigation is under test instead of being
+a means to it. That also makes it the only e2e coverage of ADR-042's push navigation.
+
+**What the sections below mean, given that.** They describe the seam and the gate correctly; what
+they do **not** claim, and must not be read as claiming, is that `e2e-staging` has passed on this
+slice's code. It has never run on it.
+
 ### 5.1 The seam closes at `e2e-staging` — and that is a default, not a preference
 
 **Recorded 2026-08-18.** `04-phase3-close.md` §2 named three routes to close the seam and asked
