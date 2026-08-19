@@ -259,3 +259,45 @@ regenerate through **`npm run contracts:generate`** — never `build_runner` on 
 is not cosmetic: it produced **real drift across 46 files** that `contracts:check` correctly
 refused, on trailing-newline differences alone. The manual command looks like a subset of the
 pipeline and is not one.
+
+**A THIRD FAILURE MODE — 2026-08-19, and it is the first one where the check is simply WRONG.**
+
+The two above are real problems reported confusingly. This one is a **false positive**:
+`contracts:check` reports `CONTRACT DRIFT` when nothing has drifted at all.
+
+**What it looked like.** After a change touching no route schema and no generated file, the check
+failed naming one path:
+
+```
+  M packages/bookflow_api/.openapi-generator/FILES
+```
+
+**What was actually true.** The file's content was byte-identical to `HEAD`. Proven rather than
+assumed — `git hash-object` on the working copy and `git rev-parse HEAD:<path>` return the **same
+blob**, `a99b6a53d9e492e53ce899413beb866fb3f85774`, and `sha256sum` agrees:
+
+```
+git hash-object packages/bookflow_api/.openapi-generator/FILES
+git rev-parse HEAD:packages/bookflow_api/.openapi-generator/FILES
+```
+
+**The mechanism, which neither earlier instance names.** The generator rewrites that manifest on
+every run, with **LF** endings. `.gitattributes` marks it `text=auto`, so on a Windows checkout git
+expects **CRLF** in the working tree. The normalised content matches — which is why the blob hash
+is identical and `git diff HEAD` shows nothing — but `git status --porcelain` compares the working
+file against what it *would* check out and reports a difference in line endings alone.
+`contracts:check` reads `git status`, so it sees a modified path and calls it drift.
+
+**The fix is `git add` on that path.** Staging normalises to the same blob, git stops reporting it,
+and the check goes green with **no content committed** — `git status` is clean afterwards.
+
+**Why the failure message cannot help you here.** It names two causes — *"a route schema changed
+and the artifacts were not regenerated"* and *"a generated file was edited by hand"* — and **this
+is neither.** A reader who trusts it will regenerate (no change) or hunt for a hand edit (there is
+none).
+
+**CI will never reproduce it.** The runners are Linux, the working tree is LF, and the filter does
+not fire. So this is a local-only failure on the one gate whose whole purpose is to be trusted,
+and the standing rule from the first instance now has two supporting cases rather than one:
+**an exit 1 from `contracts:check` is not evidence of drift until the message and the diff have
+both been read.** Check the blob hash before believing the path.

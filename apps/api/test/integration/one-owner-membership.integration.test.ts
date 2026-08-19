@@ -1,8 +1,9 @@
 import { sql } from 'kysely';
 import { describe, expect, it } from 'vitest';
 
+import { isSecondBusinessConflict } from '../../src/modules/businesses/businesses.repository.ts';
 import { accountWithBusiness, accountWithoutBusiness } from './accounts.ts';
-import { useTransaction } from './harness.ts';
+import { APPLICATION_ROLE, useTransaction } from './harness.ts';
 
 /**
  * `uq_memberships_one_owner_per_user` — ADR-003's cardinality, enforced.
@@ -55,6 +56,69 @@ describe('uq_memberships_one_owner_per_user', () => {
        where user_id = ${owner.userId}::uuid
     `.execute(ctx.db);
     expect(count.rows[0]?.count).toBe('1');
+  });
+
+  /**
+   * THE REAL ERROR MEETS THE REAL PREDICATE.
+   *
+   * `businesses.conflict-predicate.test.ts` asserts `isSecondBusinessConflict`
+   * against errors this project CONSTRUCTS — `{ code: '23505', constraint:
+   * 'uq_…' }` — and `businesses.conflict-service.test.ts` drives the service
+   * with a fake repository raising one. **Both encode a belief about what
+   * PostgreSQL raises for a partial unique index. Neither checks it.**
+   *
+   * This is the only assertion in the project where the error PostgreSQL
+   * actually raises is handed to the predicate that production branches on. It
+   * guards the one path the service's pre-check does not cover: the pre-check
+   * catches every SEQUENTIAL second creation, so `isSecondBusinessConflict` is
+   * reached only when two creations interleave — which nothing else here can
+   * produce, and which is exactly when being wrong turns a 409 into a 500.
+   *
+   * ── WHY THIS DOES NOT USE `ctx.expectDenied` ────────────────────────────────
+   *
+   * That helper returns `Promise<void>` and discards the error it caught, by
+   * design — its job is to assert a denial, not to hand the failure onward.
+   * Widening it to return the error would change a shared helper's contract for
+   * one caller. So this test does its own savepoint capture: the same three
+   * steps, local to the one place that needs the object.
+   */
+  it('the error PostgreSQL raises is the one isSecondBusinessConflict matches', async () => {
+    const owner = await accountWithBusiness(ctx, 'First Salon');
+    const other = await accountWithBusiness(ctx, 'Second Salon');
+
+    // A failed statement aborts the transaction, so the probe runs inside a
+    // savepoint — the same reason `expectDenied` uses one.
+    await sql.raw('savepoint predicate_probe').execute(ctx.db);
+    let caught: unknown;
+    try {
+      await sql`
+        insert into public.memberships (user_id, business_id, role)
+        values (${owner.userId}::uuid, ${other.businessId}::uuid, 'owner')
+      `.execute(ctx.db);
+    } catch (error) {
+      caught = error;
+    }
+    await sql.raw('rollback to savepoint predicate_probe').execute(ctx.db);
+    await sql.raw(`set local role ${APPLICATION_ROLE}`).execute(ctx.db);
+
+    // The insert must have failed at all — otherwise the assertion below would
+    // be about `undefined` and would fail for the wrong reason.
+    expect(
+      caught,
+      'the second owner membership was accepted; there is no error to classify',
+    ).toBeInstanceOf(Error);
+
+    expect(
+      isSecondBusinessConflict(caught),
+      'the predicate production branches on does not recognise the error ' +
+        'PostgreSQL actually raises for this index — a 409 would be a 500',
+    ).toBe(true);
+
+    // Stated separately so a failure says WHICH half is wrong: the error class
+    // or the constraint name.
+    const pg = caught as { code?: unknown; constraint?: unknown };
+    expect(pg.code).toBe('23505');
+    expect(pg.constraint).toBe('uq_memberships_one_owner_per_user');
   });
 
   it('does not stop two DIFFERENT users each owning a business', async () => {
