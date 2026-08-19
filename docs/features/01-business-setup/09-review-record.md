@@ -107,9 +107,16 @@ predicate was only ever tested against errors the project constructed — CI can
 test), and 9 (deleting the CTE would have failed the suite loudly; the finding is that nothing
 *said* so, which is a comment).
 
-**The pattern worth naming:** five of the seven are correct-today, wrong-later — code whose defect
-is invisible until a schema constraint widens. **A green suite is evidence about the present.** It
-is not evidence about the change that has already been decided and not yet made.
+**The pattern worth naming: THREE of the seven — 5, 6 and 8 — are correct-today, wrong-later.**
+The criterion is exact and worth stating, because the first draft of this line said *five* and was
+miscounted: **the code behaves identically until `ck_memberships_role` widens.** Findings 1, 2, 3
+and 4 do not qualify — a mischaracterised ADR reference, an absent carrier, an unverified claim
+and a stale caveat are all wrong **now**, not later. They are CI-invisible for a different reason:
+no test asserts prose or cross-document records.
+
+**A green suite is evidence about the present.** It is not evidence about the change that has
+already been decided and not yet made — which is what makes 5, 6 and 8 the ones a review had to
+catch, because nothing else would until the day the vocabulary widens and they ship as bugs.
 
 ## Also found during review — `03-environment.md` §E.7 gains a third instance
 
