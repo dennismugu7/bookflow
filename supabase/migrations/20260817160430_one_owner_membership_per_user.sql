@@ -1,0 +1,83 @@
+-- One business per account, enforced (ADR-003, business-setup decision 10).
+--
+-- MIGRATIONS ARE DO-NOT-VIBE (CLAUDE.md §6). This file is reviewed line by line
+-- by a human before it merges, and named in the completion report.
+--
+-- ── WHAT THIS ENFORCES ──────────────────────────────────────────────────────
+--
+-- ADR-003: "One business per account, one seat, in v1." An account may hold at
+-- most ONE membership whose role is 'owner'.
+--
+-- ── NOTHING ENFORCED THAT RULE BEFORE THIS FILE ─────────────────────────────
+--
+-- Recorded because it was believed otherwise for six days, by the frame, by the
+-- Phase 1 design, and by the session that wrote both. See ADR-003's 2026-08-17
+-- amendment.
+--
+-- What was checked, and found not to enforce it:
+--
+--   * `uq_memberships_user_business unique (user_id, business_id)` — forbids the
+--     same user joining the SAME business twice. Two creations for one account
+--     insert (U, B1) and (U, B2) with different generated business ids; the
+--     tuples differ, and neither insert is rejected.
+--   * `ck_memberships_role check (role in ('owner'))` — constrains the role
+--     VOCABULARY, not the row count.
+--   * Triggers — `memberships` carries only `trg_memberships_updated_at`.
+--   * Row-level security — enabled with NO policies at all, and the API's
+--     credential bypasses it regardless (spike 001/C7).
+--   * Application code — nothing under `apps/api/src` inserted into
+--     `memberships`, because no slice had yet created a business.
+--
+-- The rule was recorded correctly, reflected in the table's shape, and enforced
+-- by nobody.
+--
+-- ── WHY PARTIAL, AND THIS IS THE LOAD-BEARING HALF ──────────────────────────
+--
+-- A plain `unique (user_id)` would cap a user at one membership of ANY kind and
+-- permanently forbid a stylist working at two salons. ADR-003 does not forbid
+-- that — it caps businesses per account for v1 and says in its Consequences:
+-- "Adding a second seat later is a feature that inserts rows; it is not an auth
+-- rewrite."
+--
+-- Predicating on `role = 'owner'` enforces exactly the rule ADR-003 states while
+-- leaving I9's role vocabulary free to widen — and `ck_memberships_role` is
+-- already documented as the place it widens.
+--
+-- ── ON THE NAME ─────────────────────────────────────────────────────────────
+--
+-- ADR-036 maps `uq_` to a unique CONSTRAINT and `ix_` to an index, and this is
+-- strictly an index: PostgreSQL cannot express a partial unique constraint.
+--
+-- **THIS NAME DEPARTS FROM ADR-036, DELIBERATELY.** An earlier version of this
+-- comment called it "a gap in ADR-036, not a departure from it". That was wrong
+-- and understated it: ADR-036 is not silent here. It has a rule that covers this
+-- object — an index takes `ix_` — and this file takes the other prefix on
+-- purpose. You only need a justification when you are going against something.
+--
+-- The justification is ADR-036's own rationale: "constraint names are a public
+-- interface here", because the API branches on the name a violation reports
+-- (`isSecondBusinessConflict`), and a 23505 naming `uq_…` tells a reader what
+-- was violated. `ix_` would name the mechanism and hide the meaning.
+--
+-- ADR-036 now carries a row for partial unique indexes recording exactly this,
+-- so the next one written does not have to re-derive it — its 2026-08-19
+-- amendment.
+--
+-- ── ADDITIVE ────────────────────────────────────────────────────────────────
+--
+-- Creates an index. No column altered, nothing dropped, no data rewritten.
+--
+-- It will FAIL TO BUILD if duplicate owner rows already exist, which is the
+-- correct behaviour — refusing is better than silently keeping one. Staging has
+-- none: no code path has ever inserted a `memberships` row.
+--
+-- Not `concurrently`: that cannot run inside a transaction, and the Supabase CLI
+-- applies each migration in one. The table is empty on staging and holds one row
+-- locally, so the lock is instantaneous.
+
+create unique index uq_memberships_one_owner_per_user
+  on public.memberships (user_id)
+  where role = 'owner';
+
+comment on index public.uq_memberships_one_owner_per_user is
+  'ADR-003: at most one owner membership per account. Partial so a non-owner membership at a second business stays possible (I9).';

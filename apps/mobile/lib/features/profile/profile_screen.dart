@@ -1,10 +1,13 @@
+import 'package:bookflow/features/business/business_section.dart';
 import 'package:bookflow/features/profile/profile_models.dart';
 import 'package:bookflow/features/profile/profile_providers.dart';
 import 'package:bookflow/platform/providers.dart';
 import 'package:bookflow/theme/tokens.dart';
 import 'package:bookflow/ui/async_value_view.dart';
+import 'package:bookflow/ui/initials_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 /// Screen #20 — My Profile Details. ADR-032's "one true page" for Phase 3.
 ///
@@ -44,13 +47,18 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        // The back arrow of `native-20`. It leads nowhere in this slice — there
-        // is one screen behind the shell — so it signs out instead of pretending
-        // to navigate, which is the only real action this page has.
+        // The back arrow of `native-20`, and it now goes back.
+        //
+        // It used to sign out, with a comment saying it did so because "there
+        // is one screen behind the shell — so it signs out instead of
+        // pretending to navigate". **That reasoning expired with decision 12**:
+        // screen #17 is behind this one now, and sign-out moved to its Log out
+        // row. That comment was the marker for this change.
         leading: IconButton(
+          key: const Key('profile-back'),
           icon: const Icon(Icons.arrow_back),
-          onPressed: () async => ref.read(authGatewayProvider).signOut(),
-          tooltip: 'Sign out',
+          onPressed: () => context.pop(),
+          tooltip: 'Back',
         ),
         title: const Text('My profile'),
       ),
@@ -105,6 +113,14 @@ class _ProfileCard extends StatelessWidget {
               // API's Profile schema deliberately does not mirror it. Shown from
               // the session instead — see `_Field`'s sibling below.
               const _EmailField(),
+              const SizedBox(height: BookflowSpacing.lg),
+              const Divider(),
+              const SizedBox(height: BookflowSpacing.lg),
+              // Decision 11: screen #20 widened to the "Personal/Business
+              // Information Management page" its own routing text already names
+              // (`DD-Bookflow-Native.md:973`). Beneath the personal fields, and
+              // reading its own provider — see `BusinessSection`.
+              const BusinessSection(),
             ],
           ),
         ),
@@ -114,6 +130,10 @@ class _ProfileCard extends StatelessWidget {
 }
 
 /// Green circle, two white uppercase initials (Styles-Reference §2 and §7).
+///
+/// The circle itself is `InitialsAvatar` in `ui/`, shared with screens #12 and
+/// #17. This wrapper keeps the `Center` and the larger text style, which are
+/// this screen's layout rather than the element's.
 class _Avatar extends StatelessWidget {
   const _Avatar({required this.initials});
 
@@ -122,21 +142,10 @@ class _Avatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Container(
-        width: BookflowSizes.avatarLarge,
-        height: BookflowSizes.avatarLarge,
-        decoration: const BoxDecoration(
-          color: BookflowColors.avatarGreen,
-          shape: BoxShape.circle,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          initials,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: BookflowColors.textOnBrand,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+      child: InitialsAvatar(
+        initials: initials,
+        diameter: BookflowSizes.avatarLarge,
+        textStyle: Theme.of(context).textTheme.titleLarge,
       ),
     );
   }

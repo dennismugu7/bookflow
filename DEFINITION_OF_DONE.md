@@ -23,7 +23,16 @@ an opinion, it is written wrong.
 - [ ] Migration applies cleanly on a **copy of the current** schema.
 - [ ] OpenAPI spec regenerated; `git status` shows **no uncommitted diff** in `packages/contracts/`.
 - [ ] Dart client regenerated from that spec; `git status` shows **no uncommitted diff**.
-- [ ] CI is green end to end, including the build step.
+- [ ] CI is green end to end, including the build step **for each platform the project targets**
+      (ADR-043: Android for v1).
+
+      **CLARIFIED 2026-08-18, and this changes what the item MEANS to a reader, not what it
+      REQUIRES.** The item was read two ways in one day. The rejected reading — *every build CI
+      performs* — would make this Definition of Done depend on `.github/workflows/ci.yml`'s
+      current contents: **adding a job would silently raise the bar and removing one would lower
+      it**, and a Definition of Done may not have that property. Under the settled reading the
+      referent is the product's platforms, which a decision fixes, not the workflow file, which
+      an implementation changes.
 
 ## Self-review
 

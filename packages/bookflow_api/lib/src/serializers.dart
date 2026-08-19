@@ -16,10 +16,14 @@ import 'package:bookflow_api/src/model/date.dart';
 
 import 'package:bookflow_api/src/model/business.dart';
 import 'package:bookflow_api/src/model/business_input.dart';
+import 'package:bookflow_api/src/model/create_business_request.dart';
+import 'package:bookflow_api/src/model/create_business_request_input.dart';
 import 'package:bookflow_api/src/model/health_response.dart';
 import 'package:bookflow_api/src/model/health_response_input.dart';
 import 'package:bookflow_api/src/model/profile.dart';
 import 'package:bookflow_api/src/model/profile_input.dart';
+import 'package:bookflow_api/src/model/rename_business_request.dart';
+import 'package:bookflow_api/src/model/rename_business_request_input.dart';
 import 'package:bookflow_api/src/model/signup_accepted.dart';
 import 'package:bookflow_api/src/model/signup_accepted_input.dart';
 import 'package:bookflow_api/src/model/signup_request.dart';
@@ -30,10 +34,14 @@ part 'serializers.g.dart';
 @SerializersFor([
   Business,
   BusinessInput,
+  CreateBusinessRequest,
+  CreateBusinessRequestInput,
   HealthResponse,
   HealthResponseInput,
   Profile,
   ProfileInput,
+  RenameBusinessRequest,
+  RenameBusinessRequestInput,
   SignupAccepted,
   SignupAcceptedInput,
   SignupRequest,

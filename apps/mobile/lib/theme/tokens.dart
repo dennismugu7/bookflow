@@ -247,6 +247,12 @@ abstract final class BookflowSizes {
   /// INVENTED — the dashboard's top-right avatar (§7). Not measured: it is not
   /// on any screen this slice builds.
   static const double avatarSmall = 40;
+
+  /// INVENTED — a progress indicator sized to sit inside a button rather than
+  /// over the screen. No screenshot shows an in-flight control, so there is
+  /// nothing to measure; 18 is what fits Material's default button height
+  /// without changing it, which is the property that matters.
+  static const double inlineSpinner = 18;
 }
 
 /// Type scale.

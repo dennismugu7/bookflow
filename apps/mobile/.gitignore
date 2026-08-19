@@ -43,3 +43,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Golden-test diagnostics. `flutter test` writes master/test/diff PNGs here on
+# a failure, to be looked at and thrown away. They were committed once, by
+# accident, in the same change that legitimately updated a golden — which is
+# exactly when the mistake is easiest to make, because `git add -A` cannot tell
+# the artefact from the intended update.
+/test/golden/failures/

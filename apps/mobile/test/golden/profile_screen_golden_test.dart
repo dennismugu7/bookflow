@@ -4,6 +4,9 @@ library;
 import 'dart:async';
 import 'dart:io';
 
+import 'package:bookflow/features/business/business_models.dart';
+import 'package:bookflow/features/business/business_providers.dart';
+import 'package:bookflow/features/business/business_repository.dart';
 import 'package:bookflow/features/profile/profile_models.dart';
 import 'package:bookflow/features/profile/profile_providers.dart';
 import 'package:bookflow/features/profile/profile_repository.dart';
@@ -11,6 +14,7 @@ import 'package:bookflow/features/profile/profile_screen.dart';
 import 'package:bookflow/platform/auth_gateway.dart';
 import 'package:bookflow/platform/providers.dart';
 import 'package:bookflow/theme/app_theme.dart';
+import 'package:bookflow/theme/tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -114,6 +118,11 @@ void main() {
         overrides: <Override>[
           authGatewayProvider.overrideWithValue(_GoldenGateway()),
           profileRepositoryProvider.overrideWithValue(const _GoldenProfile()),
+          // Decision 11 widened this screen with a business section. Without
+          // this override the section's read has no API behind it, fails, and
+          // the golden captures "Something went wrong." — canonising an error
+          // state as what screen #20 looks like.
+          businessRepositoryProvider.overrideWithValue(const _GoldenBusiness()),
         ],
         child: MaterialApp(
           // Roboto pinned for the artefact only — see the note above.
@@ -142,6 +151,17 @@ ThemeData _withRoboto(ThemeData base) {
   return base.copyWith(
     textTheme: text,
     appBarTheme: base.appBarTheme.copyWith(titleTextStyle: text.titleLarge),
+    // `textButtonTheme` captured `labelLarge` from the ORIGINAL text theme when
+    // the theme was built, so re-applying the family above does not reach it.
+    // Missed until decision 11 put the first button on this screen: without
+    // this the label falls back to the test font, which draws every glyph as a
+    // filled rectangle — and the golden captured "Edit" as a solid blue block.
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: BookflowColors.actionBlue,
+        textStyle: text.labelLarge,
+      ),
+    ),
   );
 }
 
@@ -154,6 +174,29 @@ class _GoldenProfile implements ProfileRepository {
     firstName: 'dennis',
     lastName: 'mugu',
   );
+}
+
+/// The demo salon, so the artefact shows the section populated rather than
+/// empty or failed.
+class _GoldenBusiness implements BusinessRepository {
+  const _GoldenBusiness();
+
+  @override
+  Future<BusinessStatus> fetchMine() async => const HasBusiness(
+    OwnedBusiness(
+      id: '00000000-0000-4000-8000-000000000002',
+      name: 'Demo Salon',
+      published: false,
+    ),
+  );
+
+  @override
+  Future<OwnedBusiness> rename({required String id, required String name}) =>
+      throw UnimplementedError('the golden never renames');
+
+  @override
+  Future<OwnedBusiness> create(String name) =>
+      throw UnimplementedError('the golden never creates');
 }
 
 class _GoldenGateway implements AuthGateway {

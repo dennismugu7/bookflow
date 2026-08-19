@@ -17,10 +17,14 @@ export 'package:bookflow_api/src/api/me_api.dart';
 
 export 'package:bookflow_api/src/model/business.dart';
 export 'package:bookflow_api/src/model/business_input.dart';
+export 'package:bookflow_api/src/model/create_business_request.dart';
+export 'package:bookflow_api/src/model/create_business_request_input.dart';
 export 'package:bookflow_api/src/model/health_response.dart';
 export 'package:bookflow_api/src/model/health_response_input.dart';
 export 'package:bookflow_api/src/model/profile.dart';
 export 'package:bookflow_api/src/model/profile_input.dart';
+export 'package:bookflow_api/src/model/rename_business_request.dart';
+export 'package:bookflow_api/src/model/rename_business_request_input.dart';
 export 'package:bookflow_api/src/model/signup_accepted.dart';
 export 'package:bookflow_api/src/model/signup_accepted_input.dart';
 export 'package:bookflow_api/src/model/signup_request.dart';

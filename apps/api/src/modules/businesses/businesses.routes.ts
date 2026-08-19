@@ -5,7 +5,20 @@ import { z } from 'zod';
 import type { Executor } from '../../platform/db.ts';
 import { principalOf } from '../../platform/auth.ts';
 import { ProblemError } from '../../platform/problem.ts';
-import { findBusinessForUser } from './businesses.repository.ts';
+import {
+  businessRepository,
+  findBusinessForUser,
+} from './businesses.repository.ts';
+import {
+  createBusinessRequestSchema,
+  renameBusinessRequestSchema,
+} from './businesses.schema.ts';
+import {
+  createMyBusiness,
+  getMyBusiness,
+  logScopedMiss,
+  renameMyBusiness,
+} from './businesses.service.ts';
 
 /** Knows HTTP. Parses, calls the repository, serialises. No logic. */
 
@@ -55,6 +68,147 @@ export function registerBusinessRoutes(
         // `undefined` for both — so this is not a decision a route can get
         // wrong by accident. `schema.integration.test.ts` asserts the two
         // response bodies are byte-identical, not just both 404.
+        //
+        // The distinction the RESPONSE withholds is recorded in the log, where
+        // it costs the caller nothing and tells an operator whether this is a
+        // stale id or a real one in the wrong hands. See `logScopedMiss`.
+        await logScopedMiss(db(), request.log, { userId, businessId });
+        throw new ProblemError('not-found', 'no such business for this user');
+      }
+
+      return business;
+    },
+  );
+
+  // ── POST /v1/businesses ───────────────────────────────────────────────────
+  //
+  // 201, not 202. `auth.routes.ts` answers 202 to sign-up because "nothing
+  // usable exists yet"; here something does — the business is readable
+  // immediately — so the ordinary 201 applies.
+  app.withTypeProvider<ZodTypeProvider>().post(
+    '/v1/businesses',
+    {
+      schema: {
+        operationId: 'createBusiness',
+        summary: "Create the caller's business",
+        description:
+          "Creates the business and the caller's owner membership in one statement, so neither can exist without the other. An account may hold only one business (ADR-003): a second attempt is refused with 409 business-already-exists and writes nothing. The name is trimmed before it is stored.",
+        tags: ['businesses'],
+        body: createBusinessRequestSchema,
+        response: { 201: businessSchema },
+      },
+    },
+    async (request, reply) => {
+      const { userId } = principalOf(request);
+      // Zod has already run, so `name` arrives trimmed (decision 9).
+      const { name } = request.body;
+
+      // `request.log` rather than the app logger: it carries `reqId`, so a
+      // conflict event can be joined to the request that caused it. The
+      // repository is the real one here and always is — the port exists so a
+      // TEST can supply a different one, exactly as `SignupDeps.gotrue` does.
+      const business = await createMyBusiness(
+        { db: db(), log: request.log, repository: businessRepository },
+        { userId },
+        name,
+      );
+
+      // The service throws `business-already-exists` for the conflict, from
+      // either the pre-check or the index, so this handler has no conflict
+      // branch of its own — there is one place that decision lives.
+      return await reply.code(201).send(business);
+    },
+  );
+
+  // ── GET /v1/me/business ───────────────────────────────────────────────────
+  //
+  // The question the client has to ask before it holds any id: "do I have a
+  // business, and which one". `GET /v1/me` answers about the profile and
+  // `GET /v1/businesses/{id}` needs an id, so neither answers this.
+  //
+  // ── THE 404 IS A DATA ANSWER, AND THE CLIENT MUST TREAT IT AS ONE ─────────
+  //
+  // An account with no business is the ORDINARY state of every owner between
+  // sign-up and onboarding — not a failure. ADR-014 fixes that a single
+  // resource is returned as itself, so there is no `{ business: null }`
+  // envelope available without deviating, and `GET /v1/me` already sets the
+  // precedent of `not-found` for a missing singleton.
+  //
+  // The consequence lands on the Flutter side and is the one line the
+  // dashboard's error state depends on: the feature repository maps THIS 404
+  // to "no business yet" and every other failure to an error. If a 404 were
+  // allowed to surface as an `AsyncValue.error`, the dashboard would render its
+  // error state for a brand-new account.
+  app.withTypeProvider<ZodTypeProvider>().get(
+    '/v1/me/business',
+    {
+      schema: {
+        operationId: 'getMyBusiness',
+        summary: "The caller's own business",
+        description:
+          'Answers "do I have a business, and which one" without needing its id. A 404 means the account has not created one yet — an ordinary state, not an error. Clients must not surface it as a failure.',
+        tags: ['me'],
+        response: { 200: businessSchema },
+      },
+    },
+    async (request) => {
+      const { userId } = principalOf(request);
+
+      const business = await getMyBusiness(db(), { userId });
+
+      if (business === undefined) {
+        throw new ProblemError('not-found', 'no business for this principal');
+      }
+
+      return business;
+    },
+  );
+
+  // ── PATCH /v1/businesses/:businessId ──────────────────────────────────────
+  //
+  // Rename. The name is the only editable field (decision 4) and there is no
+  // delete route at all, so "cannot be deleted" is satisfied by absence rather
+  // than by a route that refuses.
+  app.withTypeProvider<ZodTypeProvider>().patch(
+    '/v1/businesses/:businessId',
+    {
+      schema: {
+        operationId: 'renameBusiness',
+        summary: 'Rename a business the caller belongs to',
+        description:
+          'The name is the only editable field. Scoped through membership: a business the caller has no membership in is indistinguishable from one that does not exist. The name is trimmed before it is stored.',
+        tags: ['businesses'],
+        params: z.object({ businessId: z.uuid() }),
+        body: renameBusinessRequestSchema,
+        response: { 200: businessSchema },
+      },
+    },
+    async (request) => {
+      const { userId } = principalOf(request);
+      const { businessId } = request.params;
+      // Zod has already run — `fastify-type-provider-zod` validates the body
+      // against the schema above BEFORE this handler is entered. So `name`
+      // arrives trimmed (decision 9), and a malformed request never reaches the
+      // service. A validation failure becomes a 400 problem document in
+      // `platform/problem.ts`.
+      const { name } = request.body;
+
+      const business = await renameMyBusiness(
+        db(),
+        { userId, businessId },
+        name,
+      );
+
+      if (business === undefined) {
+        // The same 404 as the read above, for the same reason: a distinct 403
+        // would confirm which business ids exist. The repository already
+        // refuses to distinguish "not yours" from "does not exist" — the
+        // membership predicate is inside the UPDATE's `where`, so a business
+        // that is not the caller's simply matches no row.
+        //
+        // Logged with the same distinction as the read, for the same reason: a
+        // rename aimed at somebody else's business is worth being able to count.
+        await logScopedMiss(db(), request.log, { userId, businessId });
         throw new ProblemError('not-found', 'no such business for this user');
       }
 

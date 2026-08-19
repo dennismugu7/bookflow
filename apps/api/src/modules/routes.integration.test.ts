@@ -290,7 +290,7 @@ describe('GET /v1/businesses/:businessId — the scoping rule', () => {
     });
   });
 
-  it('gives the SAME response for “not yours” and “does not exist”', async () => {
+  it('criterion 20 — gives the SAME response for “not yours” and “does not exist”', async () => {
     // ── THE TEST THIS ROUTE EXISTS FOR ──────────────────────────────────────
     //
     // A business that is real but belongs to someone else, and a business id
@@ -357,5 +357,179 @@ describe('GET /v1/businesses/:businessId — the scoping rule', () => {
     });
 
     expect(response.statusCode).toBe(401);
+  });
+});
+
+/**
+ * ══ THE DEFAULT-DENY SWEEP ══════════════════════════════════════════════════
+ *
+ * `platform/auth.ts` protects every route that does not declare
+ * `config: { public: true }`, and until now that was proved ROUTE BY ROUTE —
+ * one 401 test per endpoint. That covers the routes someone remembered to
+ * write a test for, which is precisely the set that is not at risk.
+ *
+ * **This asks the route table instead.** It enumerates what the built app
+ * actually registered and asserts every route answers 401 without a token,
+ * excepting a short declared list of the ones that are public on purpose. A
+ * fourth route added without auth is caught because it is in the table, not
+ * because anybody thought about it.
+ *
+ * ── WHY THE PUBLIC LIST IS DECLARED HERE RATHER THAN READ FROM THE ROUTE ────
+ *
+ * `printRoutes` reports methods and paths, not `config`. Reading the flag back
+ * would make the test agree with the route by construction — it would assert
+ * "routes marked public are public", which is a tautology. **Declaring the list
+ * makes the test fail in BOTH directions:** a route that stops being protected
+ * fails it, and a route that becomes public deliberately fails it too, until
+ * somebody adds it here. The second failure is the review prompt, and this list
+ * is the whole public surface of the API in one place.
+ */
+describe('default-deny, swept over the registered route table', () => {
+  /** Every method+path that is public ON PURPOSE. Nothing else may be. */
+  const DELIBERATELY_PUBLIC = new Set<string>([
+    // Liveness. Infrastructure's consumer, and it must answer when the
+    // versioned surface cannot.
+    'GET /health',
+    'HEAD /health',
+    // ADR-032's mediated sign-up: there is no token before an account exists.
+    'POST /v1/auth/signup',
+  ]);
+
+  /** `:param` segments filled with a real UUID so routing matches. */
+  function concreteUrl(path: string): string {
+    return path
+      .split('/')
+      .map((segment) =>
+        segment.startsWith(':')
+          ? '00000000-0000-4000-8000-00000000000a'
+          : segment,
+      )
+      .join('/');
+  }
+
+  /**
+   * What the app registered, parsed from its own route table.
+   *
+   * ── THE TREE IS NESTED EVEN WITH `commonPrefix: false` ─────────────────────
+   *
+   * Fastify prints a radix tree, and a child line carries only its SUFFIX:
+   *
+   * ```
+   * ├── /v1/me (GET, HEAD)
+   * │   └── /business (GET, HEAD)
+   * └── /v1/businesses (POST)
+   *     └── /:businessId (GET, HEAD, PATCH)
+   * ```
+   *
+   * **The first version of this parser read those suffixes as whole paths**, so
+   * it swept `/business` and `/:businessId` — URLs that match no route. Those
+   * answer 401 anyway, because authentication runs in `onRequest` and precedes
+   * routing, **so the sweep reported a clean pass while testing nothing.** That
+   * is the exact failure mode the criteria file warns about: an instrument that
+   * under-reports reads like work already done. It was caught by the control
+   * test below, which is the reason the control is written first.
+   *
+   * So depth is tracked and prefixes are joined.
+   */
+  function registeredRoutes(
+    instance: FastifyInstance,
+  ): { readonly method: string; readonly path: string }[] {
+    const routes: { method: string; path: string }[] = [];
+    const prefixes: string[] = [];
+
+    for (const line of instance
+      .printRoutes({ commonPrefix: false })
+      .split('\n')) {
+      const marker = line.search(/[├└]/);
+      if (marker < 0) continue;
+
+      // `├── ` and `│   ` are four characters each, one per level.
+      const depth = marker / 4;
+      const body = line.slice(marker + 4);
+      const match = /^(\S*)\s+\((.+)\)\s*$/.exec(body);
+      if (match === null) continue;
+
+      prefixes.length = depth;
+      prefixes[depth] = match[1] ?? '';
+      const path = prefixes.join('');
+
+      for (const method of (match[2] ?? '').split(',')) {
+        routes.push({ method: method.trim(), path });
+      }
+    }
+
+    return routes;
+  }
+
+  /**
+   * Every route that answered something other than 401 without a token, and is
+   * not on the declared public list. Empty is the only acceptable answer.
+   */
+  async function unprotectedRoutes(
+    instance: FastifyInstance,
+  ): Promise<string[]> {
+    const leaks: string[] = [];
+
+    for (const route of registeredRoutes(instance)) {
+      const name = `${route.method} ${route.path}`;
+      if (DELIBERATELY_PUBLIC.has(name)) continue;
+
+      const response = await instance.inject({
+        method: route.method as 'GET',
+        url: concreteUrl(route.path),
+      });
+
+      // No body is sent deliberately: authentication runs in `onRequest`,
+      // before validation, so a protected route must answer 401 rather than
+      // 400. A 400 here would mean the body was parsed before the token was
+      // checked, which is its own defect.
+      if (response.statusCode !== 401) leaks.push(name);
+    }
+
+    return leaks;
+  }
+
+  it('the sweep can read the route table at all — the control for the two below', () => {
+    const routes = registeredRoutes(app);
+    const names = routes.map((route) => `${route.method} ${route.path}`);
+
+    // Without this, a parser that matched nothing would report a clean sweep
+    // and read exactly like a pass. Both halves matter: a plausible count, and
+    // the specific routes this slice added.
+    expect(routes.length).toBeGreaterThanOrEqual(8);
+    expect(names).toContain('POST /v1/businesses');
+    expect(names).toContain('GET /v1/me/business');
+    expect(names).toContain('PATCH /v1/businesses/:businessId');
+    expect(names).toContain('GET /health');
+  });
+
+  it('every registered route not declared public answers 401 without a token', async () => {
+    expect(await unprotectedRoutes(app)).toEqual([]);
+  });
+
+  it('DRIVEN — the sweep catches a route that is public and should not be', async () => {
+    // The control that makes the assertion above mean something. A sweep that
+    // always returns an empty list passes whatever the app does; this builds
+    // the same app with one extra unprotected route and proves the sweep sees
+    // it. The route is added before `ready()`, which is the only window
+    // Fastify allows, and this instance is never used for anything else.
+    const probe = await buildApp(config, { db: () => ctx.db });
+    probe.get('/v1/probe-unprotected', { config: { public: true } }, () => ({
+      reachable: true,
+    }));
+    await probe.ready();
+
+    try {
+      // GET and HEAD: Fastify registers HEAD alongside every GET, and the sweep
+      // reports both because both are reachable. Asserting the exact pair
+      // rather than "contains" keeps it honest — a sweep that flagged every
+      // route would also contain this one.
+      expect(await unprotectedRoutes(probe)).toEqual([
+        'GET /v1/probe-unprotected',
+        'HEAD /v1/probe-unprotected',
+      ]);
+    } finally {
+      await probe.close();
+    }
   });
 });

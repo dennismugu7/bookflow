@@ -1,5 +1,13 @@
 import 'dart:async';
 
+// Mutual with `business_providers.dart`, which imports this file for
+// `apiClientProvider`. Dart permits it and there is no initialisation cycle:
+// a provider's closure runs on first read, not at library load. The
+// alternative — building the business repository here from `apiClientProvider`
+// directly — would mean a test overriding `businessRepositoryProvider` did not
+// affect the membership status, so the two could report different answers
+// about the same account.
+import 'package:bookflow/features/business/business_providers.dart';
 import 'package:bookflow/features/membership/membership_repository.dart';
 import 'package:bookflow/platform/api_client.dart';
 import 'package:bookflow/platform/auth_gateway.dart';
@@ -82,10 +90,15 @@ final Provider<BookflowApi> apiClientProvider = Provider<BookflowApi>((
   );
 });
 
-/// See `membership_repository.dart` for why the default returns `none`.
+/// Whether the signed-in owner has a business, derived from the API.
 final Provider<MembershipRepository> membershipRepositoryProvider =
     Provider<MembershipRepository>(
-      (Ref ref) => const NoBusinessYetMembershipRepository(),
+      // Was `const NoBusinessYetMembershipRepository()` — a constant whose own
+      // comment said it "becomes a lie the moment business creation ships".
+      // It has shipped. The status now derives from `GET /v1/me/business`,
+      // through the repository that owns the 404-as-data-answer rule.
+      (Ref ref) =>
+          ApiMembershipRepository(ref.watch(businessRepositoryProvider)),
     );
 
 /// Whether the signed-in owner has a business.

@@ -1,12 +1,27 @@
-/// ══ PHASE 3'S CRITICAL JOURNEY ══════════════════════════════════════════════
+/// ══ PHASE 3'S CRITICAL JOURNEY, NOW REACHED BY NAVIGATING ═══════════════════
 ///
-/// **A session is injected, and screen #20 renders real data fetched from
-/// deployed staging** (ADR-033's 2026-08-15 amendment).
+/// **A session is injected, the owner taps their way from the dashboard to
+/// screen #20, and it renders real data fetched from deployed staging**
+/// (ADR-033's 2026-08-15 amendment).
 ///
 /// This is the only test in the project that satisfies `DEFINITION_OF_DONE.md`'s
 /// e2e item. ADR-033's exclusivity clause is unchanged: `integration_test`
 /// driving a real build, and nothing else. `scripts/smoke-staging.mjs` is an
 /// API-level smoke test and does not tick this box.
+///
+/// ── WHY THIS FILE CHANGED IN THE BUSINESS-SETUP SLICE ──────────────────────
+///
+/// **It used to land on screen #20 directly, and that stopped being true.** The
+/// redirect resolved `member → /home`, and `/home` built `ProfileScreen`. Decision
+/// 12 gave `/home` to the dashboard (screen #12) and moved the profile to
+/// `/profile`, reachable only by tapping: **#12's avatar → #17 → Profile**.
+///
+/// So the old test would have waited ninety seconds for a first name on a screen
+/// that renders "Bookflow" and "Finish setting up", then failed at `_pumpUntil`
+/// with a message pointing at the deploy. **It was invisible to five green
+/// `pull_request` runs**, because `e2e-staging` runs only on push-to-`main` or
+/// `workflow_dispatch`, and `flutter test` does not include `integration_test/`.
+/// The slice that moved the screen fixes the test.
 ///
 /// ── WHAT IT EXERCISES, AND WHY THOSE LAYERS ────────────────────────────────
 ///
@@ -16,7 +31,13 @@
 ///   deployed API  → the real Render service over the public internet
 ///   generated client → `package:bookflow_api`, the dart-dio output (ADR-025)
 ///   Riverpod graph → the real `providers.dart`, built by the real app
-///   router        → `go_router` and the auth-aware redirect (ADR-028)
+///   router        → `go_router`, the auth-aware redirect (ADR-028) **and
+///                   ADR-042's push navigation**, which is new here
+///
+/// **The navigation is now part of what is under test, not a means to it.** The
+/// test taps the avatar and the Profile row rather than deep-linking, because
+/// that chain is what this slice built and a deep link would prove the screen
+/// renders while saying nothing about whether an owner can reach it.
 ///
 /// ── WHAT IT GIVES UP, STATED HERE TOO ──────────────────────────────────────
 ///
@@ -34,13 +55,21 @@
 /// What is skipped is a screen that does not exist, not a layer that does.
 ///
 /// **2. `membershipRepositoryProvider` is overridden to `member`.** Without it
-/// the redirect sends every signed-in user to `/setup` and screen #20 never
-/// builds. That is correct production behaviour today, not a bug:
-/// `NoBusinessYetMembershipRepository` is a documented constant because
-/// **`apps/api` has no endpoint that answers "does this user have a business"**
-/// and business creation does not exist. The override supplies the one answer no
-/// data source can yet give. **It does not touch the data under test** — the
-/// profile still comes from `GET /v1/me` on deployed staging, over the wire.
+/// the redirect sends this account to `/setup` and neither the dashboard nor
+/// screen #20 ever builds.
+///
+/// **The reason has changed and the override has not.** It used to be that no
+/// endpoint could answer "does this user have a business". `GET /v1/me/business`
+/// now does — and **this account must never have one**: K78's standing rule is
+/// that the staging e2e account is never given a membership, because Phase 3's
+/// gate depends on it being an owner without one. So the override supplies the
+/// answer the account is forbidden from having naturally.
+///
+/// **It does not touch the data under test.** The profile still comes from
+/// `GET /v1/me` on deployed staging, over the wire, and the navigation it makes
+/// reachable is real. `business_setup_e2e_test.dart` on
+/// `feat/business-setup-e2e` runs the *other* account with **no** override,
+/// which is where the membership answer itself is under test.
 ///
 /// ── HOW IT KNOWS THE DATA IS REAL AND NOT A FIXTURE ────────────────────────
 ///
@@ -109,6 +138,7 @@ import 'package:bookflow/platform/config.dart';
 import 'package:bookflow/platform/providers.dart';
 import 'package:bookflow/platform/secure_session_store.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -223,19 +253,51 @@ void main() {
         ),
       );
 
-      // ── 4. The journey completes ────────────────────────────────────────
+      // ── 4. The owner lands on the DASHBOARD, not the profile ────────────
       //
-      // `pumpAndSettle` is wrong here: this frame graph is waiting on real
+      // `/home` builds screen #12 as of decision 12. Waiting for the setup
+      // heading rather than for the profile is the first assertion that the
+      // route move happened and that the redirect resolved `member → /home`.
+      //
+      // `pumpAndSettle` is wrong throughout: this frame graph is waiting on real
       // network, and settle would either return before the request lands or
       // throw on a timeout that says nothing useful. Polling reports what it was
       // waiting for.
       await _pumpUntil(
         tester,
-        find.text(expected.firstName),
-        because: 'screen #20 never rendered the first name from GET /v1/me',
+        find.byKey(const Key('setup-continuation')),
+        because:
+            'the dashboard never rendered. `/home` builds screen #12 as of '
+            'decision 12 — if screen #20 appeared here instead, the route move '
+            'has been reverted',
       );
 
-      // ── 5. What is on screen is what staging holds ──────────────────────
+      // ── 5. Tap through the chain this slice built ───────────────────────
+      //
+      // #12's avatar pushes #17; #17's Profile row pushes #20. Tapped rather
+      // than deep-linked: the navigation is what decision 12 added, and a deep
+      // link would prove the screen renders while saying nothing about whether
+      // an owner can reach it. This is also the only e2e coverage of ADR-042's
+      // push navigation against a real build.
+      await tester.tap(find.byKey(const Key('dashboard-avatar')));
+      await _pumpUntil(
+        tester,
+        find.byKey(const Key('account-profile')),
+        because:
+            'screen #17 never appeared after tapping the dashboard avatar — '
+            'ADR-042 level-2 push, or the avatar itself, is broken',
+      );
+
+      await tester.tap(find.byKey(const Key('account-profile')));
+      await _pumpUntil(
+        tester,
+        find.text(expected.firstName),
+        because:
+            'screen #20 never rendered the first name from GET /v1/me after '
+            'tapping Profile on screen #17',
+      );
+
+      // ── 6. What is on screen is what staging holds ──────────────────────
       expect(find.text('My profile'), findsOneWidget);
       expect(find.text(expected.firstName), findsWidgets);
       expect(find.text(expected.lastName), findsWidgets);
@@ -256,7 +318,7 @@ void main() {
           '${expected.firstName[0].toUpperCase()}${expected.lastName[0].toUpperCase()}';
       expect(find.text(initials), findsOneWidget);
 
-      // ── 6. Leave staging as it was found ────────────────────────────────
+      // ── 7. Leave staging as it was found ────────────────────────────────
       //
       // The account is permanent and shared (docs/ENVIRONMENT.md §3); the
       // SESSION is not. This does more than tidy the emulator: it revokes the

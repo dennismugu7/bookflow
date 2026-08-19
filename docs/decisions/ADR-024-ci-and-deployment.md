@@ -179,3 +179,24 @@ several times what the rest of CI does, to re-prove a compile that changes only 
 The label makes the expensive job **opt-in per pull request**, so a change that touches iOS can
 still be proven before merge without every unrelated PR paying for it. `main` and
 `workflow_dispatch` cover the cases where the result matters regardless.
+
+**2026-08-18 — the `ios-build` job no longer exists. ADR-043 removed it.**
+
+Everything above about **when** `ios-build` runs is now historical. It was true, the reasoning was
+sound, and the trigger rules did what they were written to do — they are simply about a job that
+is gone.
+
+**ADR-043 makes Android the v1 platform target and puts iOS out of scope for v1**, on a finding
+this ADR had no reason to check: **no ADR ever named iOS as a target.** ADR-015 chose Flutter and
+stated a constraint on how iOS would be built *if* built; ADR-005 says "Kenya only for v1" and
+names no platform; the design documents contain zero matches for iOS, Android, App Store or Play
+Store. The job existed because `flutter create` produces an `ios/` directory.
+
+**This is an amendment and not a reversal.** Nothing in this ADR's Decision is withdrawn: GitHub
+Actions is still the one CI system, staging still deploys on merge and production on tag, and the
+macOS-runner reasoning still describes correctly what a macOS job would cost if one returned.
+**What has moved on is a fact — the job's existence — not a judgement.**
+
+The cadence work on `ci/ios-build-cadence`, which would have moved this job to a weekly schedule,
+is superseded in its primary purpose. It still carries other changes and needs reconciling rather
+than merging or discarding on autopilot.

@@ -131,3 +131,44 @@ works *given* a session, not that a session can be obtained. Recorded here so it
 rediscovered as a surprise.
 
 Authorised by, and reported in, PR 4c. See `docs/analysis/09-phase3-close.md` §5.1 and ADR-040.
+
+### 2026-08-19 — business setup is a critical journey
+
+**The test this ADR states, quoted rather than paraphrased:**
+
+> **A critical journey is one whose failure prevents an owner from taking a booking, or a client
+> from making one.**
+
+**Applied to business setup: an owner who cannot create a business cannot take a booking.** Every
+bookable thing is a child of `public.businesses` — services, team members, opening hours, the
+booking rows themselves, and the client-facing page. `docs/features/01-business-setup/00-frame.md`
+§1 states the same fact from the other direction: *"Until a business row exists, the owner cannot
+take a single booking through Bookflow."* The failure this journey would suffer is not a degraded
+experience; it is the precondition of the product.
+
+**The Decision's in-scope list does not name business setup, and that does not narrow the test.**
+The list reads *"sign-up, email verification and login … Later: the client booking flow, and the
+owner's confirm and cancel actions"*, written when business setup did not exist as a slice.
+**A list of examples following a stated test is illustration, not enumeration** — and this project
+has already ruled exactly that way once, on ADR-014: it *states a property* about error responses
+carrying a stable `type` slug and **enumerates no slugs anywhere**, so appending
+`business-already-exists` was ordinary operation rather than a contract change. A session read the
+absence of an enumeration as a prohibition, and reading the ADR settled it in a minute. The same
+correction applies here: the test governs, the examples do not bound it.
+
+**Ruled by Dennis, 2026-08-19, in the guiding session**, on the question put to him after the
+slice's own documents were found silent on it — `02-design.md`'s single mention is a conditional
+reference to what `DEFINITION_OF_DONE.md` requires *for* a critical journey, not a claim that this
+slice touches one, and no frame decision or acceptance criterion addresses it.
+
+**The consequence, stated plainly rather than left to be worked out:**
+
+- **`DEFINITION_OF_DONE.md` line 21 applies to this slice** — *"If the slice touches a critical
+  journey, an e2e test covers it and passes."*
+- **ADR-040 §4 makes it unbuilt rather than waivable.** That ADR authorises closing a phase with
+  items that are *unsatisfiable*, and its test is that the remaining action would produce a **false
+  artefact** — never that it is merely expensive. Writing this test is expensive and entirely
+  possible. It is work not yet done, which is the one thing ADR-040 does not cover.
+- **The business-setup slice does not close until the test exists and passes.**
+
+The design is `docs/features/01-business-setup/08-e2e-design.md`, written before the test.
