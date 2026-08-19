@@ -8,14 +8,42 @@
 ---
 
 Phase 4's first feature slice: **an owner can create a business, and stops being routed to the
-"finish setting up" stub forever.** 50 commits, 82 files, +11,012 / −128 **as of `fe689cd`**. A
-migration, three API routes, three new screens and one widened, and seven documents under
+"finish setting up" stub forever.** 60 commits, 89 files, +11,614 / −193 **as of `f22490c`**. A
+migration, three API routes, three new screens and one widened, and eight documents under
 `docs/features/01-business-setup/`.
+
+## THIS PR DOES NOT CLOSE THE SLICE
+
+**`DEFINITION_OF_DONE.md` line 21 is unmet: *"If the slice touches a critical journey, an e2e test
+covers it and passes."*** ADR-033's **2026-08-19 amendment** rules business setup a critical
+journey by that ADR's own test — an owner who cannot create a business cannot take a booking — and
+**ADR-040 §4 makes this unbuilt rather than waivable**: that ADR authorises closing with items
+that are *unsatisfiable*, its test being whether the remaining action would produce a false
+artefact, never that it is merely expensive. This test is expensive and entirely possible.
+
+**The e2e lives on `feat/business-setup-e2e`, and that branch closes the slice.** It carries
+`integration_test/business_setup_e2e_test.dart`, the pre-test cleanup step, and the second account
+grant.
+
+### Why the e2e is not in this PR
+
+**It cannot pass until staging runs this API, and code reaches staging only on merge to `main`.**
+The journey creates a business through `POST /v1/businesses` against deployed staging — a route
+that does not exist there yet — and its cleanup step needs `migrate-staging` to have applied this
+slice's fourth migration, which ADR-034 permits only from the `migrate-staging` job on merge.
+
+**This is the 4a/4b → 4c precedent, not a new pattern.** PR 4a built the Render target and PR 4b
+the staging smoke test; **PR 4c's e2e gate could only be written and proven after those had
+merged**, because it drives a real build against a deployed service. The same ordering applies
+here for the same reason, and `08-e2e-design.md` was written first so the design is reviewable
+before the code that depends on the merge.
 
 > **EVERY COUNT IN THIS FILE IS ANCHORED TO A COMMIT AND DECAYS AFTER IT.** This description is
 > pasted verbatim rather than re-derived, so it cannot run a command the way the rest of this
-> repository's records can — which makes it the one document where a stale number ships. **Re-run
-> these immediately before opening the PR and update every figure below:**
+> repository's records can — which makes it the one document where a stale number ships.
+> **It has now decayed twice** — anchored at `fe689cd`, re-derived at `f22490c` — which is the
+> mechanism working, not failing. **Re-run these immediately before opening the PR and update
+> every figure below:**
 >
 > ```
 > git rev-list --count origin/main..HEAD                                    # commits
@@ -121,7 +149,7 @@ npm run contracts:check   # OpenAPI + Dart client drift
 cd apps/mobile && flutter analyze && dart format --set-exit-if-changed . && flutter test
 ```
 
-Expected, and what was observed locally on `a04fafd`: **61 unit in 7 files**, **124 integration in
+Expected, and what was observed locally on `f22490c`: **61 unit in 7 files**, **124 integration in
 11 files**, `contracts: no drift`, `flutter analyze` — *No issues found!*, `dart format` 38 files
 0 changed, `flutter test` **58 passed**.
 
@@ -132,22 +160,32 @@ grep -rhoE "'criterion [0-9]+(, [0-9]+)*" apps/api/src apps/api/test apps/mobile
   | grep -oE "[0-9]+" | sort -n | uniq
 ```
 
-**60 of 62 as of `fe689cd`.** The two unmapped are 48 and 49 — see below. The denominator is the
+**60 of 62 as of `f22490c`**, re-derived by running the command above rather than carried
+forward. The two unmapped are 48 and 49 — see below. The denominator is the
 highest number in `01-acceptance-criteria.md`, which is append-only.
 
-## CI HAS NEVER RUN ON THIS BRANCH
+## WHAT CI HAS AND HAS NOT BUILT
 
-**Zero runs across all 50 commits, as of `fe689cd`.** Verified with the per-workflow query, paired
-with a control so the zero means something:
+**No run has ever been triggered on this branch ref — 0, as of `f22490c`**, with a control so the
+zero means something:
 
 ```
 gh api "repos/dennismugu7/bookflow/actions/workflows/331331404/runs?branch=feat/business-setup-frame" --jq '.total_count'   # 0
-gh api "repos/dennismugu7/bookflow/actions/workflows/331331404/runs?branch=feat/phase3-e2e" --jq '.total_count'            # 8
+gh api "repos/dennismugu7/bookflow/actions/workflows/331331404/runs?branch=main" --jq '.total_count'                       # 31
 ```
 
+**But "zero runs, nothing here has ever been built" is no longer true, and the earlier draft of
+this section said exactly that.** This branch now contains a merge of `main` at `6c3e1d9` —
+verified with `git merge-base --is-ancestor 6c3e1d9 HEAD` — and that commit was built **green
+across all eight jobs** in run `32214766412`, the merge of PR #14. So part of this branch's
+content has been through CI.
+
+**What has never been built is the slice itself: 59 non-merge commits, none of them ever compiled
+by Actions.** That is the claim to carry into review.
+
 **This branch is green LOCALLY and has never been green in CI**, because those are different
-claims. Actions minutes were exhausted 2026-08-16 and reset ~2026-08-31. Opening this PR is what
-produces the first run, and `DEFINITION_OF_DONE.md` asks for it before human review.
+claims. Opening this PR produces the first run against the slice's own code, and
+`DEFINITION_OF_DONE.md` asks for it before human review.
 
 ## Five things the diff cannot show
 
@@ -172,8 +210,9 @@ unreachable while `ck_memberships_role` permits only `'owner'`, so it carries a 
 proxy** whose own test name says so: `criterion 50 — the index is partial on role = owner (SCHEMA
 proxy, not the behaviour)`. All three are recorded in `01-acceptance-criteria.md`'s notes.
 
-**3. Seven design deviations — register entries 10–16, plus three rulings at 17–19, as of
-`fe689cd`.** A reviewer
+**3. Seven design deviations — register entries 10–16, plus three rulings at 17–19; nineteen
+entries in the register as of `f22490c`, derived with `grep -oE "^\| [0-9]+ \|"
+docs/analysis/08-design-deviations.md | grep -oE "[0-9]+" | sort -n | tail -1`.** A reviewer
 comparing the build to `native-04` and `native-11` will find controls missing. They are decisions:
 screen #5 ships one field of four and no back arrow, screen #12 omits the Bookings/Contacts/
 Calendar tabs, screen #17 ships two rows of five, screen #5 gains a sign-out the design does not
@@ -202,10 +241,20 @@ index, alters no column, rewrites no data. It fails to build if duplicate owner 
 is the correct behaviour; staging has none, because no code path has ever inserted a `memberships`
 row.
 
+**The migration is the fourth in the repository**, and the first this slice owns. `main` carries
+three; this branch carries four. Reviewers switching between branches should reset the local
+database (`npm run db:reset`) or the suite fails against a schema from somewhere else.
+
 **The membership scoping rule.** Twice over: the new repository applies `user → membership →
 business` to every protected read and write, and the index constrains the very table that rule
 traverses. **`businessExistsUnscoped` is the deliberate exception** and is named here rather than
-left to be found.
+left to be found — one unscoped read, boolean only, log-only, one permitted caller returning
+`Promise<void>`, constrained by `businesses.boundaries.test.ts` which reads the source tree.
+
+**Nothing else on either list.** Checked against `CLAUDE.md` §6 rather than from memory: no
+payment math, no webhooks, no auth or password-reset path, no production secrets, no availability
+predicate or exclusion constraint, no booking statuses, no public projection, no booking tokens,
+no payment-proof path, no handle assignment, no outbox boundary.
 
 Per `DEFINITION_OF_DONE.md`, the record of that review is **a comment on this PR, posted before
 merge, naming each surface read and who read it.** The owner's own review pass is a separate gate
@@ -242,8 +291,16 @@ to `main`"*, so `main`'s history is one commit per slice. **Delete the branch af
 ### Rebase risk — do not trust the "conflicts with nothing" claim
 
 `GUIDE_HANDOFF.md` §5 records that this branch *"conflicts with nothing"*. **That was written when
-it was ten commits of documents, and it is now 50 including code (`fe689cd`).** PR #14 merges first.
-Both branches edit:
+it was ten commits of documents, and it is now 60 including code (`f22490c`).**
+
+**PR #14 HAS MERGED, and this section is the record of a risk that materialised rather than a
+warning about one.** `main` was merged into this branch at `0160b83`. `docs/analysis/05-triage.md`
+merged clean — K77 and K78 arrived and this branch had never touched the file. **`docs/ENVIRONMENT.md`
+did NOT conflict either, and that was the danger**: the two identity-check sections sat in
+different regions, so git merged both and the file asserted *"Expected total: 1"* and *"Expected
+total: 2"* for one commit. **A clean merge is not a correct merge.** It was caught by reading the
+file rather than trusting git's silence, and the superseded section has since been deleted
+outright. Both branches edit:
 
 - **`docs/ENVIRONMENT.md`** — #14 adds the e2e account rows and the identity check; this branch
   adds the second account, its two secrets, and a two-id allowlist. **The identity check is the

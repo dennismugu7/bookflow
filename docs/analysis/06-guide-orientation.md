@@ -323,7 +323,7 @@ vertical slice, not to the foundation. `apps/mobile` holds a Flutter skeleton wi
 | `packages/bookflow_api/` | The generated Dart client package. `apps/mobile` depends on it by path. Regenerated wholesale (ADR-025). |
 | `apps/mobile/` | Flutter skeleton, package `com.mugulabs.bookflow`. Placeholder screen, no design system, no API calls yet. |
 | `supabase/` | `config.toml` (generated, unmodified) and one migration: extensions only, no tables. Migrations are Do-Not-Vibe. |
-| `.github/workflows/ci.yml` | ADR-024's gate: four jobs — `verify` (TypeScript), `mobile` (Dart on Linux), `ios-build` (unsigned, macOS, label-gated), `contracts` (drift check). **No deploy job yet** — that is Phase 3. |
+| `.github/workflows/ci.yml` | ADR-024's gate. **STALE, CORRECTED 2026-08-19 — this said "four jobs" including `ios-build`.** There are **seven**, all Ubuntu; `ios-build` no longer exists (ADR-043: Android is the v1 target, iOS out of scope). Derive it rather than trusting a number here: `grep -cE "^  [a-z-]+:$" .github/workflows/ci.yml`. *Original text follows, as the record of what this file said.* ADR-024's gate: four jobs — `verify` (TypeScript), `mobile` (Dart on Linux), `ios-build` (unsigned, macOS, label-gated), `contracts` (drift check). **No deploy job yet** — that is Phase 3. |
 | root tooling | `package.json` workspaces and `db:*` scripts · `.nvmrc` · `.editorconfig` · `.gitattributes` · `eslint.config.js` · `.prettierrc.json` · `vitest.config.ts` · `.env.example`. |
 | `docs/ENVIRONMENT.md` | **Mutable.** What exists outside the repository — installed tools, remotes, hosted projects, deploy targets — each with the command that verifies it. |
 
