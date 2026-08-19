@@ -103,11 +103,38 @@ another.**
 
 **Stronger:** the value is *created by the test through the UI*, not merely read by two paths. A
 run-unique business name — a fixed prefix plus a random token — is typed into screen #5's field,
-submitted, and then read back **over a separate connection**: the `STAGING_APP_DATABASE_URL`
-already open for cleanup, selecting `name` from `public.businesses` for that user. The database
-never learns the name from the test's own assertion; it learns it from the API, which learned it
-from the widget. Two paths, one value, neither knowing it beforehand — and the name existed nowhere
-before the run began.
+submitted, and then read back **over a second client that shares nothing with the app's graph**.
+The reader never learns the name from the test's own assertion; it learns it from the API, which
+learned it from the widget. Two paths, one value, neither knowing it beforehand — and the name
+existed nowhere before the run began.
+
+**CORRECTED 2026-08-19, WHILE BUILDING THE TEST. This section said the read-back was SQL, and it
+cannot be.** It read: *"read back **over a separate connection**: the `STAGING_APP_DATABASE_URL`
+already open for cleanup, selecting `name` from `public.businesses` for that user"*, and called the
+reader "the database".
+
+**Why that was wrong: it contradicted §8 of this same document.** §8 records that the Dart process
+has **no Postgres driver** and **must hold no database URL**, because the only channel into the
+build is `--dart-define-from-file`, which constant-folds its values into the binary — putting a
+database URL there would compile a credential into an artefact, the exact defect
+`docs/analysis/10-e2e-credential-in-artefact.md` measured. **§4 was written before §8 settled that
+constraint, and the two sections shipped in the same file disagreeing.** The cleanup connection is
+the *workflow's*, held on the runner; the test never has it.
+
+**What the second path actually is: `GET /v1/me/business` over a bare Dio client**, opened by the
+test, sharing no provider and not the generated client — the same shape `profile_e2e_test.dart`
+uses for `GET /v1/me`.
+
+**And the cost of that substitution, stated rather than glossed: it is independent of the app's
+graph but NOT independent of the API.** SQL would have been independent of both. So a defect
+living in the API — a route that echoed the request body rather than reading the row back — would
+satisfy both paths here, where a SQL read-back would have caught it. **That is a real reduction in
+what the oracle proves**, and it is accepted because the alternative is compiling a database
+credential into a build artefact.
+
+*The superseded wording is quoted above rather than deleted, on the same terms as `00-frame.md`
+§5.2's correction: the record should show what was believed and why it was wrong, not only the
+answer.*
 
 **Weaker, and this is the part not to overstate:** the read-back path shares a *process* with the
 test in a way `profile_e2e_test.dart`'s does not, because the same run both writes and verifies.
