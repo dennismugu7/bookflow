@@ -131,14 +131,42 @@ export async function businessExistsUnscoped(
  * business yet.** That is the state every newly signed-up owner is in, not an
  * authorization failure, and the route above this must not turn it into one.
  *
- * ── ONE ROW, AND WHY THAT IS SAFE TO ASSUME ─────────────────────────────────
+ * ── OWNED MEANS OWNED: THE ROLE IS FILTERED ─────────────────────────────────
  *
- * ADR-003 is one business per account. Until the partial unique index that
- * enforces it lands, that is a rule the schema does not hold — so this takes
- * the first row rather than pretending the cardinality is guaranteed. It is
- * ordered so the choice is deterministic rather than whatever the planner
- * returns first; a non-deterministic answer to "which is my business" would be
- * a bug that appears only under load.
+ * `role = 'owner'` is in the `where`, and it has to be. **Today it changes
+ * nothing** — `ck_memberships_role` permits no other value, so every membership
+ * row is an owner row. **It changes everything the day I9 widens that
+ * vocabulary**, which the migration for `uq_memberships_one_owner_per_user`
+ * names as the whole reason that index is PARTIAL: a non-owner membership at a
+ * second business must stay possible.
+ *
+ * Without this filter, an owner of B1 who is also a stylist at B2 would get
+ * whichever membership was created first, and `GET /v1/me/business` would route
+ * them into a salon that is not theirs. **The filter is added while it is
+ * provably inert, because the alternative is adding it after the state exists —
+ * when the fix and the bug arrive together.**
+ *
+ * It also makes the partial index usable here: `uq_memberships_one_owner_per_user`
+ * is `(user_id) where role = 'owner'`, and PostgreSQL will only choose a partial
+ * index when the query's predicate implies the index's. Without the filter this
+ * falls back to `uq_memberships_user_business`'s `user_id` prefix, over every
+ * membership rather than every owner membership.
+ *
+ * ── ONE ROW, AND IT IS NOW A SCHEMA GUARANTEE ───────────────────────────────
+ *
+ * ADR-003 is one business per account, and **`uq_memberships_one_owner_per_user`
+ * enforces it** — at most one `role = 'owner'` membership per user, so with the
+ * filter above this query can match at most one row. **That was not true when
+ * this comment was first written**: it said "until the partial unique index that
+ * enforces it lands", and the index lands in the same change set as this
+ * sentence.
+ *
+ * **So `orderBy` and `limit(1)` are now DEFENSIVE rather than load-bearing**, and
+ * they stay. The determinism argument is unchanged and still worth having: if
+ * the guarantee is ever weakened — the index dropped, its predicate altered —
+ * this returns a stable answer instead of whatever the planner reached first,
+ * and a non-deterministic answer to "which is my business" is a bug that appears
+ * only under load.
  */
 export async function findBusinessOwnedBy(
   executor: Executor,
@@ -148,6 +176,7 @@ export async function findBusinessOwnedBy(
     .selectFrom('businesses')
     .innerJoin('memberships', 'memberships.business_id', 'businesses.id')
     .where('memberships.user_id', '=', sql<string>`${scope.userId}::uuid`)
+    .where('memberships.role', '=', 'owner')
     .select(['businesses.id', 'businesses.name', 'businesses.published'])
     .orderBy('memberships.created_at', 'asc')
     .limit(1)
@@ -189,10 +218,24 @@ export async function createBusinessForUser(
       insert into public.businesses (name) values (${name})
       returning id, name, published
     ), new_membership as (
-      insert into public.memberships (user_id, business_id)
-      select ${userId}::uuid, id from new_business
+      -- ROLE STATED, NOT INHERITED. memberships.role defaults to 'owner', so
+      -- this column could be omitted -- and must not be. The row has to fall
+      -- inside uq_memberships_one_owner_per_user's predicate (where role =
+      -- 'owner') for the cardinality rule to bind it, and a row whose membership
+      -- of that predicate depends on a column default is a row that silently
+      -- leaves the index the day the default changes. ck_memberships_role is
+      -- documented as the place the vocabulary widens, which makes the default
+      -- exactly the wrong thing to depend on here.
+      insert into public.memberships (user_id, business_id, role)
+      select ${userId}::uuid, id, 'owner' from new_business
       returning id
     )
+    -- new_membership IS UNREFERENCED BELOW, BY DESIGN. Do not delete it as dead
+    -- code: PostgreSQL executes a data-modifying CTE exactly once and to
+    -- completion, whether or not the primary query reads its output. Removing it
+    -- silently drops the membership insert, leaving a business owned by nobody --
+    -- unreachable through the scoping rule, and invisible to every cleanup that
+    -- resolves ownership through memberships (K79).
     select id, name, published from new_business
   `.execute(executor);
 
@@ -239,6 +282,24 @@ export function isSecondBusinessConflict(error: unknown): boolean {
  * **The name arrives already trimmed** — `businessName` in `businesses.schema.ts`
  * trims at the route boundary (decision 9), so nothing here re-trims and there
  * is exactly one place that rule lives.
+ *
+ * ── IT DOES NOT FILTER ROLE, AND THAT ASYMMETRY IS DELIBERATE (K80) ─────────
+ *
+ * `findBusinessOwnedBy` filters `role = 'owner'`; this does not. The `exists`
+ * subquery matches ANY membership for that user on that business, so once I9
+ * widens `ck_memberships_role`, a stylist at a salon could rename it.
+ *
+ * **The asymmetry is deliberate because the two questions differ.**
+ * `findBusinessOwnedBy` answers *"which business is MINE"*, and "mine" has one
+ * correct meaning — the one I own. Renaming is an authorization question with no
+ * decided answer: **whether a non-owner role may rename a business is a product
+ * decision nobody has made**, and guessing it here in either direction would be
+ * answering an open item by implementation. Adding `role = 'owner'` would decide
+ * it as "no"; leaving it decides nothing, because no non-owner row can exist yet.
+ *
+ * **Tracked as K80, triggered by `ck_memberships_role` widening** — the same
+ * event that makes it reachable. Until then this is unreachable rather than
+ * wrong.
  */
 export async function renameBusinessForUser(
   executor: Executor,

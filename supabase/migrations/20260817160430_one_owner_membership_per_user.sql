@@ -47,12 +47,21 @@
 --
 -- ADR-036 maps `uq_` to a unique CONSTRAINT and `ix_` to an index, and this is
 -- strictly an index: PostgreSQL cannot express a partial unique constraint.
--- `uq_` is chosen anyway, deliberately. ADR-036's own rationale is that
--- "constraint names are a public interface here" because the API branches on the
--- name a violation reports, and a 23505 naming `uq_…` tells a reader what was
--- violated. ADR-036's table has no row for a partial unique index; that is a gap
--- in it, not a departure from it, and it is worth a ruling before a second one
--- is written.
+--
+-- **THIS NAME DEPARTS FROM ADR-036, DELIBERATELY.** An earlier version of this
+-- comment called it "a gap in ADR-036, not a departure from it". That was wrong
+-- and understated it: ADR-036 is not silent here. It has a rule that covers this
+-- object — an index takes `ix_` — and this file takes the other prefix on
+-- purpose. You only need a justification when you are going against something.
+--
+-- The justification is ADR-036's own rationale: "constraint names are a public
+-- interface here", because the API branches on the name a violation reports
+-- (`isSecondBusinessConflict`), and a 23505 naming `uq_…` tells a reader what
+-- was violated. `ix_` would name the mechanism and hide the meaning.
+--
+-- ADR-036 now carries a row for partial unique indexes recording exactly this,
+-- so the next one written does not have to re-derive it — its 2026-08-19
+-- amendment.
 --
 -- ── ADDITIVE ────────────────────────────────────────────────────────────────
 --

@@ -112,3 +112,39 @@ closed explicitly rather than by whatever the first migration happened to do.
 ## Items created
 
 None.
+
+## Amendments
+
+**2026-08-19 — a row for partial unique indexes, and why they take `uq_`.**
+
+The prefix table above maps `uq_` to a unique constraint and `ix_` to an index. **It has no row
+for a partial unique index**, which PostgreSQL cannot express as a constraint at all — `unique`
+constraints admit no `WHERE` clause, so the only way to enforce "unique among rows matching a
+predicate" is `create unique index … where …`.
+
+The first one written is `uq_memberships_one_owner_per_user` (business setup, decision 10), and it
+takes **`uq_`** rather than `ix_`. **That departs from the table, deliberately**, and the
+justification is this ADR's own rationale — *"constraint names are a public interface here"*:
+
+| Prefix | Object |
+|---|---|
+| `uq_` | unique constraint, **and a partial unique index** |
+| `ix_` | index |
+
+**Why the departure is right rather than merely convenient.** The prefix exists so that a reader
+meeting a violation knows what was violated. The API branches on the constraint name a `23505`
+reports — `isSecondBusinessConflict` matches on the name, not on the error code, because `23505` is
+every unique violation on the table and `uq_memberships_user_business` means something entirely
+different. A partial unique index reports its name in exactly the same field as a unique
+constraint, and behaves the same way to a caller: an insert is rejected. **`ix_` would name the
+mechanism and hide the meaning** — it would tell a reader "an index exists" when what they need to
+know is "uniqueness was enforced".
+
+**What this does not do.** It does not make every index eligible for `uq_`. The prefix follows the
+*guarantee*, not the implementation: an index that enforces uniqueness takes `uq_`, and an index
+that exists for lookup speed takes `ix_`, whether or not either is partial.
+
+**This discharges an obligation that had no other carrier.** The migration's own comment said the
+question was *"worth a ruling before a second one is written"* — a trigger that would have fired
+inside a future migration, where nobody reads a triage file. Recording it here puts the answer in
+the path of the person who needs it, which is whoever is choosing a name.
