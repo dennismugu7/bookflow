@@ -637,6 +637,113 @@ jobs:
           chmod 600 "$RUNNER_TEMP/e2e-defines.json"
           echo "path=$RUNNER_TEMP/e2e-defines.json" >> "$GITHUB_OUTPUT"
 
+          # ── The id the cleanup step will delete by ──────────────────────────
+          #
+          # Taken from THIS token's `sub` claim — the account the test will
+          # actually sign in as — rather than written as a literal. The delete
+          # then cannot target an account other than the one under test, and a
+          # garbage secret produces a failed grant above and no delete at all,
+          # instead of a successful delete on a row nobody meant to touch.
+          #
+          # A `sub` is a user id, not a secret: `docs/ENVIRONMENT.md` §3 prints
+          # both staging ids in full. It is NOT masked, deliberately — masking it
+          # would make the cleanup step's own output unreadable.
+          #
+          # base64url -> base64, padded, because JWT payloads are unpadded and
+          # `base64 -d` refuses them.
+          PAYLOAD="$(echo "$ACCESS_TOKEN" | cut -d. -f2 | tr '_-' '/+')"
+          case $(( ${#PAYLOAD} % 4 )) in
+            2) PAYLOAD="$PAYLOAD==" ;;
+            3) PAYLOAD="$PAYLOAD=" ;;
+          esac
+          E2E_USER_ID="$(echo "$PAYLOAD" | base64 -d 2>/dev/null | jq -r '.sub // empty')"
+          echo "user_id=$E2E_USER_ID" >> "$GITHUB_OUTPUT"
+
+      # ── Clear this account's business, BEFORE the build ────────────────────
+      #
+      # `uq_memberships_one_owner_per_user` means creation succeeds exactly once
+      # per account, and the staging business account is permanent — E14 makes a
+      # per-run account impossible. Without this, run 1 asserts creation and run
+      # 2 silently asserts the 409 conflict path under a test name that says
+      # creation. A test whose MEANING changes between runs is worse than one
+      # that fails.
+      #
+      # BEFORE, not after: cleanup that runs after a failure does not run. A
+      # crashed, cancelled or timed-out run leaves its rows behind, and the next
+      # run then inherits them. Pre-cleanup makes the starting state a
+      # precondition rather than a hope. The test asserts the clean slate itself
+      # (`GET /v1/me/business` must answer 404) rather than trusting this step.
+      #
+      # STAGING_APP_DATABASE_URL — the `bookflow_api` application role, CRUD and
+      # no DDL (ADR-038). NOT the service-role key, which bypasses RLS and
+      # reaches `auth.users`: the account must survive and only its rows in
+      # `public` are cleared, so a credential whose reach exceeds the operation
+      # is how a scoped delete becomes an unscoped one after a later edit. NOT
+      # STAGING_DATABASE_URL either — that holds DDL and ADR-034 keeps it for
+      # `migrate-staging` alone.
+      #
+      # DO-NOT-VIBE: this deletes from the two tables the membership scoping rule
+      # traverses. The guards below are the reason it is safe, and they are
+      # conditions that fail the job, not comments asking for care.
+      - name: Clear the e2e business account's rows
+        env:
+          DB_URL: ${{ secrets.STAGING_APP_DATABASE_URL }}
+          E2E_USER_ID: ${{ steps.defines.outputs.user_id }}
+          EXPECTED_USER_ID: e508f672-dd11-4150-b686-cc06a525f749
+        run: |
+          set -euo pipefail
+
+          # GUARD 1 — a derived id that is empty or malformed stops the job
+          # before any SQL runs. Without it, the same edit that drops this guard
+          # is the edit likely to drop the WHERE clause too, and a bare
+          # `delete from public.businesses` clears every business on staging.
+          if [ -z "$E2E_USER_ID" ]; then
+            echo "::error::could not derive a user id from the access token — no SQL was run"
+            exit 1
+          fi
+          if ! echo "$E2E_USER_ID" \
+            | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'; then
+            echo "::error::derived id is not a uuid — no SQL was run"
+            exit 1
+          fi
+
+          # GUARD 2 — the derived id must be the account this workflow is meant
+          # to clear. Deriving from the token protects against a GARBAGE secret;
+          # this protects against a VALID secret pointing at a different
+          # account, where derivation alone would happily delete that account's
+          # rows and the test would go green having operated on the wrong one.
+          # The literal is an assertion, never the delete's target.
+          if [ "$E2E_USER_ID" != "$EXPECTED_USER_ID" ]; then
+            echo "::error::the session belongs to $E2E_USER_ID, not the e2e business account — no SQL was run. If the account was deliberately changed, update EXPECTED_USER_ID and docs/ENVIRONMENT.md §3 in the same commit."
+            exit 1
+          fi
+
+          if [ -z "$DB_URL" ]; then
+            echo "::error::STAGING_APP_DATABASE_URL is empty — see docs/ENVIRONMENT.md §3"
+            exit 1
+          fi
+
+          # ORDER. `memberships` is the only thing tying a business to a user —
+          # a business row does not know who owns it (ADR-003). Deleting the
+          # membership first orphans the business beyond finding, so the ids are
+          # CAPTURED FIRST in a CTE and both deletes happen in one statement.
+          #
+          # Idempotent: a clean slate deletes zero rows and succeeds. That is a
+          # pass, not an error — the desired state is "no business", not "a
+          # business was removed".
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -v uid="$E2E_USER_ID" <<'SQL'
+          with owned as (
+            select business_id from public.memberships where user_id = :'uid'::uuid
+          ),
+          dropped_memberships as (
+            delete from public.memberships where user_id = :'uid'::uuid returning 1
+          )
+          delete from public.businesses
+           where id in (select business_id from owned);
+          SQL
+
+          echo "cleared any business owned by $E2E_USER_ID"
+
       # The emulator needs KVM, and the runner's default udev rules do not grant
       # it to the unprivileged user the action runs as.
       - name: Enable KVM
