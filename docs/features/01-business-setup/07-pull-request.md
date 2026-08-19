@@ -46,13 +46,22 @@ before the code that depends on the merge.
 > every figure below:**
 >
 > ```
-> git rev-list --count origin/main..HEAD                                    # commits
-> git diff --shortstat origin/main...HEAD                                   # files, +/−
+> git rev-list --count origin/main..HEAD              # commits, INCLUDING the merge commit
+> git rev-list --count --no-merges origin/main..HEAD  # the slice's own commits
+> git diff --shortstat origin/main...HEAD             # files, +/− (three dots: from the merge base)
 > grep -rhoE "'criterion [0-9]+(, [0-9]+)*" apps/api/src apps/api/test apps/mobile/test \
->   | grep -oE "[0-9]+" | sort -n | uniq | wc -l                            # criteria mapped
+>   apps/mobile/integration_test | grep -oE "[0-9]+" | sort -u | wc -l      # distinct criteria named
+> grep -cE "^\| [0-9]+ \|" docs/analysis/08-design-deviations.md            # deviation entries
+> awk '/^jobs:/{j=1;next} j&&/^[^ ]/{j=0} j&&/^  [A-Za-z0-9_-]+:[ ]*$/{c++} END{print c}' \
+>   .github/workflows/ci.yml                                               # CI jobs
 > gh api "repos/dennismugu7/bookflow/actions/workflows/331331404/runs?branch=feat/business-setup-frame" --jq '.total_count'
 > npm run verify && cd apps/mobile && flutter test                          # the test counts
 > ```
+>
+> **Each command's comment says what it measures, and the two were made to agree on 2026-08-19
+> after an audit found three that did not.** A command whose output happens to match the sentence
+> beside it is not a check — it is a coincidence waiting to stop holding. The three are recorded
+> in the commit that fixed them.
 
 ## Read it in this order
 
@@ -157,8 +166,13 @@ Criteria coverage is derived, never maintained by hand:
 
 ```
 grep -rhoE "'criterion [0-9]+(, [0-9]+)*" apps/api/src apps/api/test apps/mobile/test \
-  | grep -oE "[0-9]+" | sort -n | uniq
+  apps/mobile/integration_test | grep -oE "[0-9]+" | sort -n | uniq
 ```
+
+*`apps/mobile/integration_test` is in the path list deliberately. On this branch it holds only
+`profile_e2e_test.dart`, which names no criterion — Phase 3 produced none — so the number is
+unchanged by its inclusion. Omitting it would under-report the moment an e2e test claims a
+criterion nothing else covers, which is what `feat/business-setup-e2e` does.*
 
 **60 of 62 as of `f22490c`**, re-derived by running the command above rather than carried
 forward. The two unmapped are 48 and 49 — see below. The denominator is the
@@ -187,6 +201,28 @@ by Actions.** That is the claim to carry into review.
 claims. Opening this PR produces the first run against the slice's own code, and
 `DEFINITION_OF_DONE.md` asks for it before human review.
 
+**What that run will contain: seven jobs, as of `f22490c`** — and the names are printed beside the
+number so a reader can check one against the other rather than trusting either:
+
+```
+verify   mobile   contracts   migrate-staging   deploy-staging   smoke-staging   e2e-staging
+```
+
+```
+awk '/^jobs:/{j=1;next} j&&/^[^ ]/{j=0} j&&/^  [A-Za-z0-9_-]+:[ ]*$/{c++} END{print c}' \
+  .github/workflows/ci.yml
+```
+
+**On a `pull_request` event only the first three run.** `migrate-staging`, `deploy-staging` and
+`smoke-staging` are gated on push to `main`, and `e2e-staging` on push-to-`main` or
+`workflow_dispatch` — so **this PR's own run will not exercise the staging jobs or the e2e gate.**
+They first run on the merge commit. That is the same shape PR #14 had: its `pull_request` run
+covered three jobs, and all eight ran only on `main`.
+
+**There is no `ios-build`.** ADR-043 removed it — Android is the v1 target, iOS out of scope —
+ending the repository's only 10× runner. A reviewer expecting eight jobs from earlier records is
+reading something written before that decision.
+
 ## Five things the diff cannot show
 
 Each of these reads as a defect without the explanation.
@@ -211,8 +247,11 @@ proxy** whose own test name says so: `criterion 50 — the index is partial on r
 proxy, not the behaviour)`. All three are recorded in `01-acceptance-criteria.md`'s notes.
 
 **3. Seven design deviations — register entries 10–16, plus three rulings at 17–19; nineteen
-entries in the register as of `f22490c`, derived with `grep -oE "^\| [0-9]+ \|"
-docs/analysis/08-design-deviations.md | grep -oE "[0-9]+" | sort -n | tail -1`.** A reviewer
+entries in the register as of `f22490c`, counted with `grep -cE "^\| [0-9]+ \|"
+docs/analysis/08-design-deviations.md`.** *(The earlier draft cited `… | sort -n | tail -1`, which
+returns the HIGHEST entry number, not the count. They agree only while numbering is gapless, which
+it is today — but the register is append-only and a withdrawn entry would leave a gap, at which
+point the two diverge silently.)* A reviewer
 comparing the build to `native-04` and `native-11` will find controls missing. They are decisions:
 screen #5 ships one field of four and no back arrow, screen #12 omits the Bookings/Contacts/
 Calendar tabs, screen #17 ships two rows of five, screen #5 gains a sign-out the design does not
