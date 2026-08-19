@@ -520,3 +520,216 @@ jobs:
       # a poor trade.
       - name: Smoke-test staging
         run: node scripts/smoke-staging.mjs
+
+  # ── The e2e gate ───────────────────────────────────────────────────────────
+  #
+  # **This is the job that satisfies DEFINITION_OF_DONE's e2e item**, and the
+  # only one that can: ADR-033 reserves that to Flutter `integration_test`
+  # driving a real build. `smoke-staging` above is an API-level test and does
+  # not tick the box, however end-to-end it feels.
+  #
+  # Phase 3's critical journey, per ADR-033's 2026-08-15 amendment: a session is
+  # injected and screen #20 renders real data from deployed staging.
+  #
+  # ── WHY IT RUNS WHERE IT DOES ──────────────────────────────────────────────
+  #
+  # `needs: [deploy-staging]` — the same gate as `smoke-staging`, for the same
+  # reason: it must exercise the build THIS push produced, not whatever happened
+  # to be live. A PR must never reach staging (ADR-023: shared environment).
+  #
+  # `workflow_dispatch` is the exception, and it is deliberate. The gate needs to
+  # be runnable against a branch — a red proof cannot be performed on `main`, and
+  # a change to the test itself cannot be validated by merging it first. On a
+  # dispatch run `deploy-staging` is skipped, so this runs against whatever is
+  # currently live, which is correct for that purpose and stated here so nobody
+  # reads a dispatch result as proof of the branch's deploy.
+  e2e-staging:
+    name: e2e-staging
+    needs: [deploy-staging]
+    if: |
+      always()
+      && (github.event_name == 'workflow_dispatch'
+          || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
+      && (needs.deploy-staging.result == 'success'
+          || needs.deploy-staging.result == 'skipped')
+    runs-on: ubuntu-latest
+    # The emulator boot dominates: roughly 4 minutes to a usable device, then
+    # the run itself. 30 is generous rather than optimistic — a timeout here
+    # reads as a flake and gets ignored, which is worse than a slow job.
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+
+      # ── The session, minted here so the password never reaches a build ────
+      #
+      # **`--dart-define-from-file` COMPILES its values into the binary.**
+      # Verified rather than assumed: a throwaway password was built locally and
+      # recovered from `kernel_blob.bin` with `grep -a`
+      # (`docs/analysis/10-e2e-credential-in-artefact.md`). So protecting the
+      # file protects the file, not the value.
+      #
+      # This job therefore performs the password grant ITSELF and passes only
+      # the resulting `access_token`, which **expires in one hour** (ADR-017).
+      # `E2E_STAGING_PASSWORD` stays in Actions secrets and never enters a
+      # build artefact at all.
+      #
+      # **No refresh token is passed either.** `setSession` needs a non-empty
+      # refresh token but never uses it when the access token is unexpired, so
+      # the test passes a literal placeholder — meaning the artefact cannot mint
+      # itself a new token when the hour is up.
+      #
+      # Two properties preserved from the earlier arrangement, both still
+      # necessary: nothing lands in argv (`jq -n` reads `env.NAME`; `--arg`
+      # would have put the value in jq's own command line), and the file is
+      # written to `RUNNER_TEMP` rather than the workspace, where no
+      # `actions/upload-*` glob can reach it.
+      #
+      # `--fail-with-body` so a rejected grant is an error rather than a JSON
+      # error document quietly written into the defines file, and `-s -S` so
+      # curl reports the failure without drawing a progress bar over it.
+      - name: Mint a session and compose the defines file
+        id: defines
+        env:
+          E2E_EMAIL: ${{ secrets.E2E_STAGING_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_STAGING_PASSWORD }}
+          SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+          API_BASE_URL: https://bookflow-api-staging-gabm.onrender.com
+        run: |
+          set -euo pipefail
+          for name in E2E_EMAIL E2E_PASSWORD SUPABASE_URL SUPABASE_ANON_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::secret $name is empty — see docs/ENVIRONMENT.md §3"
+              exit 1
+            fi
+          done
+
+          # The password reaches curl through a FILE on stdin, not through -d
+          # on the command line, for the same argv reason as everything else.
+          jq -n '{email: env.E2E_EMAIL, password: env.E2E_PASSWORD}' \
+            > "$RUNNER_TEMP/grant.json"
+          chmod 600 "$RUNNER_TEMP/grant.json"
+
+          curl -s -S --fail-with-body \
+            -X POST "$SUPABASE_URL/auth/v1/token?grant_type=password" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H 'content-type: application/json' \
+            --data-binary "@$RUNNER_TEMP/grant.json" \
+            -o "$RUNNER_TEMP/session.json"
+          rm -f "$RUNNER_TEMP/grant.json"
+
+          ACCESS_TOKEN="$(jq -r '.access_token // empty' "$RUNNER_TEMP/session.json")"
+          rm -f "$RUNNER_TEMP/session.json"
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "::error::the password grant returned no access_token — rotate E2E_STAGING_PASSWORD (docs/ENVIRONMENT.md §3)"
+            exit 1
+          fi
+          # Masked so no later step can print it, deliberately or by accident.
+          echo "::add-mask::$ACCESS_TOKEN"
+
+          ACCESS_TOKEN="$ACCESS_TOKEN" jq -n '{
+            E2E_EMAIL: env.E2E_EMAIL,
+            E2E_ACCESS_TOKEN: env.ACCESS_TOKEN,
+            SUPABASE_URL: env.SUPABASE_URL,
+            SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY,
+            API_BASE_URL: env.API_BASE_URL
+          }' > "$RUNNER_TEMP/e2e-defines.json"
+          chmod 600 "$RUNNER_TEMP/e2e-defines.json"
+          echo "path=$RUNNER_TEMP/e2e-defines.json" >> "$GITHUB_OUTPUT"
+
+      # The emulator needs KVM, and the runner's default udev rules do not grant
+      # it to the unprivileged user the action runs as.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run the e2e gate on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          # API 30 on the `default` image, chosen by measurement rather than by
+          # picking the newest. The first attempt — API 34, `google_apis` —
+          # **never finished booting inside 600s** on the 2-core runner
+          # (run 31902042324), which fails the job for a reason that has nothing
+          # to do with the app. `default` carries no Play services, which this
+          # app does not use, and boots in a fraction of the time.
+          api-level: 30
+          target: default
+          arch: x86_64
+          profile: pixel_6
+          # Generous: a boot timeout reads as a flake and gets ignored, and the
+          # cost of waiting is far lower than the cost of a gate nobody trusts.
+          emulator-boot-timeout: 900
+          # `-no-snapshot` keeps the boot deterministic: a restored snapshot can
+          # carry a stale session in the app's secure storage, and this test's
+          # first act is to establish one.
+          emulator-options: >-
+            -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+            -no-snapshot -camera-back none
+          working-directory: apps/mobile
+          # `timeout` because a FAILING run does not exit. Measured on run
+          # 31902883567: the test reported "0 tests passed, 1 failed" and then
+          # sat there until the job's own 30-minute limit killed it — so the
+          # gate's verdict was available 17 minutes before anyone could read it.
+          # A gate that takes half an hour to say "red" is a gate people turn
+          # off. `--preserve-status` keeps the test's own exit code when it does
+          # finish, so this bounds the hang without inventing a result.
+          script: >-
+            timeout --preserve-status --signal=KILL 12m
+            flutter test integration_test/profile_e2e_test.dart
+            --dart-define-from-file=${{ steps.defines.outputs.path }}
+
+      # Runs whether the gate passed or failed. A credential left on a runner
+      # image is not made safe by the job having succeeded.
+      - name: Remove the defines file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/e2e-defines.json"
+
+      # ══ BEFORE ADDING AN ARTIFACT UPLOAD BELOW THIS LINE ════════════════════
+      #
+      # If you are here to upload a screenshot, a log bundle, an APK or a
+      # failure diagnostic — know what is inside the binary first.
+      #
+      # `--dart-define-from-file` COMPILES its values into the build. Verified,
+      # not assumed: a throwaway value was built locally and extracted with
+      # `grep -a` (not `strings`, which misses it — a casual scan comes back
+      # clean) from:
+      #
+      #   build/app/intermediates/assets/debug/mergeDebugAssets/flutter_assets/kernel_blob.bin
+      #   build/app/intermediates/flutter/debug/flutter_assets/kernel_blob.bin
+      #
+      # **What is in there now is an access token, not the password.** The step
+      # above mints it, it expires in an hour (ADR-017), the test revokes it by
+      # signing out, and no refresh token is compiled in — so the artefact
+      # cannot renew itself. `E2E_STAGING_PASSWORD` is not in the build at all.
+      #
+      # That is a bounded exposure rather than no exposure. An artifact uploaded
+      # from a run whose test failed BEFORE the sign-out carries a live token
+      # for up to an hour, and the job would be green about it.
+      #
+      # So: uploading from `apps/mobile/build/` is not catastrophic and is still
+      # not free. If you need it, prefer a path outside `build/`, and read
+      # docs/analysis/10-e2e-credential-in-artefact.md §4 (K78) — which also
+      # records why the account is contained (one profile row, no membership, no
+      # business, staging only) and the rule that outlives all of this:
+      # **this account must never be given a membership.**

@@ -3,7 +3,13 @@
 
 # Phase 3 — close-out
 
-**Started:** 2026-08-15 · **Slice:** ADR-032's Phase 3 · **Status: OPEN — Phase 3 has not closed**
+**Started:** 2026-08-15 · **Slice:** ADR-032's Phase 3 · **Status: CLOSED at PR 4c — see §7**
+
+> **Read §7 first if you are reading this to find out whether Phase 3 is done.** Everything above
+> it was written while the phase was open and is preserved as written, including a section headed
+> "PR 4b DOES NOT CLOSE PHASE 3" — which was true of PR 4b and is not a statement about 4c. The
+> close is recorded in §7, with the two `DEFINITION_OF_DONE.md` items that still do not hold and
+> the ADR that authorises closing anyway.
 
 ## PR 4b DOES NOT CLOSE PHASE 3
 
@@ -506,3 +512,128 @@ blocks it.**
 | **The Blueprint pointer** | **NOT closed — disputed, and PARKED.** Changed by hand on 2026-08-15; the API still reads `feat/deploy-staging`. Harmless today; carried above with a trigger (§1) |
 | **A15** | Corrected in the triage; premise was wrong, compensation verified (§2) |
 | **The owner's review pass** | Ran for the first time on PR #12 (§5.2) — and rejected this file's framing |
+
+---
+
+## 7. The close — PR 4c, 2026-08-15
+
+**Phase 3 is closed.** The e2e item now holds; two items do not, and ADR-040 authorises closing
+with those two named. This section is the record of that, and it is the only section of this file
+that describes the phase as complete.
+
+### 7.1 What changed since §5 was written
+
+`DEFINITION_OF_DONE.md` → *"If the slice touches a critical journey, an e2e test covers it and
+passes."* — **now holds.**
+
+`apps/mobile/integration_test/profile_e2e_test.dart` drives a real Flutter build on an Android
+emulator against **deployed staging**, and asserts that screen #20 renders the profile staging
+holds for the injected session. ADR-033's exclusivity clause is satisfied on its own terms:
+`integration_test`, a real build, and nothing else. The journey it covers is the reduced one
+defined by ADR-033's 2026-08-15 amendment, and **that amendment states without softening what the
+reduction gives up** — it does not prove a new owner can get in.
+
+### 7.2 How the gate knows it is looking at real data
+
+The interesting property, because a gate that renders a fixture and calls it real is worse than no
+gate.
+
+**The expected strings are in no file in this repository.** They are in staging's `user_profiles`
+row and nowhere else. Before building the app, the test opens **its own Dio client** — not the
+generated client, not any provider, sharing nothing with the app's graph but the token — calls
+`GET /v1/me` on deployed staging, and uses that response as its expectation. The test then asserts
+the widget tree shows those values, the derived initials, and the session's email address, which
+comes from a *different* source again (`auth.users`, ADR-027).
+
+So the run cannot pass unless two independent paths to deployed staging agree on a value neither
+knew beforehand. The account's surname carries a random token generated at provisioning
+(`docs/ENVIRONMENT.md` §3) so that coincidence is not available as an explanation. **The claim is
+checkable rather than asserted**: grep the repository for the rendered surname; zero hits is the
+property.
+
+### 7.3 Proved red before it was believed green
+
+**The break was chosen to test the assertion, not the harness.** Pointing the client at a dead URL
+proves only that a test can fail. So the red proof changed `ApiProfileRepository.fetchMine` to
+ignore the fetched `firstName` and return a constant — a field screen #20 actually reads.
+
+Run **31902883567**, with that change in place: the emulator booted, the APK built, Supabase
+initialised, the session was acquired from staging GoTrue, the app rendered — and then:
+
+```
+❌ screen #20 renders the profile that deployed staging holds for this session (failed)
+supabase.supabase_flutter: INFO: ***** Supabase init completed *****
+The following TestFailure was thrown running a test:
+screen #20 never rendered the first name from GET /v1/me — timed out after 90s. This is the layer
+that cannot tell code from deploy (ADR-033): check the staging deploy and scripts/smoke-staging.mjs
+before suspecting this diff.
+...
+0 tests passed, 1 failed.
+```
+
+It failed **at the assertion**, after every other layer had done its job. That is the whole point:
+the failure is attributable to the screen no longer showing what staging holds, and to nothing
+else.
+
+### 7.4 Two things the red proof exposed, both fixed
+
+Neither was the thing being proved, which is the usual value of running a proof properly.
+
+1. **API 34 `google_apis` never booted.** Run 31902042324's emulator never reported
+   `sys.boot_completed` inside 600s on the 2-core runner, so the job failed for a reason unrelated
+   to the app. The image is now API 30 `default` — the app uses no Play services — with a 900s boot
+   allowance.
+2. **A failed run did not exit.** The verdict was printed at 19:20:07 and the job sat there until
+   its 30-minute limit killed it at 19:37. Seventeen minutes between "this gate is red" and anyone
+   being able to read it. `flutter test` is now wrapped in `timeout --preserve-status`, which bounds
+   the hang without inventing an outcome.
+
+### 7.5 The two items that still do not hold
+
+Both are named individually in **ADR-040 §3**, which is the document that authorises closing with
+them outstanding. Neither is a behaviour; both are process evidence, which is the boundary ADR-040
+§4 promises not to cross.
+
+| Item | Status | Why it is unsatisfiable rather than unfinished |
+|---|---|---|
+| *Every acceptance criterion from Phase 0 maps to a named test* | does not hold | Phase 3's Phase 0 produced no acceptance criteria. Writing them now means deriving them from the tests that exist, so the mapping is green by construction — criteria constraining nothing. ADR-040 §3.1 |
+| *Review record and owner's review pass, PRs #4–#11* | does not hold | The only remaining action is reconstruction, which is precisely the artefact both rules exist to prevent. ADR-040 §3.2 |
+
+**Root causes are closed, not noted.** `CLAUDE.md` §7 now requires Phase 0 to produce written
+acceptance criteria (**K77**), so the first item is *unfinished-and-blocking* from Phase 4 onward
+and the exception is spent. The record rule has run since PR #8 and the owner's-pass scope since
+PR #12.
+
+### 7.6 What authorises this close, and what does not
+
+**ADR-040, and the owner's review record on PR 4c.** ADR-040 §2 sets four conditions, and the
+fourth is the owner's pass — **satisfied by the review record on the PR and by nothing else.** Not
+by direction given in conversation, not by this file reporting that approval was given. That
+distinction is not pedantry: it is the exact failure PR #12 exposed, where a close-out asserted a
+phase complete on its own authority and what caught it was a comment that could be read afterwards.
+
+**If ADR-040 still reads `Proposed`, this close is unauthorised by its own terms.** The commit that
+flips it to `Accepted` cites the review record.
+
+### 7.7 The rest of the checklist, at the close
+
+Everything not named in §7.5 holds. The items whose evidence changed since §4 was written:
+
+| Item | Evidence |
+|---|---|
+| e2e test covers the critical journey and passes | §7.1–§7.3; ADR-033 amendment |
+| CI green end to end, including the build step | eight jobs, `e2e-staging` among them |
+| Deployed to staging and smoke-tested there | PR 4a and 4b; `smoke-staging` runs on every push to `main` |
+| Tech debt written down, not remembered | K75, K76, **K77**, A15's correction, E14, the parked Blueprint pointer |
+
+### 7.8 What Phase 3 did not deliver, so nobody has to reconstruct it later
+
+- **Sign-up, verification and login remain uncovered end to end.** By ADR-033's own definition they
+  are critical. They have no screens yet; the slice that builds them carries the full journey, and
+  **E14 is a prerequisite it must resolve rather than inherit** — staging's sender reaches one
+  inbox, which is why the reduced gate exists at all.
+- **`membershipRepositoryProvider` is overridden in the gate**, because `apps/api` has no endpoint
+  answering "does this user have a business" and business creation does not exist. The override
+  supplies an answer no data source can give; it does not touch the data under test.
+- **The e2e account is permanent** and staging's `auth.users` will not read zero again. The check
+  that replaces the count is in `docs/ENVIRONMENT.md` §3.

@@ -118,17 +118,48 @@ given here, deliberately, so this table cannot drift from the lockfile.
 | **`sslmode=no-verify` on that connection** | how the API reaches staging Postgres | ADR-023 | **A known, staging-only weakening, recorded rather than hidden.** Supabase's pooler presents a self-signed chain, and `sslmode=require` fails with *"self-signed certificate in certificate chain"* because `pg-connection-string` treats `require` as `verify-full`. The connection **is encrypted**; what is given up is authentication of the server — an active man-in-the-middle between Render and Supabase would not be detected. The fix is to bundle Supabase's CA and pass it as `ssl.ca`, which needs a change to `platform/db.ts` and a certificate in the image. **Production cannot start with it** — `platform/config.ts` refuses to boot when `APP_ENV=production` and `DATABASE_URL` does not carry `sslmode=verify-full` or `verify-ca`, naming the variable and citing **K76**, which tracks the proper fix. The position is now a condition rather than a comment. | the value ends `?sslmode=no-verify`; `APP_ENV=production` with it must fail at startup |
 | Render API key | triggering and polling deploys; creating and inspecting the service | ADR-023, ADR-024 amendment | **exists — 2026-08-15.** Held locally as `RENDER_API_KEY` in the gitignored `.env`, **and in Actions secrets** as `RENDER_API_KEY`. **No deploy hook is used**: the deploy job triggers and polls with this one credential, so `RENDER_DEPLOY_HOOK_URL` does not exist and should not be created. | `gh secret list` |
 | Render service id | which service the deploy job deploys | ADR-024 amendment | **in Actions secrets** as `RENDER_SERVICE_ID`. Not a secret in any real sense — it is in this file — but it lives beside the key so the workflow reads both the same way. | `gh secret list` |
+| **The staging e2e account** | the only credential the Phase 3 e2e gate can sign in with | ADR-033 amendment, ADR-037 | **exists — 2026-08-15.** `auth.users` id **`9b5bdc22-4250-4213-88fd-08c519d5d53f`**, address `e2e-owner@bookflow.test`, **`email_confirmed_at` set at creation** through the GoTrue admin path — E14 means staging's sender reaches exactly one inbox, so an account that must click a link can never be used from CI. Its `user_profiles` row carries a deliberately random last name so the strings the screen renders exist in staging's database and nowhere else. **Created through the admin API, never through `POST /v1/auth/signup`** — that path would compensate and delete the user when the mail failed. | `GET /auth/v1/admin/users` with the staging service-role key |
+| **Its password** | signing that account in from CI | ADR-023 | **exists only as the Actions secret `E2E_STAGING_PASSWORD`, and cannot be read back.** Generated in process memory, written to GitHub over stdin, and deleted from disk in the same operation — it was never printed, never placed in a process argument, and is in no file on this machine. **If CI cannot sign in, the answer is rotation, not recovery**: create a new password through the admin API and re-set the secret. **It is never compiled into a build** — CI performs the password grant in the workflow and passes only a one-hour `access_token` to the Flutter build, because `--dart-define-from-file` constant-folds its values into the binary (measured: `docs/analysis/10-e2e-credential-in-artefact.md`). **K78** is the tracking item. | `gh secret list` shows the name; the value is unreadable by design; `grep -c "eyJhbGciOi"` over a job log returns 0 |
+| **Four Actions secrets carry the gate's inputs** | what the e2e job needs to reach staging | ADR-023 | `E2E_STAGING_EMAIL`, `E2E_STAGING_PASSWORD`, `STAGING_SUPABASE_URL`, `STAGING_SUPABASE_ANON_KEY`. The last two are not secrets in the strict sense — the anon key is publishable (ADR-023) — but they are stored the same way so the workflow reads every input through one mechanism and no project reference lands in the repository. | `gh secret list` |
 | Apple signing certificate + provisioning profile | iOS builds exist only via CI (ADR-015, ADR-024) | ADR-024 | **not yet** | `gh secret list` |
 
 **Every row above is now command-verified.** The Supabase CLI is authenticated, so the three
 hosted-project rows are checked rather than assumed, and `bookflow-spike` is confirmed gone
 rather than reported gone.
 
+### Staging's `auth.users` is no longer expected to be empty — 2026-08-15
+
+**One permanent row now lives there**, the e2e account above. This matters because a zero count
+was used as evidence twice, and it will never read zero again.
+
+`docs/analysis/09-phase3-close.md` §2 records the A15 accounting: `select count(*) from
+auth.users` returned **0**, every probe account having been deleted by the script that created
+it, and the counter itself proven honest by driving it 0 → 1 → 0 rather than trusting a number
+that had only ever read zero. **That record was true when it was written and is not wrong now** —
+it describes staging before this account existed. **It is not a check to re-run expecting the
+same answer.** Anyone who does will read `1`, and the only sound conclusions from that are the
+two below.
+
+**The correct check now** is not a count but an identity — *are there any users other than the
+one that is supposed to be there?*
+
+```
+GET /auth/v1/admin/users
+→ every row's id must be 9b5bdc22-4250-4213-88fd-08c519d5d53f
+```
+
+A row that is not that id is residue: a probe some script failed to delete, or a sign-up whose
+compensation did not run — which is exactly what A15 exists to detect, and the property the count
+was standing in for all along. **Expected total: 1.** If the e2e gate ever creates accounts of its
+own, this row is updated in the same commit, because a stale expected-count here silently
+destroys the check.
+
 **The 2026-08-14 auth verification left no residue.** It created two users on staging — one
 throwaway at `@bookflow.test` for the admin-path check, one at the account owner's own address
 for the delivery check — and **both were deleted**. `DELETE /auth/v1/admin/users/:id` returned
-`200` for each, a subsequent `GET` on each returned `404`, and the project's user list is back to
-**zero users**, which is where it started. The activation link that was delivered belongs to a
+`200` for each, a subsequent `GET` on each returned `404`, and the project's user list was back to
+**zero users**, which is where it started — true as written on 2026-08-14, and superseded by the
+section above on 2026-08-15. The activation link that was delivered belongs to a
 user that no longer exists and is therefore dead. No credential was written to disk or displayed
 at any point: both keys were read from `supabase projects api-keys` into process memory and used
 there (ADR-023 — this is the failure mode that cost `bookflow-spike` its existence).
