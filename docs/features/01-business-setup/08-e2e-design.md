@@ -3,10 +3,12 @@
 > **A design, not a test.** Nothing here is written yet, and `ci.yml` is untouched. This document
 > exists so the decisions below are made before the code, not discovered inside it.
 >
-> **It does not rule on whether business setup is a critical journey.** ADR-033 defines one as
-> *"one whose failure prevents an owner from taking a booking, or a client from making one"*, and
-> this slice's documents are silent on the question. That ruling is Dennis's; this design says
-> what the test would be if it is written.
+> **Business setup IS a critical journey — ruled by Dennis, 2026-08-19, recorded in ADR-033's
+> amendment of that date.** An owner who cannot create a business cannot take a booking, which is
+> ADR-033's own test applied; its in-scope list predates this slice and, being examples rather than
+> an enumeration, does not narrow the test. **So `DEFINITION_OF_DONE.md` line 21 applies, ADR-040
+> §4 makes this unbuilt rather than waivable, and the slice does not close until the test exists
+> and passes.** This document designs a required test, not a possible one.
 
 ## 1. The once-only problem
 
@@ -177,10 +179,36 @@ deployed API answers the question.
 They are API-observable and already covered by the integration suite against a real database.
 Naming them here would be the false mapping the criteria file warns about.
 
-## 8. What this document does not do
+## 8. Where the cleanup runs — settled, and what would reopen it
 
-It does not write the test, touch `ci.yml`, or decide whether business setup is a critical
-journey. It also does not settle **where the cleanup runs** — a workflow step before the Flutter
-build, or a `setUpAll` inside the test — which is an implementation question with one real
-constraint: the Dart test process has no database driver and no `STAGING_APP_DATABASE_URL`, so
-today the answer is a workflow step.
+**A workflow step, before the Flutter build. Not `setUpAll`.**
+
+**The constraint, which is the reason and not a preference:** the Dart test process has **no
+database driver** — `apps/mobile`'s `pubspec.yaml` carries `dio`, `flutter_riverpod`, `go_router`,
+`supabase_flutter` and `flutter_secure_storage`, and nothing that speaks Postgres — and **no
+`STAGING_APP_DATABASE_URL`**, because the only values reaching the build arrive through
+`--dart-define-from-file`, which constant-folds them into the binary. Putting a database URL there
+would compile a credential into an artefact, which is the exact defect
+`docs/analysis/10-e2e-credential-in-artefact.md` measured and K78 exists to prevent.
+
+**So `setUpAll` cannot do it today, and the workflow can:** the step runs on the runner, holds the
+secret in the environment for the length of one command, and never enters the build.
+
+**What would have to change for `setUpAll` to become viable — written down so this is not
+reopened from scratch.** All three, not any one:
+
+1. **`apps/mobile` gains a Postgres driver as a dev dependency**, which puts a database client in
+   the mobile package's dependency graph for the sake of a test.
+2. **A safe channel for the credential that is not `--dart-define-from-file`.** Compiling it in is
+   refused; an environment variable read at runtime by the test process is the plausible route,
+   and it would need to be proven absent from the artefact the same way the token was.
+3. **A reason to prefer it**, which does not currently exist. The workflow step is visible in the
+   run log, ordered before the build by the workflow rather than by test-framework lifecycle, and
+   fails the job loudly if the guards refuse.
+
+**Absent all three, this is settled.** A future session finding this section should re-open it only
+by satisfying the list, not by re-arguing the convenience.
+
+## 9. What this document still does not do
+
+It does not write the test and does not touch `ci.yml`.
