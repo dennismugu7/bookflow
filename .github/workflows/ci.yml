@@ -955,6 +955,100 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      # ── K83, mitigation 4 — THE WATCHDOG, AS A FILE ─────────────────────────
+      #
+      # It lives in a file so the INTERPRETER IS GUARANTEED RATHER THAN HOPED
+      # FOR. Run 32282354373 is why: the same script inlined into
+      # `pre-emulator-launch-script` was executed by the action as
+      # `/usr/bin/sh -c …`, which on this image is dash, and dash answered
+      # `set: Illegal option -o pipefail` on line 1. The watchdog never started,
+      # the step went red on that alone while both e2e tests passed, and the
+      # reporter said "the watchdog wrote nothing" — true, and indistinguishable
+      # from a watchdog that ran and had nothing to say.
+      #
+      # A file also means `bash -n` can check it as the shell that will run it,
+      # rather than as the shell whoever wrote it happened to have.
+      - name: Write the emulator watchdog
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/emulator-watchdog.sh" <<'WATCHDOG'
+          set -uo pipefail
+
+          # ARMED MARKER, WRITTEN FIRST, BEFORE ANYTHING CAN GO WRONG.
+          # A guard that cannot tell "never ran" from "ran and was happy" is not
+          # a guard, and this file is the difference between the two.
+          : > "$RUNNER_TEMP/emulator-watchdog.armed"
+
+          # WHICH PROCESS TO KILL, RESOLVED BY WALKING UP RATHER THAN GUESSING.
+          # An earlier version took `ps -o ppid= -p $PPID`, on the belief that
+          # $PPID's parent is the action's node process. That was wrong by one
+          # level — $PPID IS the node process when the shell is exec'd — and it
+          # would have signalled the runner instead. So: walk the ancestry and
+          # take the first process whose command line names the action. If none
+          # matches, the watchdog still diagnoses and simply does not kill; a
+          # missed kill costs minutes, a wrong kill costs the job's meaning.
+          find_action_pid() {
+            pid=$$
+            for _ in 1 2 3 4 5 6; do
+              parent=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+              [ -z "$parent" ] && return 1
+              if tr '\0' ' ' < "/proc/$parent/cmdline" 2>/dev/null \
+                | grep -q 'android-emulator-runner'; then
+                echo "$parent"
+                return 0
+              fi
+              pid=$parent
+            done
+            return 1
+          }
+          action_pid=$(find_action_pid || true)
+
+          (
+            echo "armed: watching for the emulator process (action pid: ${action_pid:-not found})"
+
+            # The emulator does not exist yet; the action launches it the moment
+            # this script returns. Wait for it to appear before concluding
+            # anything from its absence.
+            for _ in $(seq 1 90); do
+              [ -n "$(pgrep -f -- '-avd test' || true)" ] && break
+              sleep 1
+            done
+
+            while :; do
+              booted=$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)
+              if [ "$booted" = "1" ]; then
+                echo "stood down: the emulator booted"
+                exit 0
+              fi
+              if [ -z "$(pgrep -f -- '-avd test' || true)" ]; then
+                avail_mb=$(( $(df -Pk "$HOME/.android" | awk 'NR==2 {print $4}') / 1024 ))
+                {
+                  echo "FIRED"
+                  echo "### The emulator exited before boot"
+                  echo
+                  echo "The emulator process is gone and \`sys.boot_completed\` never"
+                  echo "returned 1. **This is not a boot timeout** — the emulator failed"
+                  echo "and said why. Read the \`FATAL\` line in the emulator step's log;"
+                  echo "ignore the \`adb ... device not found\` polling that follows it,"
+                  echo "which is this action interrogating a device that no longer exists."
+                  echo
+                  echo "Free at \`\$HOME/.android\`: **${avail_mb} MB**. The userdata"
+                  echo "partition alone needs **7373 MB** — the cause on record for"
+                  echo "run 32271223400 (K83)."
+                } | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
+                [ -n "$action_pid" ] && kill -TERM "$action_pid" 2>/dev/null
+                exit 1
+              fi
+              sleep 2
+            done
+          ) > "$RUNNER_TEMP/emulator-watchdog.log" 2>&1 &
+          WATCHDOG
+
+          # Checked with the shell that will run it, which is the whole point of
+          # the file existing.
+          bash -n "$RUNNER_TEMP/emulator-watchdog.sh"
+          echo "watchdog written and syntax-checked under bash"
+
       - name: Run the e2e gate on an emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -1000,56 +1094,18 @@ jobs:
           # spend the remaining timeout interrogating a device that no longer
           # exists. If boot succeeds it exits silently and costs nothing.
           #
-          # `$PPID`'s parent is the action's node process — captured before
-          # backgrounding, so the kill targets the right process without
-          # matching on a path that changes with the action's version.
+          # THE REDIRECT INSIDE IT IS LOAD-BEARING, not tidiness. A backgrounded
+          # child inherits this step's stdout, and the action's exec of this
+          # script does not return until that descriptor closes — so a watchdog
+          # logging normally would deadlock: the action waiting to launch the
+          # emulator, the watchdog waiting for an emulator that was never
+          # launched. It writes to a file, the diagnosis also goes to the job
+          # summary, and the always-run reporter below reads both.
           #
-          # THE REDIRECT IS LOAD-BEARING, not tidiness. A backgrounded child
-          # inherits this step's stdout, and the action's exec of this script
-          # does not return until that descriptor closes — so a watchdog holding
-          # it would deadlock: the action waiting to launch the emulator, the
-          # watchdog waiting for an emulator that was never launched. It writes
-          # to a file instead, the diagnosis also goes to the job summary, and
-          # the always-run step below puts the file in the log.
-          pre-emulator-launch-script: |
-            set -uo pipefail
-            action_pid=$(ps -o ppid= -p "$PPID" | tr -d ' ')
-            (
-              # The emulator does not exist yet; the action launches it the
-              # moment this script returns. Wait for it to appear before
-              # concluding anything from its absence.
-              for _ in $(seq 1 90); do
-                [ -n "$(pgrep -f -- '-avd test' || true)" ] && break
-                sleep 1
-              done
-
-              while :; do
-                booted=$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)
-                if [ "$booted" = "1" ]; then
-                  echo "the emulator booted; watchdog standing down"
-                  exit 0
-                fi
-                if [ -z "$(pgrep -f -- '-avd test' || true)" ]; then
-                  avail_mb=$(( $(df -Pk "$HOME/.android" | awk 'NR==2 {print $4}') / 1024 ))
-                  {
-                    echo "### The emulator exited before boot"
-                    echo
-                    echo "The emulator process is gone and \`sys.boot_completed\` never"
-                    echo "returned 1. **This is not a boot timeout** — the emulator failed"
-                    echo "and said why. Read the \`FATAL\` line in the emulator step's log;"
-                    echo "ignore the \`adb ... device not found\` polling that follows it,"
-                    echo "which is this action interrogating a device that no longer exists."
-                    echo
-                    echo "Free at \`\$HOME/.android\`: **${avail_mb} MB**. The userdata"
-                    echo "partition alone needs **7373 MB** — the cause on record for"
-                    echo "run 32271223400 (K83)."
-                  } | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
-                  kill -TERM "$action_pid" 2>/dev/null || true
-                  exit 1
-                fi
-                sleep 2
-              done
-            ) > "$RUNNER_TEMP/emulator-watchdog.log" 2>&1 &
+          # `bash`, EXPLICITLY. The action runs this string with `sh -c`, and on
+          # the runner image `sh` is dash — see the step above for what that cost
+          # and how it hid.
+          pre-emulator-launch-script: bash "$RUNNER_TEMP/emulator-watchdog.sh"
           working-directory: apps/mobile
           # `timeout` because a FAILING run does not exit. Measured on run
           # 31902883567: the test reported "0 tests passed, 1 failed" and then
@@ -1078,10 +1134,21 @@ jobs:
       - name: Say what the emulator watchdog saw
         if: always()
         run: |
-          if [ -s "$RUNNER_TEMP/emulator-watchdog.log" ]; then
+          # THREE STATES, BECAUSE TWO OF THEM WERE INDISTINGUISHABLE AND THAT
+          # COST A RUN. On 32282354373 this step printed "the watchdog wrote
+          # nothing", which was true and useless: the watchdog had not started at
+          # all, and the sentence read exactly like a watchdog that started and
+          # had nothing to report. The marker file is what separates them.
+          if [ ! -f "$RUNNER_TEMP/emulator-watchdog.armed" ]; then
+            echo "WATCHDOG: NEVER ARMED — the script did not reach its first line."
+            echo "K83 mitigation 4 did not run in this job, whatever else happened."
+            echo "Look at the 'Run pre emulator launch script' group for the reason."
+          elif grep -q '^FIRED' "$RUNNER_TEMP/emulator-watchdog.log" 2>/dev/null; then
+            echo "WATCHDOG: FIRED — it saw the emulator process exit before boot."
             cat "$RUNNER_TEMP/emulator-watchdog.log"
           else
-            echo "the watchdog wrote nothing"
+            echo "WATCHDOG: ARMED AND SILENT — it started and had nothing to report."
+            cat "$RUNNER_TEMP/emulator-watchdog.log" 2>/dev/null || true
           fi
 
       # Runs whether the gate passed or failed. A credential left on a runner
