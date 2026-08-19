@@ -38,12 +38,15 @@ void main() {
   /// The shape `problemBody` produces: type, title, status, and nothing else.
   /// No `detail`, no `instance`, no echo of the submitted name — criteria 31
   /// and 32, asserted server-side and relied on here.
-  String problem({required String slug, required int status, required String title}) =>
-      jsonEncode(<String, dynamic>{
-        'type': '/problems/$slug',
-        'title': title,
-        'status': status,
-      });
+  String problem({
+    required String slug,
+    required int status,
+    required String title,
+  }) => jsonEncode(<String, dynamic>{
+    'type': '/problems/$slug',
+    'title': title,
+    'status': status,
+  });
 
   test(
     'criterion 63 — a business-already-exists problem becomes BusinessAlreadyExists',
@@ -86,21 +89,24 @@ void main() {
     },
   );
 
-  test('criterion 63 — an unrelated failure is still rethrown untouched', () async {
-    dio.httpClientAdapter = _StubAdapter(
-      statusCode: 500,
-      body: problem(
-        slug: 'internal-error',
-        status: 500,
-        title: 'Something went wrong',
-      ),
-    );
+  test(
+    'criterion 63 — an unrelated failure is still rethrown untouched',
+    () async {
+      dio.httpClientAdapter = _StubAdapter(
+        statusCode: 500,
+        body: problem(
+          slug: 'internal-error',
+          status: 500,
+          title: 'Something went wrong',
+        ),
+      );
 
-    await expectLater(
-      repository.create('Vera’s Salon'),
-      throwsA(isA<DioException>()),
-    );
-  });
+      await expectLater(
+        repository.create('Vera’s Salon'),
+        throwsA(isA<DioException>()),
+      );
+    },
+  );
 }
 
 /// Returns a canned response without touching the network. Same shape as

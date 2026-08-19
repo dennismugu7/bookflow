@@ -153,7 +153,9 @@ void main() {
     'criterion 63 — a conflict says the account already has a business, and does '
     'not blame the connection',
     (WidgetTester tester) async {
-      final _StubRepository repository = _StubRepository(conflictOnCreate: true);
+      final _StubRepository repository = _StubRepository(
+        conflictOnCreate: true,
+      );
       await tester.pumpWidget(screenWith(repository: repository));
       await tester.pumpAndSettle();
 
