@@ -759,7 +759,10 @@ jobs:
       # conditions that fail the job, not comments asking for care.
       - name: Clear the e2e business account's rows
         env:
-          DB_URL: ${{ secrets.STAGING_APP_DATABASE_URL }}
+          # Raw, under its own name. The translated value is derived in the
+          # script and never becomes an environment variable a later step could
+          # inherit and misread.
+          STAGING_APP_DATABASE_URL: ${{ secrets.STAGING_APP_DATABASE_URL }}
           # `steps.business`, NOT `steps.defines` — the business account's token,
           # not the profile account's. Pointing this at the wrong grant is the
           # mistake guard 2 below caught when this test was first wired.
@@ -793,10 +796,67 @@ jobs:
             exit 1
           fi
 
-          if [ -z "$DB_URL" ]; then
+          if [ -z "$STAGING_APP_DATABASE_URL" ]; then
             echo "::error::STAGING_APP_DATABASE_URL is empty — see docs/ENVIRONMENT.md §3"
             exit 1
           fi
+
+          # ── TWO PARSERS, ONE STRING: A TRANSLATION, NOT A RELAXATION ────────
+          #
+          # This secret is read by two libraries that do not agree on the
+          # vocabulary, and the reader who knows only one of them will read this
+          # substitution as weakening the connection. It is not.
+          #
+          #   node-postgres — `pg-connection-string` maps `require` to
+          #   VERIFY-FULL, so `apps/api` has to say `no-verify` to get
+          #   encrypt-without-verify against Supabase's pooler, whose chain is
+          #   self-signed. That is K76, and the secret is shaped for it.
+          #
+          #   libpq — `no-verify` IS NOT A VALUE. Its set is disable, allow,
+          #   prefer, require, verify-ca, verify-full, and `require` means
+          #   exactly encrypt-without-verify.
+          #
+          # So `no-verify` and `require` NAME THE SAME POSTURE in the two
+          # libraries: TLS on, certificate chain unverified. Substituting one for
+          # the other translates between vocabularies and changes nothing about
+          # what is negotiated on the wire.
+          #
+          # THIS IS THE SECOND COLLISION ON THIS ONE STRING. K76 records the
+          # first — `pg-connection-string` warns it will adopt libpq's weaker
+          # semantics for `require` in its next major, which is a reason not to
+          # write `require` on the node side. The string now has two consumers
+          # with different parsers, and K76's CA fix will have to satisfy both.
+          #
+          # Parameter expansion, deliberately: no `sed`, no subshell, no pipe —
+          # nothing that puts a credential on a command line or in a process
+          # table, and nothing that echoes it.
+          DB_URL="${STAGING_APP_DATABASE_URL/sslmode=no-verify/sslmode=require}"
+
+          # GUARD 4 — A SILENT NO-OP IS THE DANGEROUS CASE. The substitution
+          # above matches a literal. If the secret is ever rotated to a shape
+          # that does not carry `sslmode=no-verify` — a different spelling, the
+          # parameter dropped, a query string reordered — the expansion does
+          # nothing, quietly, and psql falls back to its DEFAULT of `prefer`.
+          # `prefer` accepts an unencrypted connection when the server offers
+          # one, so the failure mode is not an error but a downgrade, and the
+          # only signal would be that the job still passes.
+          #
+          # Asserting the POSITIVE — the translated value contains
+          # `sslmode=require` — rather than that the substitution changed
+          # something, so a secret already written in libpq's vocabulary passes
+          # here without a special case.
+          case "$DB_URL" in
+            *sslmode=require*) ;;
+            *)
+              echo "::error::the translated connection string does not carry sslmode=require. \
+          The substitution matched nothing, which means STAGING_APP_DATABASE_URL no longer \
+          contains sslmode=no-verify. psql would fall back to its default of 'prefer' and may \
+          connect UNENCRYPTED without saying so, which is why this fails instead. Update the \
+          substitution to the secret's new shape — see K76 and docs/ENVIRONMENT.md §3. No SQL \
+          was run."
+              exit 1
+              ;;
+          esac
 
           # ORDER. `memberships` is the only thing tying a business to a user —
           # a business row does not know who owns it (ADR-003). Deleting the
