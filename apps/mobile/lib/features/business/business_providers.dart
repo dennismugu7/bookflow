@@ -50,13 +50,31 @@ class RenameBusinessController extends AutoDisposeNotifier<AsyncValue<void>> {
   /// Renames, then refreshes the read so the section shows the stored name
   /// rather than the typed one. They differ whenever the server trims
   /// (decision 9), and showing the typed value would quietly hide that.
-  Future<void> rename({required String id, required String name}) async {
+  Future<void> rename({
+    required String id,
+    required String name,
+    String? tagline,
+    String? about,
+    String? category,
+    String? address,
+    String? mapsUrl,
+  }) async {
     state = const AsyncLoading<void>();
 
     // `AsyncValue.guard` rather than try/catch: it captures the error AND the
     // stack, which a bare catch drops.
     state = await AsyncValue.guard<void>(() async {
-      await ref.read(businessRepositoryProvider).rename(id: id, name: name);
+      await ref
+          .read(businessRepositoryProvider)
+          .rename(
+            id: id,
+            name: name,
+            tagline: tagline,
+            about: about,
+            category: category,
+            address: address,
+            mapsUrl: mapsUrl,
+          );
       ref.invalidate(myBusinessProvider);
       await ref.read(myBusinessProvider.future);
     });

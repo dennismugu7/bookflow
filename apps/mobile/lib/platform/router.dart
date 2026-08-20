@@ -2,6 +2,7 @@ import 'package:bookflow/features/account/account_menu_screen.dart';
 import 'package:bookflow/features/business/create_business_screen.dart';
 import 'package:bookflow/features/dashboard/dashboard_screen.dart';
 import 'package:bookflow/features/hours/hours_screen.dart';
+import 'package:bookflow/features/media/portfolio_screen.dart';
 import 'package:bookflow/features/membership/membership_repository.dart';
 import 'package:bookflow/features/profile/profile_screen.dart';
 import 'package:bookflow/features/services/services_screen.dart';
@@ -135,6 +136,7 @@ const Map<String, AppDestination> pushedRouteShells = <String, AppDestination>{
   '/services': AppDestination.home,
   '/opening-hours': AppDestination.home,
   '/team': AppDestination.home,
+  '/portfolio': AppDestination.home,
 };
 
 /// Where the router should send a user currently at `matchedLocation`, or
@@ -269,6 +271,11 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         path: '/team',
         builder: (BuildContext context, GoRouterState state) =>
             const TeamScreen(),
+      ),
+      GoRoute(
+        path: '/portfolio',
+        builder: (BuildContext context, GoRouterState state) =>
+            const PortfolioScreen(),
       ),
       GoRoute(
         path: AppDestination.unavailable.path,

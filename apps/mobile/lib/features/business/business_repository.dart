@@ -14,8 +14,36 @@ abstract interface class BusinessRepository {
   /// The caller's business, or the fact that they have none.
   Future<BusinessStatus> fetchMine();
 
-  /// Renames the caller's business and returns it as stored.
-  Future<OwnedBusiness> rename({required String id, required String name});
+  /// Saves the business's editable profile and returns it as stored.
+  ///
+  /// ══ AN OMITTED FIELD IS UNCHANGED, NOT CLEARED ═══════════════════════════
+  ///
+  /// The API applies `coalesce(param, column)` to every optional field, so a
+  /// field this does not send is left exactly as it was. **That is load-bearing
+  /// here rather than a nicety**: `GET /v1/me/business` returns only
+  /// `{id, name, published}`, so the app cannot prefill the profile fields —
+  /// and if it sent every field on every save, an untouched blank input would
+  /// wipe a tagline the owner set last week.
+  ///
+  /// So blank means "leave it alone", and the cost is that **there is no way to
+  /// clear a field through this app**. Stated rather than discovered: the fix
+  /// for both halves is the same one line in `businesses.routes.ts` adding
+  /// these fields to `businessSchema`, after which the form can prefill and a
+  /// deliberate clear becomes expressible.
+  /// **No `bannerUrl` here, and that is the API's shape rather than an
+  /// omission.** `RenameBusinessRequest` does not carry one: the upload
+  /// endpoint writes `banner_url` on the business itself when the purpose is
+  /// `banner`, so the banner is already saved by the time this could have sent
+  /// it. A field here would be a second writer for one column.
+  Future<OwnedBusiness> rename({
+    required String id,
+    required String name,
+    String? tagline,
+    String? about,
+    String? category,
+    String? address,
+    String? mapsUrl,
+  });
 
   /// Creates the caller's business and returns it as stored.
   Future<OwnedBusiness> create(String name);
@@ -88,6 +116,11 @@ class ApiBusinessRepository implements BusinessRepository {
   Future<OwnedBusiness> rename({
     required String id,
     required String name,
+    String? tagline,
+    String? about,
+    String? category,
+    String? address,
+    String? mapsUrl,
   }) async {
     // Not caught. A rename failing IS a failure — a 404 here means the business
     // is not the caller's or does not exist, which is nothing like "you have
@@ -96,9 +129,22 @@ class ApiBusinessRepository implements BusinessRepository {
         .getBusinessesApi()
         .renameBusiness(
           businessId: id,
-          renameBusinessRequestInput: RenameBusinessRequestInput(
-            (RenameBusinessRequestInputBuilder b) => b.name = name,
-          ),
+          renameBusinessRequestInput: RenameBusinessRequestInput((
+            RenameBusinessRequestInputBuilder b,
+          ) {
+            b.name = name;
+            // Only what was actually filled in. See the interface comment:
+            // the app cannot read these back, so an empty input means
+            // "unchanged" and sending `""` would wipe a value the owner set
+            // and cannot currently see.
+            if (tagline != null && tagline.isNotEmpty) b.tagline = tagline;
+            if (about != null && about.isNotEmpty) b.about = about;
+            if (category != null && category.isNotEmpty) {
+              b.category = category;
+            }
+            if (address != null && address.isNotEmpty) b.address = address;
+            if (mapsUrl != null && mapsUrl.isNotEmpty) b.mapsUrl = mapsUrl;
+          }),
         );
 
     final Business? business = response.data;
