@@ -223,8 +223,15 @@ class _StubBusiness implements BusinessRepository {
       throw UnimplementedError('not used here');
 
   @override
-  Future<OwnedBusiness> rename({required String id, required String name}) =>
-      throw UnimplementedError('not used here');
+  Future<OwnedBusiness> rename({
+    required String id,
+    required String name,
+    String? tagline,
+    String? about,
+    String? category,
+    String? address,
+    String? mapsUrl,
+  }) => throw UnimplementedError('not used here');
 
   @override
   Future<PublishedSalon> publish() => throw UnimplementedError('not used here');

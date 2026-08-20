@@ -220,8 +220,15 @@ class _StubRepository implements BusinessRepository {
   Future<BusinessStatus> fetchMine() async => const NoBusinessYet();
 
   @override
-  Future<OwnedBusiness> rename({required String id, required String name}) =>
-      throw UnimplementedError('creation never renames');
+  Future<OwnedBusiness> rename({
+    required String id,
+    required String name,
+    String? tagline,
+    String? about,
+    String? category,
+    String? address,
+    String? mapsUrl,
+  }) => throw UnimplementedError('creation never renames');
 
   // A throw rather than a canned salon: a fake that quietly published would let
   // a test pass while asserting nothing about the real repository.

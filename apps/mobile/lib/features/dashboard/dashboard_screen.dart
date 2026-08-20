@@ -3,10 +3,14 @@ import 'package:bookflow/features/business/business_providers.dart';
 import 'package:bookflow/features/dashboard/publish_sheet.dart';
 import 'package:bookflow/features/hours/hours_models.dart';
 import 'package:bookflow/features/hours/hours_providers.dart';
+import 'package:bookflow/features/media/media_models.dart';
+import 'package:bookflow/features/media/media_providers.dart';
 import 'package:bookflow/features/profile/profile_models.dart';
 import 'package:bookflow/features/profile/profile_providers.dart';
 import 'package:bookflow/features/services/services_models.dart';
 import 'package:bookflow/features/services/services_providers.dart';
+import 'package:bookflow/features/team/team_models.dart';
+import 'package:bookflow/features/team/team_providers.dart';
 import 'package:bookflow/platform/providers.dart';
 import 'package:bookflow/theme/tokens.dart';
 import 'package:bookflow/ui/async_value_view.dart';
@@ -69,6 +73,8 @@ class DashboardScreen extends ConsumerWidget {
               ..invalidate(myBusinessProvider)
               ..invalidate(myServicesProvider)
               ..invalidate(myOpeningHoursProvider)
+              ..invalidate(myTeamProvider)
+              ..invalidate(myPortfolioProvider)
               ..invalidate(publishedSalonProvider);
             await ref.read(myBusinessProvider.future);
           },
@@ -148,6 +154,18 @@ class _Checklist extends ConsumerWidget {
           data: (List<DayHours> value) => value.length,
           orElse: () => 0,
         );
+    final int teamCount = ref
+        .watch(myTeamProvider)
+        .maybeWhen(
+          data: (List<TeamMember> value) => value.length,
+          orElse: () => 0,
+        );
+    final int photoCount = ref
+        .watch(myPortfolioProvider)
+        .maybeWhen(
+          data: (List<PortfolioImage> value) => value.length,
+          orElse: () => 0,
+        );
 
     return ListView(
       padding: const EdgeInsets.all(BookflowSpacing.xl),
@@ -193,9 +211,33 @@ class _Checklist extends ConsumerWidget {
         _SetupRow(
           key: const Key('setup-team'),
           label: 'Add your team',
-          done: false,
-          summary: 'Optional',
+          // It has a screen now, so the row can report what is on it rather
+          // than being permanently unticked as it was while `/team` was a
+          // placeholder. Still optional: publishing does not wait for it.
+          done: teamCount > 0,
+          summary: teamCount == 0
+              ? 'Optional'
+              : teamCount == 1
+              ? '1 person — optional'
+              : '$teamCount people — optional',
           onTap: () => context.push('/team'),
+        ),
+        // ── ALSO NOT REQUIRED TO PUBLISH ────────────────────────────────────
+        //
+        // Same shape as the team row and the same reason: the API's gate is
+        // name + one service + one open day. A gallery is worth having and is
+        // not worth waiting for, so the row exists to be REACHABLE rather than
+        // to be ticked, and its summary says "optional" out loud.
+        _SetupRow(
+          key: const Key('setup-portfolio'),
+          label: 'Add photos of your work',
+          done: photoCount > 0,
+          summary: photoCount == 0
+              ? 'Optional'
+              : photoCount == 1
+              ? '1 photo — optional'
+              : '$photoCount photos — optional',
+          onTap: () => context.push('/portfolio'),
         ),
         _SetupRow(
           key: const Key('setup-publish'),

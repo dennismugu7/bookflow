@@ -191,8 +191,15 @@ class _GoldenBusiness implements BusinessRepository {
   );
 
   @override
-  Future<OwnedBusiness> rename({required String id, required String name}) =>
-      throw UnimplementedError('the golden never renames');
+  Future<OwnedBusiness> rename({
+    required String id,
+    required String name,
+    String? tagline,
+    String? about,
+    String? category,
+    String? address,
+    String? mapsUrl,
+  }) => throw UnimplementedError('the golden never renames');
 
   @override
   Future<OwnedBusiness> create(String name) =>
