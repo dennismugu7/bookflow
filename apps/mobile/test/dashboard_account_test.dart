@@ -452,6 +452,9 @@ class _StubBusiness implements BusinessRepository {
   @override
   Future<OwnedBusiness> rename({required String id, required String name}) =>
       throw UnimplementedError('not used here');
+
+  @override
+  Future<PublishedSalon> publish() => throw UnimplementedError('not used here');
 }
 
 class _StubProfile implements ProfileRepository {

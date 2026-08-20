@@ -197,6 +197,10 @@ class _GoldenBusiness implements BusinessRepository {
   @override
   Future<OwnedBusiness> create(String name) =>
       throw UnimplementedError('the golden never creates');
+
+  @override
+  Future<PublishedSalon> publish() =>
+      throw UnimplementedError('the golden never publishes');
 }
 
 class _GoldenGateway implements AuthGateway {

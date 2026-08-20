@@ -19,6 +19,15 @@ abstract interface class BusinessRepository {
 
   /// Creates the caller's business and returns it as stored.
   Future<OwnedBusiness> create(String name);
+
+  /// Publishes the salon and returns its permanent public address.
+  ///
+  /// **Idempotent** — publishing an already-published salon returns the handle
+  /// it already has and never mints a second (ADR-021).
+  ///
+  /// Throws [PublishRequirementsNotMet] when there is no service or no opening
+  /// hours yet.
+  Future<PublishedSalon> publish();
 }
 
 class ApiBusinessRepository implements BusinessRepository {
@@ -119,6 +128,50 @@ class ApiBusinessRepository implements BusinessRepository {
     }
 
     return _toModel(business);
+  }
+
+  /// ══ THIS IS ALSO HOW THE DASHBOARD LEARNS ITS OWN HANDLE ═══════════════════
+  ///
+  /// **`GET /v1/me/business` does not return the handle.** Its response schema
+  /// is `{id, name, published}` and only the publish response carries
+  /// `handle` — so an owner reopening the app on an already-published salon has
+  /// no other way to find the address of their own booking page.
+  ///
+  /// Calling this is safe for that purpose because the endpoint is idempotent
+  /// BY DESIGN and documents itself as such: an already-published salon is
+  /// confirmed published and handed back the handle it has, and no second
+  /// handle is ever minted. It is not a workaround built on an accident.
+  ///
+  /// **It is still the wrong shape, and the right fix is one line in the API:**
+  /// add `handle` to `businessSchema` in `apps/api/src/modules/businesses/
+  /// businesses.routes.ts` and this call disappears from the read path. Until
+  /// then there is one edge it cannot cover — a published salon whose services
+  /// were all deleted fails the requirements check and answers 409, so its own
+  /// dashboard cannot show its link.
+  @override
+  Future<PublishedSalon> publish() async {
+    try {
+      final Response<PublishedBusiness> response = await _api
+          .getPublishingApi()
+          .publishMyBusiness();
+
+      final PublishedBusiness? published = response.data;
+      if (published == null) {
+        throw StateError('POST /v1/me/business/publish returned no body');
+      }
+
+      return PublishedSalon(name: published.name, handle: published.handle);
+    } on DioException catch (error) {
+      // Branches on the problem `type` slug and never on 409 — the API has
+      // three distinct 409s and ADR-014 makes `type` the contract.
+      final Object? body = error.response?.data;
+      final Object? type = body is Map<String, dynamic> ? body['type'] : null;
+
+      if (type == '/problems/publish-requirements-not-met') {
+        throw const PublishRequirementsNotMet();
+      }
+      rethrow;
+    }
   }
 
   static OwnedBusiness _toModel(Business business) => OwnedBusiness(

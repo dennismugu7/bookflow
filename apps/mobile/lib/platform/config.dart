@@ -22,6 +22,7 @@ class AppConfig {
     required this.supabaseUrl,
     required this.supabaseAnonKey,
     required this.apiBaseUrl,
+    this.webBaseUrl = defaultWebBaseUrl,
   });
 
   /// The values the running app was compiled with.
@@ -30,8 +31,30 @@ class AppConfig {
       supabaseUrl: String.fromEnvironment('SUPABASE_URL'),
       supabaseAnonKey: String.fromEnvironment('SUPABASE_ANON_KEY'),
       apiBaseUrl: String.fromEnvironment('API_BASE_URL'),
+      webBaseUrl: String.fromEnvironment(
+        'WEB_BASE_URL',
+        defaultValue: defaultWebBaseUrl,
+      ),
     );
   }
+
+  /// ══ THE CLIENT WEB APP DOES NOT EXIST YET, AND THIS SAYS SO ══════════════
+  ///
+  /// ADR-001 builds it last, and `CLAUDE.md` forbids creating `apps/web/` until
+  /// the owner app can configure a real salon. So a booking link built from
+  /// this points nowhere — **on purpose, and visibly.**
+  ///
+  /// `.invalid` is reserved by RFC 2606 and is guaranteed never to resolve.
+  /// That is the whole reason it was chosen over a plausible-looking
+  /// placeholder: an owner who taps this link gets an immediate, unambiguous
+  /// failure rather than somebody else's parked domain, and nobody can register
+  /// it out from under us.
+  ///
+  /// **One constant to change when the web app deploys**, and it is
+  /// overridable by `--dart-define=WEB_BASE_URL=...` in the meantime so a
+  /// staging build can point at a real host without a code change.
+  static const String defaultWebBaseUrl =
+      'https://bookflow-staging-web.invalid';
 
   /// GoTrue's origin. Used by `supabase_flutter` for authentication ONLY —
   /// see `auth_gateway.dart` for why this is not also the API origin.
@@ -43,6 +66,24 @@ class AppConfig {
   /// Our own API's origin — `apps/api`. The generated client talks here and
   /// nowhere else.
   final String apiBaseUrl;
+
+  /// The client booking site's origin. A salon's public page is this plus
+  /// `/` plus its handle (ADR-021).
+  ///
+  /// **Not in `missingKeys()`**, unlike the three above. Those three are
+  /// required for the app to function at all and a build without them should
+  /// fail loudly; this one has a working default and an app with no booking
+  /// site is an app that cannot share a link — which is a missing feature, not
+  /// a broken build.
+  final String webBaseUrl;
+
+  /// The public booking page for [handle].
+  ///
+  /// Built here rather than in a widget so there is one place the shape of a
+  /// booking URL is decided, and one place to change when the web app grows a
+  /// path prefix.
+  String bookingLinkFor(String handle) =>
+      '${webBaseUrl.replaceAll(RegExp(r'/+$'), '')}/$handle';
 
   /// Whether every required value is present.
   ///
