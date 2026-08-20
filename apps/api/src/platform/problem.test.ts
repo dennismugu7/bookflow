@@ -44,9 +44,25 @@ describe('the business-already-exists entry (decision 8)', () => {
     expect(Object.keys(body).sort()).toEqual(['status', 'title', 'type']);
   });
 
-  it('is 409 alone — no other entry claims that status', () => {
-    const with409 = slugs.filter((s) => PROBLEM_TYPES[s].status === 409);
-    expect(with409).toEqual(['business-already-exists']);
+  it('shares 409 with the conflicts that came after it, and no others', () => {
+    // ── THIS USED TO ASSERT "409 ALONE", AND THAT EXPIRED ON PURPOSE ────────
+    //
+    // The original wording was right when there was one conflict in the API.
+    // The business-configuration feature added two more, and the property worth
+    // keeping was never "only one entry may be a 409" — it is that **a client
+    // branching on `type` can tell them apart**, which is ADR-014's whole
+    // mechanism and is asserted by the distinct-URI test below.
+    //
+    // Kept as an exhaustive list rather than deleted: a new 409 has to be added
+    // here deliberately, which is the moment to ask whether the client can act
+    // on it differently from the three that already exist. A slug it cannot is
+    // a slug that should not have been minted.
+    const with409 = slugs.filter((s) => PROBLEM_TYPES[s].status === 409).sort();
+    expect(with409).toEqual([
+      'business-already-exists',
+      'duplicate-name',
+      'publish-requirements-not-met',
+    ]);
   });
 });
 

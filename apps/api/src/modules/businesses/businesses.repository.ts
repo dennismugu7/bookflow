@@ -301,14 +301,57 @@ export function isSecondBusinessConflict(error: unknown): boolean {
  * event that makes it reachable. Until then this is unreachable rather than
  * wrong.
  */
+export interface BusinessProfileInput {
+  readonly name: string;
+  readonly tagline: string | undefined;
+  readonly about: string | undefined;
+  readonly category: string | undefined;
+  readonly address: string | undefined;
+  readonly mapsUrl: string | undefined;
+}
+
 export async function renameBusinessForUser(
   executor: Executor,
   scope: BusinessScope,
-  name: string,
+  input: BusinessProfileInput,
 ): Promise<BusinessRow | undefined> {
   return await executor
     .updateTable('businesses')
-    .set({ name })
+    .set((eb) => ({
+      name: input.name,
+      // ── ABSENT MEANS UNCHANGED, NOT CLEARED ─────────────────────────────
+      //
+      // `coalesce(param, column)`, the same shape the services and team
+      // repositories use. A PATCH that omitted `tagline` and wiped it would
+      // make every partial save destructive — and the client saves partially
+      // all the time, because the design's screens edit one section at a time.
+      //
+      // The cost, stated: **there is no way to clear a field through this
+      // route.** Sending `""` sets it to the empty string rather than null,
+      // which is a different value that renders the same. A dedicated clear is
+      // a change to this schema when a screen needs one, not a null nobody
+      // asked for.
+      tagline: eb.fn.coalesce(
+        sql<string | null>`${input.tagline ?? null}::text`,
+        'businesses.tagline',
+      ),
+      about: eb.fn.coalesce(
+        sql<string | null>`${input.about ?? null}::text`,
+        'businesses.about',
+      ),
+      category: eb.fn.coalesce(
+        sql<string | null>`${input.category ?? null}::text`,
+        'businesses.category',
+      ),
+      address: eb.fn.coalesce(
+        sql<string | null>`${input.address ?? null}::text`,
+        'businesses.address',
+      ),
+      maps_url: eb.fn.coalesce(
+        sql<string | null>`${input.mapsUrl ?? null}::text`,
+        'businesses.maps_url',
+      ),
+    }))
     .where('businesses.id', '=', sql<string>`${scope.businessId}::uuid`)
     // The builder is taken whole rather than destructured: pulling `exists` and
     // `selectFrom` off it separates the methods from their object, which

@@ -63,6 +63,48 @@ export const PROBLEM_TYPES = {
     status: 409,
     title: 'Business already exists',
   },
+  // A name that has to be unique within one salon already is — today, a
+  // service name (`uq_services_business_name`).
+  //
+  // Its own slug rather than `validation-failed`, because it is a 409 and not a
+  // 400: the request was well formed and the CONFLICT is with state the client
+  // can see and fix. Same reasoning as `business-already-exists`, and the same
+  // silence — the response does not name the row it collided with, and the
+  // client already has the list it came from.
+  'duplicate-name': {
+    status: 409,
+    title: 'Name already used',
+  },
+  // Publishing was refused because the salon is not ready to be published —
+  // it has no name, no service, or no opening hours.
+  //
+  // ── IT NAMES NOTHING, AND THAT COSTS THE CLIENT NOTHING ───────────────────
+  //
+  // No `detail`, no list of what is missing, like every other entry here. The
+  // client is the owner's own app: it has just read the services, the hours and
+  // the name in order to render the screen the publish button sits on, so it
+  // can say "add a service first" without being told. A response that
+  // enumerated the gaps would be the API's only reflected value, for a caller
+  // that already knew the answer.
+  'publish-requirements-not-met': {
+    status: 409,
+    title: 'Not ready to publish',
+  },
+  // A file was rejected before it was stored — wrong type, or over the size cap.
+  // Distinct from `validation-failed` because the request was well formed: the
+  // multipart body parsed, the fields were present, and the CONTENT was
+  // refused, which is a different thing for a client to say to a user.
+  'upload-rejected': {
+    status: 400,
+    title: 'Upload rejected',
+  },
+  // Object storage is unreachable or refused for a reason that is not the
+  // caller's fault. 503 for the same reason as `auth-unavailable`: it may
+  // succeed later, and a 500 tells the client to give up.
+  'storage-unavailable': {
+    status: 503,
+    title: 'Storage service unavailable',
+  },
   'rate-limited': {
     status: 429,
     title: 'Too many requests',

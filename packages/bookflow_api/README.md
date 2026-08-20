@@ -68,10 +68,25 @@ Class | Method | HTTP request | Description
 [*AuthApi*](doc/AuthApi.md) | [**signUp**](doc/AuthApi.md#signup) | **POST** /v1/auth/signup | Create an owner account
 [*BusinessesApi*](doc/BusinessesApi.md) | [**createBusiness**](doc/BusinessesApi.md#createbusiness) | **POST** /v1/businesses | Create the caller&#39;s business
 [*BusinessesApi*](doc/BusinessesApi.md) | [**getBusiness**](doc/BusinessesApi.md#getbusiness) | **GET** /v1/businesses/{businessId} | A business the caller belongs to
-[*BusinessesApi*](doc/BusinessesApi.md) | [**renameBusiness**](doc/BusinessesApi.md#renamebusiness) | **PATCH** /v1/businesses/{businessId} | Rename a business the caller belongs to
+[*BusinessesApi*](doc/BusinessesApi.md) | [**renameBusiness**](doc/BusinessesApi.md#renamebusiness) | **PATCH** /v1/businesses/{businessId} | Edit a business the caller belongs to
 [*HealthApi*](doc/HealthApi.md) | [**getHealth**](doc/HealthApi.md#gethealth) | **GET** /health | Liveness probe
 [*MeApi*](doc/MeApi.md) | [**getMe**](doc/MeApi.md#getme) | **GET** /v1/me | The authenticated owner&#39;s profile
 [*MeApi*](doc/MeApi.md) | [**getMyBusiness**](doc/MeApi.md#getmybusiness) | **GET** /v1/me/business | The caller&#39;s own business
+[*MediaApi*](doc/MediaApi.md) | [**deletePortfolioImage**](doc/MediaApi.md#deleteportfolioimage) | **DELETE** /v1/me/business/portfolio-images/{imageId} | Remove a gallery image
+[*MediaApi*](doc/MediaApi.md) | [**listMyPortfolioImages**](doc/MediaApi.md#listmyportfolioimages) | **GET** /v1/me/business/portfolio-images | The caller&#39;s gallery
+[*MediaApi*](doc/MediaApi.md) | [**uploadBusinessImage**](doc/MediaApi.md#uploadbusinessimage) | **POST** /v1/me/business/images | Upload an image
+[*OpeningHoursApi*](doc/OpeningHoursApi.md) | [**getMyOpeningHours**](doc/OpeningHoursApi.md#getmyopeninghours) | **GET** /v1/me/business/opening-hours | The caller&#39;s opening hours
+[*OpeningHoursApi*](doc/OpeningHoursApi.md) | [**replaceMyOpeningHours**](doc/OpeningHoursApi.md#replacemyopeninghours) | **PUT** /v1/me/business/opening-hours | Replace the week
+[*PublicApi*](doc/PublicApi.md) | [**getPublicSalon**](doc/PublicApi.md#getpublicsalon) | **GET** /v1/public/salons/{handle} | A published salon’s booking page
+[*PublishingApi*](doc/PublishingApi.md) | [**publishMyBusiness**](doc/PublishingApi.md#publishmybusiness) | **POST** /v1/me/business/publish | Publish the salon
+[*ServicesApi*](doc/ServicesApi.md) | [**createService**](doc/ServicesApi.md#createservice) | **POST** /v1/me/business/services | Add a service
+[*ServicesApi*](doc/ServicesApi.md) | [**deleteService**](doc/ServicesApi.md#deleteservice) | **DELETE** /v1/me/business/services/{serviceId} | Remove a service
+[*ServicesApi*](doc/ServicesApi.md) | [**listMyServices**](doc/ServicesApi.md#listmyservices) | **GET** /v1/me/business/services | The caller&#39;s services
+[*ServicesApi*](doc/ServicesApi.md) | [**updateService**](doc/ServicesApi.md#updateservice) | **PATCH** /v1/me/business/services/{serviceId} | Change a service
+[*TeamApi*](doc/TeamApi.md) | [**createTeamMember**](doc/TeamApi.md#createteammember) | **POST** /v1/me/business/team-members | Add a team member
+[*TeamApi*](doc/TeamApi.md) | [**deleteTeamMember**](doc/TeamApi.md#deleteteammember) | **DELETE** /v1/me/business/team-members/{memberId} | Remove a team member
+[*TeamApi*](doc/TeamApi.md) | [**listMyTeamMembers**](doc/TeamApi.md#listmyteammembers) | **GET** /v1/me/business/team-members | The caller&#39;s team
+[*TeamApi*](doc/TeamApi.md) | [**updateTeamMember**](doc/TeamApi.md#updateteammember) | **PATCH** /v1/me/business/team-members/{memberId} | Change a team member
 
 
 ## Documentation For Models
@@ -80,16 +95,46 @@ Class | Method | HTTP request | Description
  - [BusinessInput](doc/BusinessInput.md)
  - [CreateBusinessRequest](doc/CreateBusinessRequest.md)
  - [CreateBusinessRequestInput](doc/CreateBusinessRequestInput.md)
+ - [CreateServiceRequest](doc/CreateServiceRequest.md)
+ - [CreateServiceRequestInput](doc/CreateServiceRequestInput.md)
+ - [CreateTeamMemberRequest](doc/CreateTeamMemberRequest.md)
+ - [CreateTeamMemberRequestInput](doc/CreateTeamMemberRequestInput.md)
  - [HealthResponse](doc/HealthResponse.md)
  - [HealthResponseInput](doc/HealthResponseInput.md)
+ - [OpeningHoursEntry](doc/OpeningHoursEntry.md)
+ - [OpeningHoursEntryInput](doc/OpeningHoursEntryInput.md)
+ - [PortfolioImage](doc/PortfolioImage.md)
+ - [PortfolioImageInput](doc/PortfolioImageInput.md)
  - [Profile](doc/Profile.md)
  - [ProfileInput](doc/ProfileInput.md)
+ - [PublicOpeningHours](doc/PublicOpeningHours.md)
+ - [PublicOpeningHoursInput](doc/PublicOpeningHoursInput.md)
+ - [PublicSalon](doc/PublicSalon.md)
+ - [PublicSalonInput](doc/PublicSalonInput.md)
+ - [PublicService](doc/PublicService.md)
+ - [PublicServiceInput](doc/PublicServiceInput.md)
+ - [PublicTeamMember](doc/PublicTeamMember.md)
+ - [PublicTeamMemberInput](doc/PublicTeamMemberInput.md)
+ - [PublishedBusiness](doc/PublishedBusiness.md)
+ - [PublishedBusinessInput](doc/PublishedBusinessInput.md)
  - [RenameBusinessRequest](doc/RenameBusinessRequest.md)
  - [RenameBusinessRequestInput](doc/RenameBusinessRequestInput.md)
+ - [ReplaceOpeningHoursRequest](doc/ReplaceOpeningHoursRequest.md)
+ - [ReplaceOpeningHoursRequestInput](doc/ReplaceOpeningHoursRequestInput.md)
+ - [Service](doc/Service.md)
+ - [ServiceInput](doc/ServiceInput.md)
  - [SignupAccepted](doc/SignupAccepted.md)
  - [SignupAcceptedInput](doc/SignupAcceptedInput.md)
  - [SignupRequest](doc/SignupRequest.md)
  - [SignupRequestInput](doc/SignupRequestInput.md)
+ - [TeamMember](doc/TeamMember.md)
+ - [TeamMemberInput](doc/TeamMemberInput.md)
+ - [UpdateServiceRequest](doc/UpdateServiceRequest.md)
+ - [UpdateServiceRequestInput](doc/UpdateServiceRequestInput.md)
+ - [UpdateTeamMemberRequest](doc/UpdateTeamMemberRequest.md)
+ - [UpdateTeamMemberRequestInput](doc/UpdateTeamMemberRequestInput.md)
+ - [UploadedImage](doc/UploadedImage.md)
+ - [UploadedImageInput](doc/UploadedImageInput.md)
 
 
 ## Documentation For Authorization

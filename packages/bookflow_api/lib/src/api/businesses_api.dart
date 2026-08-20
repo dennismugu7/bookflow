@@ -195,8 +195,8 @@ class BusinessesApi {
     );
   }
 
-  /// Rename a business the caller belongs to
-  /// The name is the only editable field. Scoped through membership: a business the caller has no membership in is indistinguishable from one that does not exist. The name is trimmed before it is stored.
+  /// Edit a business the caller belongs to
+  /// The name is required; tagline, about, category, address and mapsUrl are optional and an omitted one is left UNCHANGED, not cleared. Scoped through membership: a business the caller has no membership in is indistinguishable from one that does not exist. Text is trimmed before it is stored.
   ///
   /// Parameters:
   /// * [businessId]

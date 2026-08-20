@@ -13,6 +13,12 @@ import 'package:bookflow_api/src/api/auth_api.dart';
 import 'package:bookflow_api/src/api/businesses_api.dart';
 import 'package:bookflow_api/src/api/health_api.dart';
 import 'package:bookflow_api/src/api/me_api.dart';
+import 'package:bookflow_api/src/api/media_api.dart';
+import 'package:bookflow_api/src/api/opening_hours_api.dart';
+import 'package:bookflow_api/src/api/public_api.dart';
+import 'package:bookflow_api/src/api/publishing_api.dart';
+import 'package:bookflow_api/src/api/services_api.dart';
+import 'package:bookflow_api/src/api/team_api.dart';
 
 class BookflowApi {
   static const String basePath = r'http://localhost';
@@ -101,5 +107,41 @@ class BookflowApi {
   /// by doing that all interceptors will not be executed
   MeApi getMeApi() {
     return MeApi(dio, serializers);
+  }
+
+  /// Get MediaApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  MediaApi getMediaApi() {
+    return MediaApi(dio, serializers);
+  }
+
+  /// Get OpeningHoursApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  OpeningHoursApi getOpeningHoursApi() {
+    return OpeningHoursApi(dio, serializers);
+  }
+
+  /// Get PublicApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  PublicApi getPublicApi() {
+    return PublicApi(dio, serializers);
+  }
+
+  /// Get PublishingApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  PublishingApi getPublishingApi() {
+    return PublishingApi(dio, serializers);
+  }
+
+  /// Get ServicesApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  ServicesApi getServicesApi() {
+    return ServicesApi(dio, serializers);
+  }
+
+  /// Get TeamApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  TeamApi getTeamApi() {
+    return TeamApi(dio, serializers);
   }
 }
