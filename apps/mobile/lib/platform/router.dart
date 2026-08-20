@@ -1,11 +1,14 @@
 import 'package:bookflow/features/account/account_menu_screen.dart';
 import 'package:bookflow/features/business/create_business_screen.dart';
 import 'package:bookflow/features/dashboard/dashboard_screen.dart';
+import 'package:bookflow/features/hours/hours_screen.dart';
 import 'package:bookflow/features/membership/membership_repository.dart';
 import 'package:bookflow/features/profile/profile_screen.dart';
+import 'package:bookflow/features/services/services_screen.dart';
 import 'package:bookflow/features/signed_out/signed_out_screen.dart';
 import 'package:bookflow/features/startup/startup_screen.dart';
 import 'package:bookflow/features/startup/unavailable_screen.dart';
+import 'package:bookflow/features/team/team_screen.dart';
 import 'package:bookflow/platform/auth_gateway.dart';
 import 'package:bookflow/platform/providers.dart';
 import 'package:flutter/widgets.dart';
@@ -125,6 +128,13 @@ final Provider<AppDestination> appDestinationProvider =
 const Map<String, AppDestination> pushedRouteShells = <String, AppDestination>{
   '/account': AppDestination.home,
   '/profile': AppDestination.home,
+  // The configuration screens the dashboard's checklist opens. All three belong
+  // to the HOME shell: an owner is on one because they tapped a row, and a
+  // session ending must take them off it exactly as it takes them off
+  // `/profile` — which is what listing them here buys.
+  '/services': AppDestination.home,
+  '/opening-hours': AppDestination.home,
+  '/team': AppDestination.home,
 };
 
 /// Where the router should send a user currently at `matchedLocation`, or
@@ -244,6 +254,21 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         path: '/profile',
         builder: (BuildContext context, GoRouterState state) =>
             const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/services',
+        builder: (BuildContext context, GoRouterState state) =>
+            const ServicesScreen(),
+      ),
+      GoRoute(
+        path: '/opening-hours',
+        builder: (BuildContext context, GoRouterState state) =>
+            const OpeningHoursScreen(),
+      ),
+      GoRoute(
+        path: '/team',
+        builder: (BuildContext context, GoRouterState state) =>
+            const TeamScreen(),
       ),
       GoRoute(
         path: AppDestination.unavailable.path,

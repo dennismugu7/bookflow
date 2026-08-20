@@ -14,11 +14,33 @@ class OwnedBusiness {
   final String id;
   final String name;
 
-  /// ADR-004: private until explicitly published. Nothing in this slice
-  /// publishes, so this is `false` for every business it creates — but it is
-  /// carried rather than dropped, because the dashboard's setup-continuation
-  /// state is keyed on it.
+  /// ADR-004: private until explicitly published. The dashboard's checklist and
+  /// its published state are both keyed on this.
   final bool published;
+}
+
+/// Publishing was refused because the salon is not ready.
+///
+/// A typed error for the reason `BusinessAlreadyExists` is one: ADR-028 keeps
+/// Dio out of `features/` outside a repository, and the screen needs to say
+/// something specific rather than "something went wrong".
+class PublishRequirementsNotMet implements Exception {
+  const PublishRequirementsNotMet();
+
+  @override
+  String toString() => 'PublishRequirementsNotMet';
+}
+
+/// A salon that is live, and the address it is live at.
+class PublishedSalon {
+  const PublishedSalon({required this.name, required this.handle});
+
+  final String name;
+
+  /// ADR-021: permanent once assigned. A rename retires it; nothing reassigns
+  /// it. The booking link is built from this and never stored whole, so a
+  /// change to the web app's origin is one constant rather than a migration.
+  final String handle;
 }
 
 /// Whether the signed-in owner has a business, and which one.

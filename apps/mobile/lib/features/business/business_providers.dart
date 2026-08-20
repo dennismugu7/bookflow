@@ -93,6 +93,63 @@ class CreateBusinessController extends AutoDisposeNotifier<AsyncValue<void>> {
   }
 }
 
+/// The salon's public address, once it has one.
+///
+/// ══ WHY THIS IS A SEPARATE READ AT ALL ══════════════════════════════════════
+///
+/// `GET /v1/me/business` does not return the handle — see
+/// `ApiBusinessRepository.publish`, which explains why the idempotent publish
+/// endpoint is the only way to obtain it and what the one-line API fix would
+/// be. This provider is where that cost is contained: **one call per refresh,
+/// cached by Riverpod**, rather than a call per rebuild.
+///
+/// `null` for an unpublished salon, and this never publishes one — the guard
+/// below is what keeps a read path from having a side effect.
+final FutureProvider<PublishedSalon?> publishedSalonProvider =
+    FutureProvider<PublishedSalon?>((Ref ref) async {
+      final BusinessStatus status = await ref.watch(myBusinessProvider.future);
+
+      final bool isPublished = switch (status) {
+        NoBusinessYet() => false,
+        HasBusiness(business: final OwnedBusiness value) => value.published,
+      };
+      if (!isPublished) return null;
+
+      return ref.read(businessRepositoryProvider).publish();
+    });
+
+/// The publish action.
+///
+/// Separate from the read above so the button's spinner and the read's cache do
+/// not share a state: a failed publish must not blank the dashboard, and a
+/// successful one must refresh three things.
+class PublishController extends AutoDisposeNotifier<AsyncValue<void>> {
+  @override
+  AsyncValue<void> build() => const AsyncData<void>(null);
+
+  Future<void> publish() async {
+    state = const AsyncLoading<void>();
+
+    state = await AsyncValue.guard<void>(() async {
+      await ref.read(businessRepositoryProvider).publish();
+
+      // The business read carries `published`, which is what swaps the
+      // dashboard from the checklist to the live state; the handle read carries
+      // the address it shows. Invalidating only the first would leave an owner
+      // looking at a published dashboard with no link on it.
+      ref.invalidate(myBusinessProvider);
+      ref.invalidate(publishedSalonProvider);
+      await ref.read(publishedSalonProvider.future);
+    });
+  }
+}
+
+final AutoDisposeNotifierProvider<PublishController, AsyncValue<void>>
+publishControllerProvider =
+    AutoDisposeNotifierProvider<PublishController, AsyncValue<void>>(
+      PublishController.new,
+    );
+
 final AutoDisposeNotifierProvider<CreateBusinessController, AsyncValue<void>>
 createBusinessControllerProvider =
     AutoDisposeNotifierProvider<CreateBusinessController, AsyncValue<void>>(

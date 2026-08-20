@@ -222,6 +222,12 @@ class _StubRepository implements BusinessRepository {
   @override
   Future<OwnedBusiness> rename({required String id, required String name}) =>
       throw UnimplementedError('creation never renames');
+
+  // A throw rather than a canned salon: a fake that quietly published would let
+  // a test pass while asserting nothing about the real repository.
+  @override
+  Future<PublishedSalon> publish() =>
+      throw UnimplementedError('creation never publishes');
 }
 
 class _FakeGateway implements AuthGateway {

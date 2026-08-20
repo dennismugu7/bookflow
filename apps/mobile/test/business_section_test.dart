@@ -221,4 +221,8 @@ class _StubRepository implements BusinessRepository {
           OwnedBusiness(id: id, name: name, published: false),
         );
   }
+
+  @override
+  Future<PublishedSalon> publish() =>
+      throw UnimplementedError('this fake never publishes');
 }
