@@ -25,8 +25,15 @@ class LoginSheet extends ConsumerStatefulWidget {
     required this.onVerifyEmail,
     required this.onForgotPassword,
     required this.onBack,
+    this.notice,
     super.key,
   });
+
+  /// A line above the form, for arriving from somewhere that changed something
+  /// — today only a completed password reset. Not an error and not a toast: the
+  /// user is here BECAUSE of what it says, so it belongs on the screen rather
+  /// than floating over it and vanishing.
+  final String? notice;
 
   /// Called once the session exists. The sheet closes; the existing redirect in
   /// `router.dart` decides where the user goes.
@@ -82,10 +89,20 @@ class _LoginSheetState extends ConsumerState<LoginSheet> {
     final bool unverified =
         error is AuthFailure && error.kind == AuthFailureKind.emailNotConfirmed;
 
+    final ThemeData theme = Theme.of(context);
+
     return AuthSheetScaffold(
-      title: 'Welcome back',
+      title: 'Login to Bookflow',
       onBack: inFlight ? null : widget.onBack,
       children: <Widget>[
+        if (widget.notice != null) ...<Widget>[
+          Text(
+            key: const Key('login-notice'),
+            widget.notice!,
+            style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: BookflowSpacing.lg),
+        ],
         TextField(
           key: const Key('login-email'),
           controller: _email,
