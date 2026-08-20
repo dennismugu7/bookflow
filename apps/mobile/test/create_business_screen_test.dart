@@ -164,7 +164,23 @@ void main() {
 
     expect(gateway.signOutCalls, 0);
 
+    // It asks first now (Screen 11). Tapping the control opens the
+    // confirmation and signs nobody out — which matters more here than on the
+    // account menu, because this is the ONLY control an owner with no business
+    // has and a mistap used to end their session outright.
     await tester.tap(find.byKey(const Key('create-business-sign-out')));
+    await tester.pumpAndSettle();
+    expect(find.text('Log out?'), findsOneWidget);
+    expect(gateway.signOutCalls, 0);
+
+    await tester.tap(find.byKey(const Key('logout-go-back')));
+    await tester.pumpAndSettle();
+    expect(find.text('Log out?'), findsNothing);
+    expect(gateway.signOutCalls, 0, reason: 'declining must not sign out');
+
+    await tester.tap(find.byKey(const Key('create-business-sign-out')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('logout-confirm')));
     await tester.pumpAndSettle();
 
     expect(
@@ -227,6 +243,20 @@ class _FakeGateway implements AuthGateway {
 
   @override
   Future<void> resendSignupCode({required String email}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> requestPasswordReset({required String email}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> verifyRecoveryCode({
+    required String email,
+    required String code,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> setNewPassword({required String newPassword}) =>
       throw UnimplementedError();
 
   @override

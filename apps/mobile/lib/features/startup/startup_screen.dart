@@ -10,14 +10,21 @@ import 'package:flutter/material.dart';
 /// them. It is also the only screen where waiting is expected rather than a
 /// symptom, which is why the spinner sits under the wordmark instead of alone.
 ///
-/// PLACEHOLDER (PR 3a): the wordmark is set in the platform font, not the
-/// rounded geometric face §3 asks for — see deviation 7. The animated splash the
-/// design implies is not built.
+/// **No timer, and that is the deviation worth naming.** Screen 1 describes an
+/// "Auto-timer / Tap" that moves to the welcome screen. This screen leaves when
+/// the session finishes restoring and not a moment sooner or later, because the
+/// wait here is real work rather than a held pose — a timer would either cut
+/// the restore off or pad a cold start that was already done.
+///
+/// The wordmark is set in the platform font, not the rounded geometric face §3
+/// asks for — deviation 7, and unchanged.
 class StartupScreen extends StatelessWidget {
   const StartupScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
     return Scaffold(
       body: DecoratedBox(
         decoration: const BoxDecoration(gradient: BookflowTheme.heroGradient),
@@ -27,8 +34,20 @@ class StartupScreen extends StatelessWidget {
             children: <Widget>[
               Text(
                 'Bookflow',
-                style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                style: theme.textTheme.displayLarge?.copyWith(
                   color: BookflowColors.textOnBrand,
+                ),
+              ),
+              const SizedBox(height: BookflowSpacing.sm),
+              // Same wordmark, same tagline, same gradient as the welcome
+              // screen the user lands on next — Screen 1 and Screen 2 are one
+              // continuous brand moment in the design, and a splash that
+              // dropped the tagline would read as a different screen.
+              Text(
+                'Ready, set, book',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: BookflowColors.textOnBrand,
+                  fontStyle: FontStyle.italic,
                 ),
               ),
               const SizedBox(height: BookflowSpacing.xl),

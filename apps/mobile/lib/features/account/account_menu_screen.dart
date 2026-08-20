@@ -1,3 +1,4 @@
+import 'package:bookflow/features/auth/logout_confirmation.dart';
 import 'package:bookflow/features/profile/profile_models.dart';
 import 'package:bookflow/features/profile/profile_providers.dart';
 import 'package:bookflow/platform/providers.dart';
@@ -82,7 +83,14 @@ class AccountMenuScreen extends ConsumerWidget {
               // Sign-out moved here from screen #20's back arrow, whose comment
               // said it signed out because "there is one screen behind the
               // shell". That reasoning expired the moment this screen existed.
-              onTap: () async => ref.read(authGatewayProvider).signOut(),
+              //
+              // It now asks first (Screen 11). This row sits directly under
+              // Profile, and a mistap used to end the session outright.
+              onTap: () async {
+                if (await showLogoutConfirmation(context)) {
+                  await ref.read(authGatewayProvider).signOut();
+                }
+              },
             ),
           ],
         ),

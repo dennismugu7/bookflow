@@ -208,8 +208,17 @@ void main() {
 
       // Driven, not merely present: it must actually sign out. This is what
       // fails if anyone later wraps the screen in `AsyncValueView`.
+      //
+      // Through the confirmation now (Screen 11) — which is also the assertion
+      // that the modal can still be reached and answered when the header above
+      // it has failed, the exact case this test exists for.
       expect(gateway.signOutCalls, 0);
       await tester.tap(find.byKey(const Key('account-log-out')));
+      await tester.pumpAndSettle();
+      expect(find.text('Log out?'), findsOneWidget);
+      expect(gateway.signOutCalls, 0);
+
+      await tester.tap(find.byKey(const Key('logout-confirm')));
       await tester.pumpAndSettle();
       expect(gateway.signOutCalls, 1);
     });
@@ -480,6 +489,20 @@ class _FakeGateway implements AuthGateway {
 
   @override
   Future<void> resendSignupCode({required String email}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> requestPasswordReset({required String email}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> verifyRecoveryCode({
+    required String email,
+    required String code,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> setNewPassword({required String newPassword}) =>
       throw UnimplementedError();
 
   @override
