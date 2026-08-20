@@ -1,3 +1,4 @@
+import 'package:bookflow/features/auth/logout_confirmation.dart';
 import 'package:bookflow/features/business/business_providers.dart';
 import 'package:bookflow/platform/providers.dart';
 import 'package:bookflow/theme/tokens.dart';
@@ -158,9 +159,17 @@ class _CreateBusinessScreenState extends ConsumerState<CreateBusinessScreen> {
               // no business has no exit from the app at all.
               TextButton(
                 key: const Key('create-business-sign-out'),
+                // Asks first (Screen 11), like the account menu's row. This one
+                // matters more, not less: it is the ONLY exit an owner with no
+                // business has, so a mistap here used to end the session of
+                // someone who had nowhere else to tap.
                 onPressed: inFlight
                     ? null
-                    : () async => ref.read(authGatewayProvider).signOut(),
+                    : () async {
+                        if (await showLogoutConfirmation(context)) {
+                          await ref.read(authGatewayProvider).signOut();
+                        }
+                      },
                 child: const Text('Sign out'),
               ),
             ],

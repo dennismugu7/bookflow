@@ -92,6 +92,86 @@ class LoginController extends AutoDisposeNotifier<AsyncValue<void>> {
   }
 }
 
+/// The password-reset flow's three steps.
+///
+/// **One controller for all three**, because they are one conversation about
+/// one address and each step's error area replaces the last. Three controllers
+/// would let a stale failure from step 1 sit under step 3's form.
+class ResetPasswordController extends AutoDisposeNotifier<AsyncValue<void>> {
+  @override
+  AsyncValue<void> build() => const AsyncData<void>(null);
+
+  /// Step 1. Succeeds whether or not the address has an account — see
+  /// `AuthGateway.requestPasswordReset`.
+  Future<void> request({required String email}) async {
+    state = const AsyncLoading<void>();
+
+    state = await AsyncValue.guard<void>(
+      () => ref.read(authGatewayProvider).requestPasswordReset(email: email),
+    );
+  }
+
+  /// Step 1 again, from the code screen's resend link.
+  Future<void> resend({required String email}) => request(email: email);
+
+  /// Step 2. **Opens a recovery session**, so the flag goes up FIRST — before
+  /// the request, not after it — or the session would arrive while the router
+  /// still thought it was a login and the shell would move.
+  Future<void> verifyCode({required String email, required String code}) async {
+    state = const AsyncLoading<void>();
+    ref.read(passwordRecoveryProvider.notifier).begin();
+
+    state = await AsyncValue.guard<void>(
+      () => ref
+          .read(authGatewayProvider)
+          .verifyRecoveryCode(email: email, code: code),
+    );
+
+    // A code that was refused opened no session, so the flag must come back
+    // down or the app is stuck at the signed-out shell with no way to leave it.
+    if (state.hasError) ref.read(passwordRecoveryProvider.notifier).end();
+  }
+
+  /// Step 3. The gateway signs out after setting the password, so the flag ends
+  /// with it — and only on success: a rejected password leaves the recovery
+  /// session open on purpose so another can be tried without a new code.
+  Future<void> setPassword({required String newPassword}) async {
+    state = const AsyncLoading<void>();
+
+    state = await AsyncValue.guard<void>(
+      () => ref
+          .read(authGatewayProvider)
+          .setNewPassword(newPassword: newPassword),
+    );
+
+    if (!state.hasError) ref.read(passwordRecoveryProvider.notifier).end();
+  }
+
+  /// Leaving the flow with a recovery session open. Ends it, because a session
+  /// nobody asked for outliving the screen that created it is how a stranger
+  /// ends up signed in as somebody.
+  Future<void> abandon() async {
+    if (!ref.read(passwordRecoveryProvider)) return;
+    try {
+      await ref.read(authGatewayProvider).signOut();
+    } on Object catch (_) {
+      // The flag comes down either way: leaving it up strands the app at the
+      // signed-out shell, which is worse than a session that expires by itself.
+    }
+    ref.read(passwordRecoveryProvider.notifier).end();
+  }
+
+  /// Clears a failure so the next step opens with a clean error area. Called
+  /// when the flow advances, never on a retry within a step.
+  void clear() => state = const AsyncData<void>(null);
+}
+
+final AutoDisposeNotifierProvider<ResetPasswordController, AsyncValue<void>>
+resetPasswordControllerProvider =
+    AutoDisposeNotifierProvider<ResetPasswordController, AsyncValue<void>>(
+      ResetPasswordController.new,
+    );
+
 final AutoDisposeNotifierProvider<SignupController, AsyncValue<void>>
 signupControllerProvider =
     AutoDisposeNotifierProvider<SignupController, AsyncValue<void>>(

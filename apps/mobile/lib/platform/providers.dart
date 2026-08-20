@@ -44,6 +44,33 @@ final Provider<AuthGateway> authGatewayProvider = Provider<AuthGateway>(
   ),
 );
 
+/// Whether a **recovery session** is open — the window between a recovery code
+/// being verified and the new password being set.
+///
+/// ══ A RECOVERY SESSION IS NOT A LOGIN ═══════════════════════════════════════
+///
+/// GoTrue's recovery OTP is single-use and the session it returns is what
+/// authorises `updateUser`, so the app is genuinely signed in for the length of
+/// the reset form. Without this flag `appDestinationProvider` would see a
+/// session, decide the user belongs at `/setup` or `/home`, and the redirect
+/// would move the shell out from under someone who is half way through
+/// resetting a password they cannot yet use.
+///
+/// **So the fact is stated rather than inferred.** A session plus this flag
+/// means "proving an identity"; a session without it means "signed in". The two
+/// are different states and the router now has both.
+class PasswordRecovery extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void begin() => state = true;
+
+  void end() => state = false;
+}
+
+final NotifierProvider<PasswordRecovery, bool> passwordRecoveryProvider =
+    NotifierProvider<PasswordRecovery, bool>(PasswordRecovery.new);
+
 /// The current session, starting from what the gateway already knows.
 ///
 /// The first `yield` matters: a bare `statusChanges()` stream would leave the

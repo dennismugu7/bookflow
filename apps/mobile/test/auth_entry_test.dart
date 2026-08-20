@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:bookflow/features/auth/auth_copy.dart';
 import 'package:bookflow/features/auth/auth_providers.dart';
 import 'package:bookflow/features/auth/auth_repository.dart';
+import 'package:bookflow/features/auth/code_entry_sheet.dart';
 import 'package:bookflow/features/auth/signup_sheet.dart';
 import 'package:bookflow/features/auth/verify_email_sheet.dart';
 import 'package:bookflow/platform/auth_failure.dart';
@@ -287,6 +288,18 @@ class _RecordingGateway implements AuthGateway {
     required String email,
     required String password,
   }) async {}
+
+  @override
+  Future<void> requestPasswordReset({required String email}) async {}
+
+  @override
+  Future<void> verifyRecoveryCode({
+    required String email,
+    required String code,
+  }) async {}
+
+  @override
+  Future<void> setNewPassword({required String newPassword}) async {}
 
   @override
   SessionStatus get status => SessionStatus.signedOut;

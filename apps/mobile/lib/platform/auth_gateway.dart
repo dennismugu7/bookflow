@@ -104,6 +104,47 @@ abstract interface class AuthGateway {
   ///
   /// Throws [AuthFailure] and nothing else.
   Future<void> resendSignupCode({required String email});
+
+  /// Emails a recovery code.
+  ///
+  /// **Succeeds whether or not the address has an account.** GoTrue does not
+  /// distinguish, and it should not: an endpoint that answered differently for
+  /// a registered address is an account-enumeration oracle. The screen's copy
+  /// has to be true either way — "if that address has an account".
+  ///
+  /// Throws [AuthFailure] and nothing else.
+  Future<void> requestPasswordReset({required String email});
+
+  /// Exchanges the recovery code for a **recovery session**.
+  ///
+  /// ══ THIS SIGNS THE USER IN, AND THAT IS NOT A CHOICE ════════════════════
+  ///
+  /// GoTrue's recovery OTP is single-use and the session it returns is what
+  /// authorises the password change. There is no way to prove the code without
+  /// holding a session afterwards, and no way to change the password without
+  /// one — so the window between this and [setNewPassword] is inherent to the
+  /// flow rather than a shortcut taken here.
+  ///
+  /// **A recovery session is not a login**, and the app must not treat it as
+  /// one: `passwordRecoveryProvider` holds the destination at the signed-out
+  /// shell for its duration, so the redirect does not haul a half-way-through
+  /// user to `/home`. Whoever calls this owns closing the window — with
+  /// [setNewPassword] or with [signOut].
+  ///
+  /// Throws [AuthFailure] and nothing else.
+  Future<void> verifyRecoveryCode({
+    required String email,
+    required String code,
+  });
+
+  /// Sets the password on the current session, then ends it.
+  ///
+  /// **The sign-out is the design's, not a technicality**: the user proves the
+  /// new password by signing in with it, which is also how they find out
+  /// immediately whether it is the one they think it is.
+  ///
+  /// Throws [AuthFailure] and nothing else.
+  Future<void> setNewPassword({required String newPassword});
 }
 
 /// The real one, over `supabase_flutter`.
@@ -177,6 +218,61 @@ class SupabaseAuthGateway implements AuthGateway {
       throw AuthFailure(_kindOf(error));
     } on Object catch (_) {
       throw const AuthFailure(AuthFailureKind.unavailable);
+    }
+  }
+
+  @override
+  Future<void> requestPasswordReset({required String email}) async {
+    try {
+      await _client.auth.resetPasswordForEmail(email);
+    } on AuthException catch (error) {
+      throw AuthFailure(_kindOf(error));
+    } on Object catch (_) {
+      throw const AuthFailure(AuthFailureKind.unavailable);
+    }
+  }
+
+  @override
+  Future<void> verifyRecoveryCode({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      await _client.auth.verifyOTP(
+        type: OtpType.recovery,
+        email: email,
+        token: code,
+      );
+    } on AuthException catch (error) {
+      throw AuthFailure(_kindOf(error, wrongCodeFallback: true));
+    } on Object catch (_) {
+      throw const AuthFailure(AuthFailureKind.unavailable);
+    }
+  }
+
+  @override
+  Future<void> setNewPassword({required String newPassword}) async {
+    try {
+      await _client.auth.updateUser(UserAttributes(password: newPassword));
+    } on AuthException catch (error) {
+      // The recovery session stays open on a REJECTED password, deliberately:
+      // "too short" and "in a breach corpus" are both retryable, and ending the
+      // session would make the user request a whole new code to try a different
+      // one. The caller signs out if they give up.
+      throw AuthFailure(_kindOf(error));
+    } on Object catch (_) {
+      throw const AuthFailure(AuthFailureKind.unavailable);
+    }
+
+    // The password IS changed by the time this runs. A sign-out that failed and
+    // threw would report the reset as failed, and the user would go on trying
+    // the old password against an account that no longer accepts it — a worse
+    // outcome than a session that outlives its welcome by an hour, which
+    // ADR-017 already bounds.
+    try {
+      await _client.auth.signOut();
+    } on Object catch (_) {
+      // Deliberately swallowed. See above.
     }
   }
 
