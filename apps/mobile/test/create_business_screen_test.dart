@@ -211,6 +211,24 @@ class _StubRepository implements BusinessRepository {
 class _FakeGateway implements AuthGateway {
   int signOutCalls = 0;
 
+  // The entry flow's operations. This fake does not perform them, and a throw
+  // says so at the line rather than letting a test pass on a fake success.
+  @override
+  Future<void> signInWithPassword({
+    required String email,
+    required String password,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> verifySignupCode({
+    required String email,
+    required String code,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> resendSignupCode({required String email}) =>
+      throw UnimplementedError();
+
   @override
   SessionStatus get status => SessionStatus.signedIn;
 

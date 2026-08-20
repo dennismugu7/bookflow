@@ -22,6 +22,7 @@
 /// other API call, and it arrives with the screens that collect the fields.
 library;
 
+import 'package:bookflow/platform/auth_failure.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Whether there is a usable session, from the router's point of view.
@@ -75,6 +76,34 @@ abstract interface class AuthGateway {
   /// Ends the session. ADR-017: this revokes the refresh token, and the access
   /// token already issued stays valid until it expires — at most one hour.
   Future<void> signOut();
+
+  /// Signs an existing owner in.
+  ///
+  /// **Returns nothing on purpose.** The session lands in the Supabase client,
+  /// which persists it through `SecureSessionStore` and emits on
+  /// [statusChanges]; `appDestinationProvider` recomputes and the existing
+  /// redirect moves the user. A caller that took a session object back would be
+  /// tempted to route on it, and then two things would decide where a signed-in
+  /// user belongs.
+  ///
+  /// Throws [AuthFailure] and nothing else.
+  Future<void> signInWithPassword({
+    required String email,
+    required String password,
+  });
+
+  /// Exchanges the emailed signup code for a session.
+  ///
+  /// GoTrue's OTP path: on success the user is confirmed **and signed in**, so
+  /// this is the last step of sign-up rather than a separate one before login.
+  ///
+  /// Throws [AuthFailure] and nothing else.
+  Future<void> verifySignupCode({required String email, required String code});
+
+  /// Sends the signup confirmation email again, invalidating the previous code.
+  ///
+  /// Throws [AuthFailure] and nothing else.
+  Future<void> resendSignupCode({required String email});
 }
 
 /// The real one, over `supabase_flutter`.
@@ -105,4 +134,95 @@ class SupabaseAuthGateway implements AuthGateway {
 
   @override
   String? currentEmail() => _client.auth.currentUser?.email;
+
+  @override
+  Future<void> signInWithPassword({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      await _client.auth.signInWithPassword(email: email, password: password);
+    } on AuthException catch (error) {
+      throw AuthFailure(_kindOf(error, wrongCredentialFallback: true));
+    } on Object catch (_) {
+      // A socket failure, a DNS failure, a malformed response. None of them is
+      // a statement about the password.
+      throw const AuthFailure(AuthFailureKind.unavailable);
+    }
+  }
+
+  @override
+  Future<void> verifySignupCode({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      await _client.auth.verifyOTP(
+        type: OtpType.signup,
+        email: email,
+        token: code,
+      );
+    } on AuthException catch (error) {
+      throw AuthFailure(_kindOf(error, wrongCodeFallback: true));
+    } on Object catch (_) {
+      throw const AuthFailure(AuthFailureKind.unavailable);
+    }
+  }
+
+  @override
+  Future<void> resendSignupCode({required String email}) async {
+    try {
+      await _client.auth.resend(type: OtpType.signup, email: email);
+    } on AuthException catch (error) {
+      throw AuthFailure(_kindOf(error));
+    } on Object catch (_) {
+      throw const AuthFailure(AuthFailureKind.unavailable);
+    }
+  }
+
+  /// GoTrue's error vocabulary, reduced to the kinds a screen has copy for.
+  ///
+  /// **Branches on `code` first, and on the status only as a fallback.** The
+  /// codes are GoTrue's stable, documented identifiers; the message is prose
+  /// that changes between releases and must never be matched on.
+  ///
+  /// The two `*Fallback` flags are what an unrecognised 400/403 means *on that
+  /// call*: on a sign-in it is bad credentials, on a verification it is a bad
+  /// code. Without them both would land on `unavailable`, which tells the user
+  /// to check their connection when the real answer is "that is the wrong
+  /// password".
+  static AuthFailureKind _kindOf(
+    AuthException error, {
+    bool wrongCredentialFallback = false,
+    bool wrongCodeFallback = false,
+  }) {
+    switch (error.code) {
+      case 'invalid_credentials':
+      case 'invalid_grant':
+        return AuthFailureKind.invalidCredentials;
+      case 'email_not_confirmed':
+        return AuthFailureKind.emailNotConfirmed;
+      case 'otp_expired':
+        return AuthFailureKind.expiredCode;
+      case 'over_email_send_rate_limit':
+      case 'over_request_rate_limit':
+      case 'over_sms_send_rate_limit':
+        return AuthFailureKind.rateLimited;
+      case 'weak_password':
+        return AuthFailureKind.passwordRejected;
+    }
+
+    if (error.statusCode == '429') return AuthFailureKind.rateLimited;
+
+    final bool refused =
+        error.statusCode == '400' ||
+        error.statusCode == '401' ||
+        error.statusCode == '403';
+    if (refused && wrongCredentialFallback) {
+      return AuthFailureKind.invalidCredentials;
+    }
+    if (refused && wrongCodeFallback) return AuthFailureKind.invalidCode;
+
+    return AuthFailureKind.unavailable;
+  }
 }

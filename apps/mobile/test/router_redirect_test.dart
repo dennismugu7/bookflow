@@ -226,7 +226,30 @@ void main() {
       // user may be where they are" — must survive ADR-042. This is the
       // assertion that fails if pushed routes are ever exempted from the
       // redirect rather than scoped by it.
-      for (final String pushed in pushedRouteShells.keys) {
+      //
+      // ── SCOPED TO THE ROUTES A SIGNED-OUT USER HAS NO BUSINESS ON ─────────
+      //
+      // The entry flow added `/forgot-password`, whose owning shell IS
+      // `signedOut`. Staying there while signed out is the rule working, not an
+      // exemption from it — so the loop skips routes the signed-out shell owns
+      // and the complementary test below covers them instead. Without the
+      // filter this asserted that a route may never be reachable by anyone who
+      // is not signed in, which was never the rule and would have made the
+      // password-reset link unbuildable.
+      final Iterable<String> ownedByASignedInShell = pushedRouteShells.entries
+          .where(
+            (MapEntry<String, AppDestination> entry) =>
+                entry.value != AppDestination.signedOut,
+          )
+          .map((MapEntry<String, AppDestination> entry) => entry.key);
+
+      expect(
+        ownedByASignedInShell,
+        isNotEmpty,
+        reason: 'otherwise this test asserts nothing at all',
+      );
+
+      for (final String pushed in ownedByASignedInShell) {
         expect(
           redirectFor(
             matchedLocation: pushed,
@@ -234,6 +257,41 @@ void main() {
           ),
           AppDestination.signedOut.path,
           reason: '$pushed must not survive a signed-out session',
+        );
+      }
+    });
+
+    test('a signed-out route does not survive signing in', () {
+      // The other direction, and the one the filter above would otherwise have
+      // dropped on the floor: `/forgot-password` belongs to the signed-out
+      // shell, so a session appearing while the user sits on it must move them
+      // exactly as a session ending moves them off `/profile`. Level 1 always
+      // wins, in both directions.
+      final Iterable<String> ownedBySignedOut = pushedRouteShells.entries
+          .where(
+            (MapEntry<String, AppDestination> entry) =>
+                entry.value == AppDestination.signedOut,
+          )
+          .map((MapEntry<String, AppDestination> entry) => entry.key);
+
+      expect(ownedBySignedOut, isNotEmpty);
+
+      for (final String pushed in ownedBySignedOut) {
+        expect(
+          redirectFor(
+            matchedLocation: pushed,
+            destination: AppDestination.home,
+          ),
+          AppDestination.home.path,
+          reason: '$pushed must not survive a session appearing',
+        );
+        expect(
+          redirectFor(
+            matchedLocation: pushed,
+            destination: AppDestination.signedOut,
+          ),
+          isNull,
+          reason: '$pushed is where a signed-out user is allowed to be',
         );
       }
     });
@@ -270,6 +328,24 @@ void main() {
 
 class _FakeAuthGateway implements AuthGateway {
   _FakeAuthGateway({required this.status});
+
+  // The entry flow's operations. This fake does not perform them, and a throw
+  // says so at the line rather than letting a test pass on a fake success.
+  @override
+  Future<void> signInWithPassword({
+    required String email,
+    required String password,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> verifySignupCode({
+    required String email,
+    required String code,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> resendSignupCode({required String email}) =>
+      throw UnimplementedError();
 
   @override
   SessionStatus status;

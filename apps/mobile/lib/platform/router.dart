@@ -1,4 +1,5 @@
 import 'package:bookflow/features/account/account_menu_screen.dart';
+import 'package:bookflow/features/auth/forgot_password_screen.dart';
 import 'package:bookflow/features/business/create_business_screen.dart';
 import 'package:bookflow/features/dashboard/dashboard_screen.dart';
 import 'package:bookflow/features/membership/membership_repository.dart';
@@ -116,6 +117,11 @@ final Provider<AppDestination> appDestinationProvider =
 const Map<String, AppDestination> pushedRouteShells = <String, AppDestination>{
   '/account': AppDestination.home,
   '/profile': AppDestination.home,
+  // The one pushed route that belongs to the SIGNED-OUT shell. Reached from the
+  // login sheet's "Forgot password?", so its owner is `/welcome` — and that
+  // ownership is what makes the redirect leave it alone while nobody is signed
+  // in, and take the user off it the moment somebody is.
+  '/forgot-password': AppDestination.signedOut,
 };
 
 /// Where the router should send a user currently at `matchedLocation`, or
@@ -235,6 +241,11 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         path: '/profile',
         builder: (BuildContext context, GoRouterState state) =>
             const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (BuildContext context, GoRouterState state) =>
+            const ForgotPasswordScreen(),
       ),
       GoRoute(
         path: AppDestination.unavailable.path,

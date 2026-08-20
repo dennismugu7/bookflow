@@ -253,6 +253,13 @@ abstract final class BookflowSizes {
   /// nothing to measure; 18 is what fits Material's default button height
   /// without changing it, which is the property that matters.
   static const double inlineSpinner = 18;
+
+  /// INVENTED — the bottom sheet's grabber bar (§6, "a small horizontal gray
+  /// grabber bar"). The document gives no dimensions and the bar is a handful
+  /// of pixels tall in the screenshots, too few to measure honestly; these are
+  /// the platform-conventional proportions.
+  static const double grabberWidth = 36;
+  static const double grabberHeight = 4;
 }
 
 /// Type scale.
