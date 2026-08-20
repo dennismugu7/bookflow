@@ -9,6 +9,11 @@ import 'package:bookflow_api/api.dart';
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
 **name** | **String** | Required. Trimmed. 1–200 characters after trimming. | 
+**tagline** | **String** |  | [optional] 
+**about** | **String** |  | [optional] 
+**category** | **String** |  | [optional] 
+**address** | **String** |  | [optional] 
+**mapsUrl** | **String** |  | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

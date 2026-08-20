@@ -65,12 +65,33 @@
             "minLength": 1,
             "maxLength": 200,
             "description": "Required. Trimmed. 1–200 characters after trimming."
+          },
+          "tagline": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "about": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "mapsUrl": {
+            "type": "string",
+            "maxLength": 2000,
+            "format": "uri"
           }
         },
         "required": [
           "name"
         ],
-        "description": "A new name for the business. The only editable field."
+        "description": "The business’s editable profile. The name is required."
       },
       "CreateBusinessRequestInput": {
         "type": "object",
@@ -109,6 +130,109 @@
         ],
         "description": "A business the caller is a member of."
       },
+      "OpeningHoursEntryInput": {
+        "type": "object",
+        "properties": {
+          "dayOfWeek": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 6,
+            "description": "0 = Monday, 6 = Sunday. NOT PostgreSQL extract(dow)."
+          },
+          "openTime": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "description": "Local wall-clock time, HH:MM, 24-hour. Africa/Nairobi (ADR-005)."
+          },
+          "closeTime": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "description": "Local wall-clock time, HH:MM, 24-hour. Africa/Nairobi (ADR-005)."
+          }
+        },
+        "required": [
+          "dayOfWeek",
+          "openTime",
+          "closeTime"
+        ],
+        "description": "One day’s opening hours."
+      },
+      "ReplaceOpeningHoursRequestInput": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "maxItems": 7,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpeningHoursEntryInput"
+            }
+          }
+        },
+        "required": [
+          "days"
+        ],
+        "description": "The week’s opening hours. Replaces whatever is there."
+      },
+      "UploadedImageInput": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "The public URL. Safe to store and to render."
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "banner",
+              "team",
+              "portfolio"
+            ]
+          },
+          "portfolioImageId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "url",
+          "purpose",
+          "portfolioImageId"
+        ],
+        "description": "An image that is now stored and publicly readable."
+      },
+      "PortfolioImageInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "imageUrl",
+          "position"
+        ],
+        "description": "A gallery image on the public booking page."
+      },
       "ProfileInput": {
         "type": "object",
         "properties": {
@@ -141,6 +265,472 @@
           "avatarPath"
         ],
         "description": "The authenticated owner's own profile."
+      },
+      "PublicServiceInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "priceKes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Whole Kenyan shillings."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "durationMinutes",
+          "priceKes"
+        ],
+        "description": "A bookable service, as a client sees it."
+      },
+      "PublicTeamMemberInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "about": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "photoUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "role",
+          "about",
+          "photoUrl"
+        ],
+        "description": "Someone a client can book with."
+      },
+      "PublicOpeningHoursInput": {
+        "type": "object",
+        "properties": {
+          "dayOfWeek": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "0 = Monday."
+          },
+          "openTime": {
+            "type": "string",
+            "description": "HH:MM, Africa/Nairobi."
+          },
+          "closeTime": {
+            "type": "string",
+            "description": "HH:MM, Africa/Nairobi."
+          }
+        },
+        "required": [
+          "dayOfWeek",
+          "openTime",
+          "closeTime"
+        ],
+        "description": "One day’s opening hours. An absent day is closed."
+      },
+      "PublicSalonInput": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tagline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "about": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bannerUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mapsUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicServiceInput"
+            }
+          },
+          "teamMembers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicTeamMemberInput"
+            }
+          },
+          "openingHours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicOpeningHoursInput"
+            }
+          },
+          "portfolioImageUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "handle",
+          "name",
+          "tagline",
+          "about",
+          "category",
+          "bannerUrl",
+          "address",
+          "mapsUrl",
+          "services",
+          "teamMembers",
+          "openingHours",
+          "portfolioImageUrls"
+        ],
+        "description": "A published salon’s public booking page."
+      },
+      "PublishedBusinessInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "handle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "published",
+          "handle"
+        ],
+        "description": "A business that is now live on its public booking page."
+      },
+      "ServiceInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "priceKes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "position": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "durationMinutes",
+          "priceKes",
+          "position"
+        ],
+        "description": "A bookable service."
+      },
+      "CreateServiceRequestInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required. Trimmed. 1–200 characters after trimming."
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 1440,
+            "description": "Whole minutes. 1–1440."
+          },
+          "priceKes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Whole Kenyan shillings. Not minor units — see the schema note."
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Display order. Ties break on creation time."
+          }
+        },
+        "required": [
+          "name",
+          "durationMinutes",
+          "priceKes"
+        ],
+        "description": "A service to add."
+      },
+      "UpdateServiceRequestInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required. Trimmed. 1–200 characters after trimming."
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 1440,
+            "description": "Whole minutes. 1–1440."
+          },
+          "priceKes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Whole Kenyan shillings. Not minor units — see the schema note."
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Display order. Ties break on creation time."
+          }
+        },
+        "description": "The fields to change. At least one."
+      },
+      "TeamMemberInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "about": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "photoUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "position": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "role",
+          "about",
+          "photoUrl",
+          "position"
+        ],
+        "description": "Someone a client can book with."
+      },
+      "CreateTeamMemberRequestInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required. Trimmed. 1–200 characters after trimming."
+          },
+          "role": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Job title, e.g. \"Senior stylist\". NOT an authorization role."
+          },
+          "about": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "photoUrl": {
+            "type": "string",
+            "maxLength": 2000,
+            "format": "uri"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "description": "Someone to add to the team."
+      },
+      "UpdateTeamMemberRequestInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required. Trimmed. 1–200 characters after trimming."
+          },
+          "role": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Job title, e.g. \"Senior stylist\". NOT an authorization role."
+          },
+          "about": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "photoUrl": {
+            "type": "string",
+            "maxLength": 2000,
+            "format": "uri"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "description": "The fields to change. At least one."
       },
       "HealthResponseInput": {
         "type": "object",
@@ -214,13 +804,34 @@
             "minLength": 1,
             "maxLength": 200,
             "description": "Required. Trimmed. 1–200 characters after trimming."
+          },
+          "tagline": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "about": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "mapsUrl": {
+            "type": "string",
+            "maxLength": 2000,
+            "format": "uri"
           }
         },
         "required": [
           "name"
         ],
         "additionalProperties": false,
-        "description": "A new name for the business. The only editable field."
+        "description": "The business’s editable profile. The name is required."
       },
       "CreateBusinessRequest": {
         "type": "object",
@@ -261,6 +872,113 @@
         "additionalProperties": false,
         "description": "A business the caller is a member of."
       },
+      "OpeningHoursEntry": {
+        "type": "object",
+        "properties": {
+          "dayOfWeek": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 6,
+            "description": "0 = Monday, 6 = Sunday. NOT PostgreSQL extract(dow)."
+          },
+          "openTime": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "description": "Local wall-clock time, HH:MM, 24-hour. Africa/Nairobi (ADR-005)."
+          },
+          "closeTime": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "description": "Local wall-clock time, HH:MM, 24-hour. Africa/Nairobi (ADR-005)."
+          }
+        },
+        "required": [
+          "dayOfWeek",
+          "openTime",
+          "closeTime"
+        ],
+        "additionalProperties": false,
+        "description": "One day’s opening hours."
+      },
+      "ReplaceOpeningHoursRequest": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "maxItems": 7,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpeningHoursEntry"
+            }
+          }
+        },
+        "required": [
+          "days"
+        ],
+        "additionalProperties": false,
+        "description": "The week’s opening hours. Replaces whatever is there."
+      },
+      "UploadedImage": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "The public URL. Safe to store and to render."
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "banner",
+              "team",
+              "portfolio"
+            ]
+          },
+          "portfolioImageId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "url",
+          "purpose",
+          "portfolioImageId"
+        ],
+        "additionalProperties": false,
+        "description": "An image that is now stored and publicly readable."
+      },
+      "PortfolioImage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "imageUrl",
+          "position"
+        ],
+        "additionalProperties": false,
+        "description": "A gallery image on the public booking page."
+      },
       "Profile": {
         "type": "object",
         "properties": {
@@ -294,6 +1012,483 @@
         ],
         "additionalProperties": false,
         "description": "The authenticated owner's own profile."
+      },
+      "PublicService": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "priceKes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Whole Kenyan shillings."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "durationMinutes",
+          "priceKes"
+        ],
+        "additionalProperties": false,
+        "description": "A bookable service, as a client sees it."
+      },
+      "PublicTeamMember": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "about": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "photoUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "role",
+          "about",
+          "photoUrl"
+        ],
+        "additionalProperties": false,
+        "description": "Someone a client can book with."
+      },
+      "PublicOpeningHours": {
+        "type": "object",
+        "properties": {
+          "dayOfWeek": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "0 = Monday."
+          },
+          "openTime": {
+            "type": "string",
+            "description": "HH:MM, Africa/Nairobi."
+          },
+          "closeTime": {
+            "type": "string",
+            "description": "HH:MM, Africa/Nairobi."
+          }
+        },
+        "required": [
+          "dayOfWeek",
+          "openTime",
+          "closeTime"
+        ],
+        "additionalProperties": false,
+        "description": "One day’s opening hours. An absent day is closed."
+      },
+      "PublicSalon": {
+        "type": "object",
+        "properties": {
+          "handle": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tagline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "about": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bannerUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mapsUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicService"
+            }
+          },
+          "teamMembers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicTeamMember"
+            }
+          },
+          "openingHours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicOpeningHours"
+            }
+          },
+          "portfolioImageUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "handle",
+          "name",
+          "tagline",
+          "about",
+          "category",
+          "bannerUrl",
+          "address",
+          "mapsUrl",
+          "services",
+          "teamMembers",
+          "openingHours",
+          "portfolioImageUrls"
+        ],
+        "additionalProperties": false,
+        "description": "A published salon’s public booking page."
+      },
+      "PublishedBusiness": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "handle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "published",
+          "handle"
+        ],
+        "additionalProperties": false,
+        "description": "A business that is now live on its public booking page."
+      },
+      "Service": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "priceKes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "position": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "durationMinutes",
+          "priceKes",
+          "position"
+        ],
+        "additionalProperties": false,
+        "description": "A bookable service."
+      },
+      "CreateServiceRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required. Trimmed. 1–200 characters after trimming."
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 1440,
+            "description": "Whole minutes. 1–1440."
+          },
+          "priceKes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Whole Kenyan shillings. Not minor units — see the schema note."
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Display order. Ties break on creation time."
+          }
+        },
+        "required": [
+          "name",
+          "durationMinutes",
+          "priceKes"
+        ],
+        "additionalProperties": false,
+        "description": "A service to add."
+      },
+      "UpdateServiceRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required. Trimmed. 1–200 characters after trimming."
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 1440,
+            "description": "Whole minutes. 1–1440."
+          },
+          "priceKes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Whole Kenyan shillings. Not minor units — see the schema note."
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Display order. Ties break on creation time."
+          }
+        },
+        "additionalProperties": false,
+        "description": "The fields to change. At least one."
+      },
+      "TeamMember": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "about": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "photoUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "position": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "role",
+          "about",
+          "photoUrl",
+          "position"
+        ],
+        "additionalProperties": false,
+        "description": "Someone a client can book with."
+      },
+      "CreateTeamMemberRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required. Trimmed. 1–200 characters after trimming."
+          },
+          "role": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Job title, e.g. \"Senior stylist\". NOT an authorization role."
+          },
+          "about": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "photoUrl": {
+            "type": "string",
+            "maxLength": 2000,
+            "format": "uri"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false,
+        "description": "Someone to add to the team."
+      },
+      "UpdateTeamMemberRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Required. Trimmed. 1–200 characters after trimming."
+          },
+          "role": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "Job title, e.g. \"Senior stylist\". NOT an authorization role."
+          },
+          "about": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "photoUrl": {
+            "type": "string",
+            "maxLength": 2000,
+            "format": "uri"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "additionalProperties": false,
+        "description": "The fields to change. At least one."
       },
       "HealthResponse": {
         "type": "object",
@@ -423,11 +1618,11 @@
       },
       "patch": {
         "operationId": "renameBusiness",
-        "summary": "Rename a business the caller belongs to",
+        "summary": "Edit a business the caller belongs to",
         "tags": [
           "businesses"
         ],
-        "description": "The name is the only editable field. Scoped through membership: a business the caller has no membership in is indistinguishable from one that does not exist. The name is trimmed before it is stored.",
+        "description": "The name is required; tagline, about, category, address and mapsUrl are optional and an omitted one is left UNCHANGED, not cleared. Scoped through membership: a business the caller has no membership in is indistinguishable from one that does not exist. Text is trimmed before it is stored.",
         "requestBody": {
           "required": true,
           "content": {
@@ -511,6 +1706,448 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Business"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/business/services": {
+      "get": {
+        "operationId": "listMyServices",
+        "summary": "The caller's services",
+        "tags": [
+          "services"
+        ],
+        "description": "In display order, ties broken by creation time. An account with no business gets an empty list, not a 404 — nothing was refused.",
+        "responses": {
+          "200": {
+            "description": "The salon’s services, in display order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Service"
+                  },
+                  "description": "The salon’s services, in display order."
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createService",
+        "summary": "Add a service",
+        "tags": [
+          "services"
+        ],
+        "description": "Names are unique within a salon: a duplicate is refused with 409 duplicate-name and writes nothing. Price is in whole Kenyan shillings.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServiceRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/business/services/{serviceId}": {
+      "patch": {
+        "operationId": "updateService",
+        "summary": "Change a service",
+        "tags": [
+          "services"
+        ],
+        "description": "Every field is optional and at least one must be present. A service that is not the caller’s is indistinguishable from one that does not exist.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServiceRequestInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "serviceId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteService",
+        "summary": "Remove a service",
+        "tags": [
+          "services"
+        ],
+        "description": "Hard delete (ADR-036). Bookings snapshot their service (ADR-006), so removing one never rewrites a booking that used it.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "serviceId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/me/business/team-members": {
+      "get": {
+        "operationId": "listMyTeamMembers",
+        "summary": "The caller's team",
+        "tags": [
+          "team"
+        ],
+        "description": "In display order, ties broken by creation time. An account with no business gets an empty list.",
+        "responses": {
+          "200": {
+            "description": "The salon’s team, in display order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TeamMember"
+                  },
+                  "description": "The salon’s team, in display order."
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createTeamMember",
+        "summary": "Add a team member",
+        "tags": [
+          "team"
+        ],
+        "description": "One name field (ADR-005): team members are content records, unlike the owner’s own account. `role` is a job title, never an authorization role. Names are not unique — two stylists may share one.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTeamMemberRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamMember"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/business/team-members/{memberId}": {
+      "patch": {
+        "operationId": "updateTeamMember",
+        "summary": "Change a team member",
+        "tags": [
+          "team"
+        ],
+        "description": "Every field is optional and at least one must be present. A member who is not the caller’s is indistinguishable from one who does not exist.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTeamMemberRequestInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "memberId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeamMember"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteTeamMember",
+        "summary": "Remove a team member",
+        "tags": [
+          "team"
+        ],
+        "description": "Hard delete (ADR-036). ADR-006 snapshots the team member onto every booking, so removing one never rewrites a booking they took.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "memberId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/me/business/opening-hours": {
+      "get": {
+        "operationId": "getMyOpeningHours",
+        "summary": "The caller's opening hours",
+        "tags": [
+          "opening-hours"
+        ],
+        "description": "Ascending by day, 0 = Monday. An absent day is CLOSED (A6) — there is no row meaning \"shut\", only the absence of one.",
+        "responses": {
+          "200": {
+            "description": "The week’s opening hours, ascending by day. An absent day is CLOSED (A6) — not a row with equal times.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OpeningHoursEntry"
+                  },
+                  "description": "The week’s opening hours, ascending by day. An absent day is CLOSED (A6) — not a row with equal times."
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "replaceMyOpeningHours",
+        "summary": "Replace the week",
+        "tags": [
+          "opening-hours"
+        ],
+        "description": "The submitted array becomes the whole week: days that are absent are removed. Applied in one statement, so a request either lands entirely or not at all — a half-applied week would be a salon open at hours nobody chose. A day may appear at most once and closeTime must be after openTime.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceOpeningHoursRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The week’s opening hours, ascending by day. An absent day is CLOSED (A6) — not a row with equal times.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OpeningHoursEntry"
+                  },
+                  "description": "The week’s opening hours, ascending by day. An absent day is CLOSED (A6) — not a row with equal times."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/business/images": {
+      "post": {
+        "operationId": "uploadBusinessImage",
+        "summary": "Upload an image",
+        "tags": [
+          "media"
+        ],
+        "description": "multipart/form-data with a `file` part and a `purpose` field of banner, team or portfolio. JPEG and PNG only, 5 MB maximum. Returns a public URL: a banner is stored on the business, a portfolio image creates a gallery row, and a team photo is handed back for the caller to attach with PATCH.",
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadedImage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/business/portfolio-images": {
+      "get": {
+        "operationId": "listMyPortfolioImages",
+        "summary": "The caller's gallery",
+        "tags": [
+          "media"
+        ],
+        "description": "In display order, ties broken by creation time.",
+        "responses": {
+          "200": {
+            "description": "The salon’s gallery, in display order.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PortfolioImage"
+                  },
+                  "description": "The salon’s gallery, in display order."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/business/portfolio-images/{imageId}": {
+      "delete": {
+        "operationId": "deletePortfolioImage",
+        "summary": "Remove a gallery image",
+        "tags": [
+          "media"
+        ],
+        "description": "Removes the row and then the stored object. If the object cannot be removed the request still succeeds — the image is off the page, which is what was asked, and the orphan is logged.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "imageId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/me/business/publish": {
+      "post": {
+        "operationId": "publishMyBusiness",
+        "summary": "Publish the salon",
+        "tags": [
+          "publishing"
+        ],
+        "description": "Requires a name, at least one service and at least one open day; otherwise 409 publish-requirements-not-met, which names nothing the caller does not already have. On success the business becomes publicly readable and is assigned a permanent handle (ADR-021), derived from the name with a random suffix on collision. Idempotent: publishing an already-published salon returns the handle it already has and never mints a second.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishedBusiness"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/salons/{handle}": {
+      "get": {
+        "operationId": "getPublicSalon",
+        "summary": "A published salon’s booking page",
+        "tags": [
+          "public"
+        ],
+        "description": "Unauthenticated. Returns an allowlist projection — no ids beyond the service and team-member ids booking will reference, no owner, no timestamps. A handle that does not exist and a salon that is not published are the same 404, deliberately: distinguishing them would let anyone enumerate unpublished salons by name.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 60,
+              "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+            },
+            "in": "path",
+            "name": "handle",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicSalon"
                 }
               }
             }

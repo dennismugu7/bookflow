@@ -174,9 +174,9 @@ export function registerBusinessRoutes(
     {
       schema: {
         operationId: 'renameBusiness',
-        summary: 'Rename a business the caller belongs to',
+        summary: 'Edit a business the caller belongs to',
         description:
-          'The name is the only editable field. Scoped through membership: a business the caller has no membership in is indistinguishable from one that does not exist. The name is trimmed before it is stored.',
+          'The name is required; tagline, about, category, address and mapsUrl are optional and an omitted one is left UNCHANGED, not cleared. Scoped through membership: a business the caller has no membership in is indistinguishable from one that does not exist. Text is trimmed before it is stored.',
         tags: ['businesses'],
         params: z.object({ businessId: z.uuid() }),
         body: renameBusinessRequestSchema,
@@ -191,12 +191,12 @@ export function registerBusinessRoutes(
       // arrives trimmed (decision 9), and a malformed request never reaches the
       // service. A validation failure becomes a 400 problem document in
       // `platform/problem.ts`.
-      const { name } = request.body;
+      const { name, tagline, about, category, address, mapsUrl } = request.body;
 
       const business = await renameMyBusiness(
         db(),
         { userId, businessId },
-        name,
+        { name, tagline, about, category, address, mapsUrl },
       );
 
       if (business === undefined) {

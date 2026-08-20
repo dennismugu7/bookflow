@@ -393,6 +393,19 @@ describe('default-deny, swept over the registered route table', () => {
     'HEAD /health',
     // ADR-032's mediated sign-up: there is no token before an account exists.
     'POST /v1/auth/signup',
+    // ── THE ONLY ROUTE THAT PUBLISHES DATA ON PURPOSE ────────────────────────
+    //
+    // The client web app's booking page. Public by design and by ADR-004: it
+    // answers only for a business whose `published` is true, and it emits an
+    // ALLOWLIST projection (`public/public.schema.ts`) rather than a row with
+    // fields removed.
+    //
+    // Its presence on this list is the review prompt the list exists for. The
+    // question it should provoke is not "is this route public" — it plainly is
+    // — but **"is what it returns still only what a stranger may see"**, and
+    // the answer to that lives in the schema, not here.
+    'GET /v1/public/salons/:handle',
+    'HEAD /v1/public/salons/:handle',
   ]);
 
   /** `:param` segments filled with a real UUID so routing matches. */

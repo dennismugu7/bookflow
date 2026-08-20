@@ -1,3 +1,4 @@
+import fastifyMultipart from '@fastify/multipart';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifySwagger from '@fastify/swagger';
 import Fastify, { type FastifyInstance } from 'fastify';
@@ -22,7 +23,15 @@ import {
   type SignupRateLimit,
 } from './modules/auth/auth.routes.ts';
 import { registerBusinessRoutes } from './modules/businesses/businesses.routes.ts';
+import { registerHoursRoutes } from './modules/hours/hours.routes.ts';
+import { registerMediaRoutes } from './modules/media/media.routes.ts';
 import { registerMeRoutes } from './modules/me/me.routes.ts';
+import { registerPublicRoutes } from './modules/public/public.routes.ts';
+import { registerPublishingRoutes } from './modules/publishing/publishing.routes.ts';
+import { registerServiceRoutes } from './modules/services/services.routes.ts';
+import { registerTeamRoutes } from './modules/team/team.routes.ts';
+import { MAX_IMAGE_BYTES } from './modules/media/media.schema.ts';
+import { createStorageClient, type StorageClient } from './platform/storage.ts';
 
 /**
  * The health response, declared once.
@@ -75,6 +84,12 @@ export interface BuildAppOptions {
    * The default talks to haveibeenpwned.
    */
   readonly breachChecker?: BreachChecker;
+  /**
+   * Injected so a test can drive the upload path without an object store, and
+   * so one can point it at a store that fails in a chosen way. The default
+   * talks to the real Supabase Storage.
+   */
+  readonly storage?: StorageClient;
   /**
    * Overrides the sign-up throttle. Present because the limiter's store is
    * in-memory and therefore PER INSTANCE: a test file sharing one app would
@@ -138,6 +153,18 @@ export async function buildApp(
   // handler is what makes the response RFC 9457, so the two belong together.
   await app.register(fastifyRateLimit, { global: false });
 
+  // ── THE SIZE CAP LIVES HERE, AT THE STREAM ────────────────────────────────
+  //
+  // `fileSize` is enforced while the body arrives, so an oversized upload is
+  // cut off mid-flight rather than buffered in full and measured afterwards.
+  // Checking `Content-Length` instead would trust a header the client writes.
+  //
+  // `files: 1` because every route here takes one image. A request carrying
+  // ten would otherwise be parsed in full before anything noticed.
+  await app.register(fastifyMultipart, {
+    limits: { fileSize: MAX_IMAGE_BYTES, files: 1 },
+  });
+
   registerProblemHandler(app);
 
   await app.register(auth, {
@@ -190,6 +217,24 @@ export async function buildApp(
   );
   registerMeRoutes(app, options.db);
   registerBusinessRoutes(app, options.db);
+  registerServiceRoutes(app, options.db);
+  registerTeamRoutes(app, options.db);
+  registerHoursRoutes(app, options.db);
+  registerMediaRoutes(
+    app,
+    options.db,
+    options.storage ??
+      createStorageClient({
+        baseUrl: config.SUPABASE_URL,
+        serviceRoleKey: config.SUPABASE_SERVICE_ROLE_KEY,
+      }),
+  );
+  registerPublishingRoutes(app, options.db);
+  // Last, and the only one that is unauthenticated. Registration order does not
+  // affect the auth hook — `platform/auth.ts` is default-deny over every route
+  // regardless — but keeping the public surface at the bottom of this list
+  // means a reader sees the whole authenticated API before the one exception.
+  registerPublicRoutes(app, options.db);
 
   return app;
 }

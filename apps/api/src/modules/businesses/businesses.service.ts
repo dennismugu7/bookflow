@@ -1,6 +1,7 @@
 import type { Executor } from '../../platform/db.ts';
 import { ProblemError } from '../../platform/problem.ts';
 import {
+  type BusinessProfileInput,
   type BusinessRepository,
   type BusinessRow,
   type BusinessScope,
@@ -91,6 +92,28 @@ export async function getMyBusiness(
   scope: { readonly userId: string },
 ): Promise<BusinessRow | undefined> {
   return await findBusinessOwnedBy(db, scope);
+}
+
+/**
+ * Whether the caller has a business at all.
+ *
+ * ── WHY THIS EXISTS RATHER THAN `getMyBusiness(...) !== undefined` ──────────
+ *
+ * It is exactly that, and naming it is the point. Its one caller —
+ * `hours.service.ts` — needs to tell "the week was cleared" from "there is no
+ * business to clear", and a bare inequality at that call site reads like a
+ * business rule about opening hours rather than what it is: a question about
+ * membership, answered by the module that owns membership.
+ *
+ * **Still the scoped traversal**, not `businessExistsUnscoped` — which is the
+ * module's one unscoped read, is Do-Not-Vibe, has exactly one permitted caller,
+ * and answers a different question entirely. Nothing here may reach for it.
+ */
+export async function businessExistsFor(
+  db: Executor,
+  scope: { readonly userId: string },
+): Promise<boolean> {
+  return (await findBusinessOwnedBy(db, scope)) !== undefined;
 }
 
 /**
@@ -186,9 +209,9 @@ export async function createMyBusiness(
 export async function renameMyBusiness(
   db: Executor,
   scope: BusinessScope,
-  name: string,
+  input: BusinessProfileInput,
 ): Promise<BusinessRow | undefined> {
-  return await renameBusinessForUser(db, scope, name);
+  return await renameBusinessForUser(db, scope, input);
 }
 
 /**

@@ -189,32 +189,41 @@ describe('POST /v1/businesses', () => {
       payload: { name: 'Nothing Else' },
     });
 
-    // ══ THIS ASSERTS THE ABSENCE OF THE TABLES, WHICH IS A PROXY ════════════
+    // ══ RE-EXPRESSED, EXACTLY AS THE OLD VERSION INSTRUCTED ═════════════════
     //
-    // Criterion 7 says creation makes no services, team members, portfolio or
-    // opening hours. Nothing can be written to a table that does not exist, so
-    // the table list is the strongest form available today — stronger than
-    // counting rows, because it forecloses the question rather than sampling
-    // it.
+    // This used to assert the four tables DID NOT EXIST, as a proxy: nothing
+    // can be written to a table that is not there. Its comment said in terms
+    // that it would fail the day those tables landed, that this was the point,
+    // and that the fix was to re-express the criterion as **zero rows after a
+    // creation** rather than to update the expected list.
     //
-    // **IT WILL FAIL THE DAY THE SERVICES SLICE ADDS A TABLE, AND THAT IS THE
-    // POINT — DO NOT "FIX" IT BY UPDATING THE EXPECTED LIST.** The failure is a
-    // prompt to re-express criterion 7 as **zero ROWS in the new table after a
-    // creation**, which is what the criterion actually means and what only
-    // becomes testable once the table exists.
-    //
-    // Updating the array instead would keep the test green while silently
-    // dropping the assertion: a services table could then be populated by
-    // creation and nothing here would notice.
-    const tables = await sql<{ tablename: string }>`
-      select tablename from pg_tables where schemaname = 'public' order by tablename
+    // The business-configuration migration is that day. So the proxy is gone
+    // and the criterion is asserted directly — which is strictly stronger,
+    // because it now watches what creation actually writes rather than what the
+    // schema happens to contain.
+    const counts = await sql<{
+      services: string;
+      teamMembers: string;
+      openingHours: string;
+      portfolioImages: string;
+    }>`
+      select
+        (select count(*) from public.services)::text         as services,
+        (select count(*) from public.team_members)::text     as "teamMembers",
+        (select count(*) from public.opening_hours)::text    as "openingHours",
+        (select count(*) from public.portfolio_images)::text as "portfolioImages"
     `.execute(ctx.db);
 
-    expect(tables.rows.map((r) => r.tablename)).toEqual([
-      'businesses',
-      'memberships',
-      'user_profiles',
-    ]);
+    // Unqualified by business on purpose: inside the harness's transaction the
+    // only rows that can exist are ones this test created, so a global zero is
+    // a stronger statement than a scoped one and cannot be satisfied by a row
+    // landing under a different business id.
+    expect(counts.rows[0]).toEqual({
+      services: '0',
+      teamMembers: '0',
+      openingHours: '0',
+      portfolioImages: '0',
+    });
   });
 
   it('criterion 22, 23, 34, 35 — a second attempt is refused with a conflict, and changes nothing', async () => {

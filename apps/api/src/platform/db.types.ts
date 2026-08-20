@@ -12,13 +12,38 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface Businesses {
+  /**
+   * Optional long-form description. "Tell your story".
+   */
+  about: string | null;
+  address: string | null;
+  /**
+   * Optional. A public URL in the public-media bucket, written by the image upload route.
+   */
+  banner_url: string | null;
+  /**
+   * Optional free text (salon, barbershop, spa). NOT an enum: K16 is undecided and an enum would decide it here.
+   */
+  category: string | null;
   created_at: Generated<Timestamp>;
+  /**
+   * The public booking address (ADR-021). Null until published. Unique. Never reassigned once set.
+   */
+  handle: string | null;
   id: Generated<string>;
+  /**
+   * Optional. A map link the client web app renders beside the address. Free text; nothing here parses it.
+   */
+  maps_url: string | null;
   name: string;
   /**
    * ADR-004. Every public read filters on this. Defaults false.
    */
   published: Generated<boolean>;
+  /**
+   * Optional. "Your business, in a nutshell" on the onboarding screen.
+   */
+  tagline: string | null;
   updated_at: Generated<Timestamp>;
 }
 
@@ -29,6 +54,57 @@ export interface Memberships {
   role: Generated<string>;
   updated_at: Generated<Timestamp>;
   user_id: string;
+}
+
+export interface OpeningHours {
+  business_id: string;
+  close_time: string;
+  created_at: Generated<Timestamp>;
+  /**
+   * 0 = Monday. NOT PostgreSQL extract(dow), which is 0 = Sunday.
+   */
+  day_of_week: number;
+  id: Generated<string>;
+  open_time: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface PortfolioImages {
+  business_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  image_url: string;
+  position: Generated<number>;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface Services {
+  business_id: string;
+  created_at: Generated<Timestamp>;
+  duration_minutes: number;
+  id: Generated<string>;
+  name: string;
+  position: Generated<number>;
+  /**
+   * WHOLE SHILLINGS, not minor units. Departs from CLAUDE.md section 5 deliberately — see the column comment in the migration.
+   */
+  price_kes: number;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface TeamMembers {
+  about: string | null;
+  business_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  name: string;
+  photo_url: string | null;
+  position: Generated<number>;
+  /**
+   * Job title. NOT an authorization role — that is memberships.role.
+   */
+  role: string | null;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface UserProfiles {
@@ -48,5 +124,9 @@ export interface UserProfiles {
 export interface DB {
   businesses: Businesses;
   memberships: Memberships;
+  opening_hours: OpeningHours;
+  portfolio_images: PortfolioImages;
+  services: Services;
+  team_members: TeamMembers;
   user_profiles: UserProfiles;
 }

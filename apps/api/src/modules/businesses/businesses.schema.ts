@@ -48,16 +48,60 @@ export const businessName = z
   .max(BUSINESS_NAME_MAX_LENGTH)
   .describe('Required. Trimmed. 1–200 characters after trimming.');
 
+const TAGLINE_MAX_LENGTH = 200;
+const ABOUT_MAX_LENGTH = 2000;
+const CATEGORY_MAX_LENGTH = 100;
+const ADDRESS_MAX_LENGTH = 500;
+
 /**
- * `PATCH` takes the same body shape as creation will: the name is the only
- * editable field (decision 4), so a partial update and a full one are the same
- * object. It carries its own schema id rather than sharing one, because the two
- * are separate operations in the generated Dart client and a shared id would
- * couple them the first time they diverge.
+ * ── THE PROFILE FIELDS THE ONBOARDING SCREEN COLLECTS ───────────────────────
+ *
+ * Every one is optional, on the wire and in the column. The design marks
+ * Tagline, About and the banner "(optional)" on screen #5 itself, and the
+ * migration explains why they could not have been NOT NULL even if we wanted
+ * them to be: businesses already exist, created by a route that takes a name.
+ *
+ * `category` is FREE TEXT and not an enum. K16 — what the category vocabulary
+ * is — is undecided, and an enum here would decide it silently, in a schema,
+ * for every client at once.
+ */
+const tagline = z.string().trim().max(TAGLINE_MAX_LENGTH);
+const about = z.string().trim().max(ABOUT_MAX_LENGTH);
+const category = z.string().trim().max(CATEGORY_MAX_LENGTH);
+const address = z.string().trim().max(ADDRESS_MAX_LENGTH);
+/**
+ * A map link. `z.url()` and nothing more — it is rendered as a link by the
+ * client web app and never parsed, so validating it against a provider's URL
+ * shape would reject a perfectly good link to a different provider.
+ */
+const mapsUrl = z.url().max(2000);
+
+/**
+ * `PATCH` — the editable fields.
+ *
+ * ── THIS GREW, AND THE SCHEMA ID DID NOT ────────────────────────────────────
+ *
+ * It used to carry `name` alone, and its comment said the name was "the only
+ * editable field (decision 4)". That was true of the business-setup slice and
+ * is no longer: the salon profile is what this feature exists to configure.
+ * **`name` stays required** — a PATCH that could omit it would need every field
+ * optional and a "at least one" refinement, and the one field that must never
+ * be absent from a salon is the one clients see first.
+ *
+ * The `id` is unchanged deliberately. It is the same operation on the same
+ * resource, so the generated Dart type keeps its name and existing call sites
+ * keep compiling; a new id would be a second model describing the same PATCH.
  */
 export const renameBusinessRequestSchema = z
-  .object({ name: businessName })
-  .describe('A new name for the business. The only editable field.')
+  .object({
+    name: businessName,
+    tagline: tagline.optional(),
+    about: about.optional(),
+    category: category.optional(),
+    address: address.optional(),
+    mapsUrl: mapsUrl.optional(),
+  })
+  .describe('The business’s editable profile. The name is required.')
   .meta({ id: 'RenameBusinessRequest' });
 
 /**

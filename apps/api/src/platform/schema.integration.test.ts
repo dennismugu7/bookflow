@@ -43,19 +43,36 @@ async function makeBusiness(name: string): Promise<string> {
 }
 
 describe('migration 20260811164304_foundation_schema', () => {
-  it('creates exactly the three tables ADR-031 specifies, and no more', async () => {
+  // ── THE LIST IS EXHAUSTIVE, AND IT GREW ONCE ──────────────────────────────
+  //
+  // This said "exactly the three tables ADR-031 specifies" and it was right
+  // until the business-configuration migration added four. The property worth
+  // keeping is not the number — it is that **every table in `public` is
+  // accounted for by somebody**, so a table appearing without a migration
+  // anyone reviewed fails here.
+  //
+  // Kept exhaustive rather than loosened to "at least these": a `toContain`
+  // would pass for a table nobody meant to create, which is the case this test
+  // exists to catch.
+  const EXPECTED_TABLES = [
+    'businesses',
+    'memberships',
+    'opening_hours',
+    'portfolio_images',
+    'services',
+    'team_members',
+    'user_profiles',
+  ];
+
+  it('creates exactly the tables the migrations specify, and no more', async () => {
     const result = await sql<{ tablename: string }>`
       select tablename from pg_tables where schemaname = 'public' order by tablename
     `.execute(ctx.db);
 
-    expect(result.rows.map((r) => r.tablename)).toEqual([
-      'businesses',
-      'memberships',
-      'user_profiles',
-    ]);
+    expect(result.rows.map((r) => r.tablename)).toEqual(EXPECTED_TABLES);
   });
 
-  it('has row-level security enabled on all three', async () => {
+  it('has row-level security enabled on every one of them', async () => {
     const result = await sql<{ relname: string; relrowsecurity: boolean }>`
       select c.relname, c.relrowsecurity
       from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -63,7 +80,9 @@ describe('migration 20260811164304_foundation_schema', () => {
       order by c.relname
     `.execute(ctx.db);
 
-    expect(result.rows).toHaveLength(3);
+    // Driven off the same list, so a table added to one and not the other
+    // cannot leave this passing with a table unchecked.
+    expect(result.rows).toHaveLength(EXPECTED_TABLES.length);
     for (const row of result.rows) {
       expect(row.relrowsecurity, `${row.relname} has RLS enabled`).toBe(true);
     }
