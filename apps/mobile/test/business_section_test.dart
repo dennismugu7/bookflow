@@ -221,6 +221,164 @@ void main() {
       expect(find.text('Something went wrong.'), findsOneWidget);
     },
   );
+
+  // ══ THE FORM SHOWS WHAT IS STORED, AND CAN THEREFORE EMPTY IT ══════════════
+  //
+  // Until the business read widened, these three tests were unwritable: the app
+  // could not learn a stored tagline, so the form started blank and blank had to
+  // mean "leave unchanged". The cost was that nothing could ever be cleared.
+  //
+  // Both halves are asserted, because either alone passes for a broken form. A
+  // prefill test alone passes for a form that shows the values and then sends a
+  // subset. A full-payload test alone passes for a form that sends six empty
+  // strings and wipes the salon's whole profile on the first save.
+
+  const OwnedBusiness configured = OwnedBusiness(
+    id: '00000000-0000-4000-8000-000000000002',
+    name: 'Vera’s Salon',
+    published: false,
+    tagline: 'Cuts and colour',
+    about: 'Twelve years on Ngong Road.',
+    category: 'salon',
+    address: 'Kilimani, Nairobi',
+    mapsUrl: 'https://maps.example.invalid/vera',
+    bannerUrl: 'https://cdn.example.invalid/banner.jpg',
+  );
+
+  testWidgets('the edit form opens prefilled from the stored values', (
+    WidgetTester tester,
+  ) async {
+    _usePhoneViewport(tester);
+    await tester.pumpWidget(
+      sectionWith(<Override>[
+        businessRepositoryProvider.overrideWithValue(
+          _StubRepository(status: const HasBusiness(configured)),
+        ),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('business-edit')));
+    await tester.pumpAndSettle();
+
+    // Read off the controllers rather than by text search: `find.text` would
+    // also match a hint or a label, and a hint is exactly what an unprefilled
+    // field shows.
+    String valueOf(String key) =>
+        tester.widget<TextField>(find.byKey(Key(key))).controller!.text;
+
+    expect(valueOf('business-name-field'), 'Vera’s Salon');
+    expect(valueOf('business-tagline-field'), 'Cuts and colour');
+    expect(valueOf('business-about-field'), 'Twelve years on Ngong Road.');
+    expect(valueOf('business-category-field'), 'salon');
+    expect(valueOf('business-address-field'), 'Kilimani, Nairobi');
+    expect(valueOf('business-maps-field'), 'https://maps.example.invalid/vera');
+
+    // The banner the salon already has. Asserted through the control's label
+    // rather than the image itself: `Image.network` cannot load in a test and
+    // falls to its `errorBuilder`, so the thumbnail's presence is not
+    // observable — but whether the form KNOWS there is a banner is, and that is
+    // the thing `bannerUrl` was added for.
+    expect(find.text('Replace banner'), findsOneWidget);
+    expect(find.text('Add a banner image'), findsNothing);
+
+    // The note that used to explain why the fields were blank. Gone, because
+    // they are not blank.
+    expect(find.byKey(const Key('business-blank-note')), findsNothing);
+  });
+
+  testWidgets('saving sends every field, and an emptied one goes as empty', (
+    WidgetTester tester,
+  ) async {
+    final _StubRepository repository = _StubRepository(
+      status: const HasBusiness(configured),
+    );
+
+    _usePhoneViewport(tester);
+    await tester.pumpWidget(
+      sectionWith(<Override>[
+        businessRepositoryProvider.overrideWithValue(repository),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('business-edit')));
+    await tester.pumpAndSettle();
+
+    // The owner clears the maps link and edits the tagline. Everything else is
+    // left exactly as it was loaded — and must still be sent.
+    await tester.enterText(find.byKey(const Key('business-maps-field')), '');
+    await tester.enterText(
+      find.byKey(const Key('business-tagline-field')),
+      'Colour specialists',
+    );
+
+    await tester.ensureVisible(find.byKey(const Key('business-save')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('business-save')));
+    await tester.pumpAndSettle();
+
+    expect(repository.lastSaved, <String, String>{
+      'name': 'Vera’s Salon',
+      'tagline': 'Colour specialists',
+      // Untouched, and present. Under the old blank-means-unchanged shape these
+      // three would have been omitted; under a naive full-send they would have
+      // been empty. Both are wrong and this catches either.
+      'about': 'Twelve years on Ngong Road.',
+      'category': 'salon',
+      'address': 'Kilimani, Nairobi',
+      // THE CLEAR. `''`, which the API stores as NULL — and the one field that
+      // could not have carried it as a null, because `mapsUrl` is URL-validated
+      // server-side.
+      'mapsUrl': '',
+    });
+  });
+
+  testWidgets('an empty maps link passes validation; a bad one does not', (
+    WidgetTester tester,
+  ) async {
+    final _StubRepository repository = _StubRepository(
+      status: const HasBusiness(configured),
+    );
+
+    _usePhoneViewport(tester);
+    await tester.pumpWidget(
+      sectionWith(<Override>[
+        businessRepositoryProvider.overrideWithValue(repository),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('business-edit')));
+    await tester.pumpAndSettle();
+
+    // Not a link. The client stops it before a request.
+    await tester.enterText(
+      find.byKey(const Key('business-maps-field')),
+      'my salon on the corner',
+    );
+    await tester.ensureVisible(find.byKey(const Key('business-save')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('business-save')));
+    await tester.pumpAndSettle();
+
+    expect(
+      repository.lastSaved,
+      isNull,
+      reason: 'a malformed maps link must not be sent',
+    );
+
+    // Emptied. This is a CLEAR, not a malformed value, and the client must let
+    // it through — the check that rejects nonsense is the same one that would
+    // otherwise make the field permanent.
+    await tester.enterText(find.byKey(const Key('business-maps-field')), '');
+    await tester.ensureVisible(find.byKey(const Key('business-save')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('business-save')));
+    await tester.pumpAndSettle();
+
+    expect(repository.lastSaved?['mapsUrl'], '');
+  });
 }
 
 class _StubRepository implements BusinessRepository {
@@ -246,6 +404,13 @@ class _StubRepository implements BusinessRepository {
 
   int renameCalls = 0;
 
+  /// What the last save actually sent.
+  ///
+  /// A map rather than fields, so an assertion can talk about the whole payload
+  /// — which is the thing that changed: the form used to send a subset and now
+  /// sends every field on every save.
+  Map<String, String>? lastSaved;
+
   @override
   Future<BusinessStatus> fetchMine() async {
     if (failRead) throw StateError('read failed');
@@ -260,13 +425,25 @@ class _StubRepository implements BusinessRepository {
   Future<OwnedBusiness> rename({
     required String id,
     required String name,
-    String? tagline,
-    String? about,
-    String? category,
-    String? address,
-    String? mapsUrl,
+    // Non-nullable, matching the interface. They were `String?` here while the
+    // form sent only what was filled in — Dart lets an override widen a
+    // parameter type, so this file kept compiling after the interface tightened
+    // and kept asserting nothing about the change. Narrowed deliberately.
+    required String tagline,
+    required String about,
+    required String category,
+    required String address,
+    required String mapsUrl,
   }) {
     renameCalls += 1;
+    lastSaved = <String, String>{
+      'name': name,
+      'tagline': tagline,
+      'about': about,
+      'category': category,
+      'address': address,
+      'mapsUrl': mapsUrl,
+    };
     if (failRename) {
       return Future<OwnedBusiness>.error(StateError('rename failed'));
     }

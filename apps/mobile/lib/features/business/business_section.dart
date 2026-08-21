@@ -102,31 +102,42 @@ class _BusinessNameState extends ConsumerState<_BusinessName> {
     text: widget.business.name,
   );
 
-  /// ══ THE IDENTITY FIELDS CANNOT BE PREFILLED, AND THE FORM SAYS SO ═════════
+  /// ══ PREFILLED FROM THE STORED VALUES, WHICH CHANGES WHAT BLANK MEANS ══════
   ///
-  /// `GET /v1/me/business` returns `{id, name, published}` and nothing else, so
-  /// there is no stored tagline, about, category, address or maps link to put
-  /// in these controllers. They start empty on every visit even when the salon
-  /// has all five set.
+  /// **These used to start empty on every visit**, because
+  /// `GET /v1/me/business` returned `{id, name, published}` and nothing the form
+  /// edits. The form could not show a stored tagline, so a blank box had to mean
+  /// "leave it alone" — and the price was that **nothing could ever be
+  /// cleared**. A line of helper text under the form apologised for it.
   ///
-  /// **Which is why blank means "leave unchanged" rather than "clear"** —
-  /// `business_repository.dart` sends only the fields that were filled in. The
-  /// helper line under the form tells the owner that, because a form that
-  /// silently ignores its own blank fields is worse than one that explains it.
-  ///
-  /// One line in the API's `businessSchema` fixes both halves at once.
-  final TextEditingController _tagline = TextEditingController();
-  final TextEditingController _about = TextEditingController();
-  final TextEditingController _category = TextEditingController();
-  final TextEditingController _address = TextEditingController();
-  final TextEditingController _mapsUrl = TextEditingController();
+  /// The read carries all five now. They are prefilled below, so a blank box is
+  /// one the owner emptied, and `_save` sends the whole set including the empty
+  /// ones. The helper line is gone because it is no longer true.
+  late final TextEditingController _tagline = TextEditingController(
+    text: widget.business.tagline ?? '',
+  );
+  late final TextEditingController _about = TextEditingController(
+    text: widget.business.about ?? '',
+  );
+  late final TextEditingController _category = TextEditingController(
+    text: widget.business.category ?? '',
+  );
+  late final TextEditingController _address = TextEditingController(
+    text: widget.business.address ?? '',
+  );
+  late final TextEditingController _mapsUrl = TextEditingController(
+    text: widget.business.mapsUrl ?? '',
+  );
 
   bool _editing = false;
   String? _mapsError;
 
-  /// Set when a banner is uploaded in this session. The stored one cannot be
-  /// read back either, for the same reason as the text fields.
-  String? _bannerUrl;
+  /// The banner shown in the form.
+  ///
+  /// Seeded from the stored `bannerUrl` and replaced when an upload succeeds in
+  /// this session. **It is never sent on save** — the upload endpoint already
+  /// wrote the column, and `RenameBusinessRequest` has no field for it.
+  late String? _bannerUrl = widget.business.bannerUrl;
 
   @override
   void dispose() {
@@ -220,8 +231,28 @@ class _BusinessNameState extends ConsumerState<_BusinessName> {
           TextButton(
             key: const Key('business-edit'),
             onPressed: () {
+              // ── RESEEDED HERE, NOT ONLY AT CONSTRUCTION ──────────────────
+              //
+              // The controllers are initialised from `widget.business`, and
+              // that value MOVES: a save invalidates the read and this widget
+              // rebuilds with the stored row. Without this, an owner who saved,
+              // then pressed Edit again would be shown the values as they were
+              // when the screen first loaded — including anything the server
+              // trimmed — and saving again would write them back.
+              //
+              // It also discards whatever a cancelled edit left behind, which
+              // is what Cancel should mean.
               _controller.text = widget.business.name;
-              setState(() => _editing = true);
+              _tagline.text = widget.business.tagline ?? '';
+              _about.text = widget.business.about ?? '';
+              _category.text = widget.business.category ?? '';
+              _address.text = widget.business.address ?? '';
+              _mapsUrl.text = widget.business.mapsUrl ?? '';
+              setState(() {
+                _bannerUrl = widget.business.bannerUrl;
+                _mapsError = null;
+                _editing = true;
+              });
             },
             child: const Text('Edit'),
           ),
@@ -296,17 +327,12 @@ class _BusinessNameState extends ConsumerState<_BusinessName> {
         const SizedBox(height: BookflowSpacing.md),
         _BannerPicker(bannerUrl: _bannerUrl, onPick: _pickBanner),
         const SizedBox(height: BookflowSpacing.md),
-        // The form is honest about what it cannot show. See the note on the
-        // controllers: these five fields cannot be read back yet, so a blank
-        // one means "leave it as it is" and an owner who expected to see their
-        // tagline needs to be told why it is not there.
-        Text(
-          'Leave a field blank to keep what is already saved. Saved details are '
-          'not shown back here yet.',
-          key: const Key('business-blank-note'),
-          style: theme.textTheme.bodySmall,
-        ),
-        const SizedBox(height: BookflowSpacing.md),
+        // `business-blank-note` used to sit here, telling the owner that a blank
+        // field would be ignored and that saved details were not shown back. It
+        // is deleted rather than reworded: both halves stopped being true when
+        // the read widened, and a form that shows what it holds needs no note
+        // explaining what it does not.
+        //
         // The error state. Not `ErrorView` — see the class comment.
         if (submission.hasError)
           Padding(

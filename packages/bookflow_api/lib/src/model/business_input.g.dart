@@ -15,6 +15,18 @@ class _$BusinessInput extends BusinessInput {
   final bool published;
   @override
   final String? handle;
+  @override
+  final String? tagline;
+  @override
+  final String? about;
+  @override
+  final String? category;
+  @override
+  final String? address;
+  @override
+  final String? mapsUrl;
+  @override
+  final String? bannerUrl;
 
   factory _$BusinessInput([void Function(BusinessInputBuilder)? updates]) =>
       (BusinessInputBuilder()..update(updates))._build();
@@ -23,7 +35,13 @@ class _$BusinessInput extends BusinessInput {
       {required this.id,
       required this.name,
       required this.published,
-      this.handle})
+      this.handle,
+      this.tagline,
+      this.about,
+      this.category,
+      this.address,
+      this.mapsUrl,
+      this.bannerUrl})
       : super._();
   @override
   BusinessInput rebuild(void Function(BusinessInputBuilder) updates) =>
@@ -39,7 +57,13 @@ class _$BusinessInput extends BusinessInput {
         id == other.id &&
         name == other.name &&
         published == other.published &&
-        handle == other.handle;
+        handle == other.handle &&
+        tagline == other.tagline &&
+        about == other.about &&
+        category == other.category &&
+        address == other.address &&
+        mapsUrl == other.mapsUrl &&
+        bannerUrl == other.bannerUrl;
   }
 
   @override
@@ -49,6 +73,12 @@ class _$BusinessInput extends BusinessInput {
     _$hash = $jc(_$hash, name.hashCode);
     _$hash = $jc(_$hash, published.hashCode);
     _$hash = $jc(_$hash, handle.hashCode);
+    _$hash = $jc(_$hash, tagline.hashCode);
+    _$hash = $jc(_$hash, about.hashCode);
+    _$hash = $jc(_$hash, category.hashCode);
+    _$hash = $jc(_$hash, address.hashCode);
+    _$hash = $jc(_$hash, mapsUrl.hashCode);
+    _$hash = $jc(_$hash, bannerUrl.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -59,7 +89,13 @@ class _$BusinessInput extends BusinessInput {
           ..add('id', id)
           ..add('name', name)
           ..add('published', published)
-          ..add('handle', handle))
+          ..add('handle', handle)
+          ..add('tagline', tagline)
+          ..add('about', about)
+          ..add('category', category)
+          ..add('address', address)
+          ..add('mapsUrl', mapsUrl)
+          ..add('bannerUrl', bannerUrl))
         .toString();
   }
 }
@@ -84,6 +120,30 @@ class BusinessInputBuilder
   String? get handle => _$this._handle;
   set handle(String? handle) => _$this._handle = handle;
 
+  String? _tagline;
+  String? get tagline => _$this._tagline;
+  set tagline(String? tagline) => _$this._tagline = tagline;
+
+  String? _about;
+  String? get about => _$this._about;
+  set about(String? about) => _$this._about = about;
+
+  String? _category;
+  String? get category => _$this._category;
+  set category(String? category) => _$this._category = category;
+
+  String? _address;
+  String? get address => _$this._address;
+  set address(String? address) => _$this._address = address;
+
+  String? _mapsUrl;
+  String? get mapsUrl => _$this._mapsUrl;
+  set mapsUrl(String? mapsUrl) => _$this._mapsUrl = mapsUrl;
+
+  String? _bannerUrl;
+  String? get bannerUrl => _$this._bannerUrl;
+  set bannerUrl(String? bannerUrl) => _$this._bannerUrl = bannerUrl;
+
   BusinessInputBuilder() {
     BusinessInput._defaults(this);
   }
@@ -95,6 +155,12 @@ class BusinessInputBuilder
       _name = $v.name;
       _published = $v.published;
       _handle = $v.handle;
+      _tagline = $v.tagline;
+      _about = $v.about;
+      _category = $v.category;
+      _address = $v.address;
+      _mapsUrl = $v.mapsUrl;
+      _bannerUrl = $v.bannerUrl;
       _$v = null;
     }
     return this;
@@ -122,6 +188,12 @@ class BusinessInputBuilder
           published: BuiltValueNullFieldError.checkNotNull(
               published, r'BusinessInput', 'published'),
           handle: handle,
+          tagline: tagline,
+          about: about,
+          category: category,
+          address: address,
+          mapsUrl: mapsUrl,
+          bannerUrl: bannerUrl,
         );
     replace(_$result);
     return _$result;
