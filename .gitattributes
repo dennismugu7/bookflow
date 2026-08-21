@@ -7,6 +7,18 @@
 # shells that do not tolerate CR.
 *.sh        text eol=lf
 *.ts        text eol=lf
+# ── ADDED WITH apps/web, AND THE PUSH HOOK IS HOW THEY WERE FOUND ───────────
+#
+# `.tsx`, `.css` and `.html` fell through to `* text=auto` above, so a Windows
+# checkout wrote them CRLF — and `.prettierrc` pins `endOfLine: lf`, which made
+# `format:check` fail on ten files that had just passed before being committed.
+#
+# The failure is confusing in exactly the way this file's opening comment
+# describes: nothing in the source changed, `prettier --write` "fixed" it, and
+# the next checkout broke it again. The extensions have to be listed.
+*.tsx       text eol=lf
+*.css       text eol=lf
+*.html      text eol=lf
 *.js        text eol=lf
 *.mjs       text eol=lf
 *.cjs       text eol=lf
