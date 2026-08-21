@@ -28,6 +28,8 @@ import 'package:bookflow_api/src/model/create_service_request.dart';
 import 'package:bookflow_api/src/model/create_service_request_input.dart';
 import 'package:bookflow_api/src/model/create_team_member_request.dart';
 import 'package:bookflow_api/src/model/create_team_member_request_input.dart';
+import 'package:bookflow_api/src/model/delete_account_request.dart';
+import 'package:bookflow_api/src/model/delete_account_request_input.dart';
 import 'package:bookflow_api/src/model/health_response.dart';
 import 'package:bookflow_api/src/model/health_response_input.dart';
 import 'package:bookflow_api/src/model/opening_hours_entry.dart';
@@ -62,6 +64,8 @@ import 'package:bookflow_api/src/model/signup_request.dart';
 import 'package:bookflow_api/src/model/signup_request_input.dart';
 import 'package:bookflow_api/src/model/team_member.dart';
 import 'package:bookflow_api/src/model/team_member_input.dart';
+import 'package:bookflow_api/src/model/update_profile_request.dart';
+import 'package:bookflow_api/src/model/update_profile_request_input.dart';
 import 'package:bookflow_api/src/model/update_service_request.dart';
 import 'package:bookflow_api/src/model/update_service_request_input.dart';
 import 'package:bookflow_api/src/model/update_team_member_request.dart';
@@ -86,6 +90,8 @@ part 'serializers.g.dart';
   CreateServiceRequestInput,
   CreateTeamMemberRequest,
   CreateTeamMemberRequestInput,
+  DeleteAccountRequest,
+  DeleteAccountRequestInput,
   HealthResponse,
   HealthResponseInput,
   OpeningHoursEntry,
@@ -120,6 +126,8 @@ part 'serializers.g.dart';
   SignupRequestInput,
   TeamMember,
   TeamMemberInput,
+  UpdateProfileRequest,
+  UpdateProfileRequestInput,
   UpdateServiceRequest,
   UpdateServiceRequestInput,
   UpdateTeamMemberRequest,

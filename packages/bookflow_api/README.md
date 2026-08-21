@@ -76,8 +76,10 @@ Class | Method | HTTP request | Description
 [*BusinessesApi*](doc/BusinessesApi.md) | [**getBusiness**](doc/BusinessesApi.md#getbusiness) | **GET** /v1/businesses/{businessId} | A business the caller belongs to
 [*BusinessesApi*](doc/BusinessesApi.md) | [**renameBusiness**](doc/BusinessesApi.md#renamebusiness) | **PATCH** /v1/businesses/{businessId} | Edit a business the caller belongs to
 [*HealthApi*](doc/HealthApi.md) | [**getHealth**](doc/HealthApi.md#gethealth) | **GET** /health | Liveness probe
+[*MeApi*](doc/MeApi.md) | [**deleteMe**](doc/MeApi.md#deleteme) | **DELETE** /v1/me | Delete the authenticated owner’s account
 [*MeApi*](doc/MeApi.md) | [**getMe**](doc/MeApi.md#getme) | **GET** /v1/me | The authenticated owner&#39;s profile
 [*MeApi*](doc/MeApi.md) | [**getMyBusiness**](doc/MeApi.md#getmybusiness) | **GET** /v1/me/business | The caller&#39;s own business
+[*MeApi*](doc/MeApi.md) | [**updateMe**](doc/MeApi.md#updateme) | **PATCH** /v1/me | Edit the authenticated owner’s own name
 [*MediaApi*](doc/MediaApi.md) | [**deletePortfolioImage**](doc/MediaApi.md#deleteportfolioimage) | **DELETE** /v1/me/business/portfolio-images/{imageId} | Remove a gallery image
 [*MediaApi*](doc/MediaApi.md) | [**listMyPortfolioImages**](doc/MediaApi.md#listmyportfolioimages) | **GET** /v1/me/business/portfolio-images | The caller&#39;s gallery
 [*MediaApi*](doc/MediaApi.md) | [**uploadBusinessImage**](doc/MediaApi.md#uploadbusinessimage) | **POST** /v1/me/business/images | Upload an image
@@ -113,6 +115,8 @@ Class | Method | HTTP request | Description
  - [CreateServiceRequestInput](doc/CreateServiceRequestInput.md)
  - [CreateTeamMemberRequest](doc/CreateTeamMemberRequest.md)
  - [CreateTeamMemberRequestInput](doc/CreateTeamMemberRequestInput.md)
+ - [DeleteAccountRequest](doc/DeleteAccountRequest.md)
+ - [DeleteAccountRequestInput](doc/DeleteAccountRequestInput.md)
  - [HealthResponse](doc/HealthResponse.md)
  - [HealthResponseInput](doc/HealthResponseInput.md)
  - [OpeningHoursEntry](doc/OpeningHoursEntry.md)
@@ -147,6 +151,8 @@ Class | Method | HTTP request | Description
  - [SignupRequestInput](doc/SignupRequestInput.md)
  - [TeamMember](doc/TeamMember.md)
  - [TeamMemberInput](doc/TeamMemberInput.md)
+ - [UpdateProfileRequest](doc/UpdateProfileRequest.md)
+ - [UpdateProfileRequestInput](doc/UpdateProfileRequestInput.md)
  - [UpdateServiceRequest](doc/UpdateServiceRequest.md)
  - [UpdateServiceRequestInput](doc/UpdateServiceRequestInput.md)
  - [UpdateTeamMemberRequest](doc/UpdateTeamMemberRequest.md)
