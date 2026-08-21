@@ -14,6 +14,7 @@ part 'business.g.dart';
 /// * [id]
 /// * [name]
 /// * [published]
+/// * [handle]
 @BuiltValue()
 abstract class Business implements Built<Business, BusinessBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -24,6 +25,9 @@ abstract class Business implements Built<Business, BusinessBuilder> {
 
   @BuiltValueField(wireName: r'published')
   bool get published;
+
+  @BuiltValueField(wireName: r'handle')
+  String? get handle;
 
   Business._();
 
@@ -63,6 +67,13 @@ class _$BusinessSerializer implements PrimitiveSerializer<Business> {
       object.published,
       specifiedType: const FullType(bool),
     );
+    yield r'handle';
+    yield object.handle == null
+        ? null
+        : serializers.serialize(
+            object.handle,
+            specifiedType: const FullType.nullable(String),
+          );
   }
 
   @override
@@ -108,6 +119,14 @@ class _$BusinessSerializer implements PrimitiveSerializer<Business> {
             specifiedType: const FullType(bool),
           ) as bool;
           result.published = valueDes;
+          break;
+        case r'handle':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.handle = valueDes;
           break;
         default:
           unhandled.add(key);

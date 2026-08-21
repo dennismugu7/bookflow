@@ -257,15 +257,17 @@ void main() {
       await tester.pumpWidget(
         _host(
           overrides: <Override>[
+            // ONE override, where there used to be two. The handle arrives on
+            // the business read now; the second provider and the extra round
+            // trip behind it are gone.
             myBusinessProvider.overrideWith(
               (Ref ref) async => const HasBusiness(
-                OwnedBusiness(id: 'b', name: 'Vera Salon', published: true),
-              ),
-            ),
-            publishedSalonProvider.overrideWith(
-              (Ref ref) async => const PublishedSalon(
-                name: 'Vera Salon',
-                handle: 'vera-salon',
+                OwnedBusiness(
+                  id: 'b',
+                  name: 'Vera Salon',
+                  published: true,
+                  handle: 'vera-salon',
+                ),
               ),
             ),
           ],

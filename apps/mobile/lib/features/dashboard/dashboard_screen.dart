@@ -74,8 +74,7 @@ class DashboardScreen extends ConsumerWidget {
               ..invalidate(myServicesProvider)
               ..invalidate(myOpeningHoursProvider)
               ..invalidate(myTeamProvider)
-              ..invalidate(myPortfolioProvider)
-              ..invalidate(publishedSalonProvider);
+              ..invalidate(myPortfolioProvider);
             await ref.read(myBusinessProvider.future);
           },
           child: AsyncValueView<BusinessStatus>(
@@ -88,7 +87,10 @@ class DashboardScreen extends ConsumerWidget {
               NoBusinessYet() => const _Checklist(businessName: null),
               HasBusiness(business: final OwnedBusiness value) =>
                 value.published
-                    ? _PublishedState(businessName: value.name)
+                    ? _PublishedState(
+                        businessName: value.name,
+                        handle: value.handle,
+                      )
                     : _Checklist(businessName: value.name),
             },
           ),
@@ -289,14 +291,18 @@ class _SetupRow extends StatelessWidget {
 
 /// The salon is live. The heading is its name and the link is real.
 class _PublishedState extends ConsumerWidget {
-  const _PublishedState({required this.businessName});
+  const _PublishedState({required this.businessName, required this.handle});
 
   final String businessName;
+
+  /// From the business read itself. There is no second fetch and no second
+  /// async state — `handle` arrives with `published`, so a salon that is
+  /// published always has its address in hand.
+  final String? handle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
-    final AsyncValue<PublishedSalon?> salon = ref.watch(publishedSalonProvider);
 
     return ListView(
       padding: const EdgeInsets.all(BookflowSpacing.xl),
@@ -315,19 +321,17 @@ class _PublishedState extends ConsumerWidget {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: BookflowSpacing.xl),
-        // ── THE LINK HAS ITS OWN ASYNC STATE, NESTED DELIBERATELY ───────────
+        // ── NO NESTED ASYNC STATE ANY MORE ──────────────────────────────────
         //
-        // It comes from a different read than `published` does — see
-        // `publishedSalonProvider` — so a failure to fetch the handle must not
-        // blank the heading above it. Same shape as `BusinessSection` on
-        // screen #20, and for the same reason.
-        AsyncValueView<PublishedSalon?>(
-          value: salon,
-          onRetry: () => ref.invalidate(publishedSalonProvider),
-          data: (PublishedSalon? value) => value == null
-              ? const SizedBox.shrink()
-              : _BookingLink(handle: value.handle),
-        ),
+        // This used to be a second `AsyncValueView` over a second read, because
+        // the handle came from a different endpoint than `published` did. It
+        // comes from the same row now, so there is nothing left to load and
+        // nothing that can fail on its own.
+        //
+        // The null branch survives for the compiler: `handle` is nullable
+        // because an unpublished salon has none, and reaching here means
+        // `published` is true — a combination the API does not produce.
+        if (handle != null) _BookingLink(handle: handle!),
       ],
     );
   }

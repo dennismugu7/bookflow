@@ -71,9 +71,24 @@ const baseConfigSchema = z.object({
   SUPABASE_ANON_KEY: nonEmpty,
   SUPABASE_SERVICE_ROLE_KEY: nonEmpty,
 
-  // ─── Not yet decided ───────────────────────────────────────────────────────
-  // Blocked on E1/E2 in docs/analysis/05-triage.md, both S, both answered in
-  // the auth slice's Phase 0. Optional until then.
+  // ─── Transactional email (ADR-012, ADR-027) ────────────────────────────────
+  //
+  // ── THESE ALREADY EXISTED AND ARE REUSED RATHER THAN DUPLICATED ───────────
+  //
+  // The bookings slice needs a Resend key and a From address, and the obvious
+  // move is to add `RESEND_API_KEY` and `EMAIL_FROM`. **These two are the same
+  // two values**, named for the job rather than the vendor, and they were put
+  // here by the auth slice against exactly this moment. A second pair would
+  // mean two places to set one credential and a deployment that sets the wrong
+  // one, which fails at the first booking confirmation rather than at startup.
+  //
+  // Provider-agnostic on purpose: `resend.ts` is one file, and the day it is
+  // not Resend these names do not change.
+  //
+  // Optional in local and staging, REQUIRED in production — see the refinement
+  // below. A missing key locally means `createNoopMailer`, which logs what it
+  // would have sent; a missing key in production means bookings change status
+  // and nobody is told, silently.
   MAIL_PROVIDER_API_KEY: nonEmpty.optional(),
   MAIL_FROM_ADDRESS: z.email().optional(),
   PUBLIC_WEB_ORIGIN: z.url().optional(),
@@ -132,6 +147,29 @@ function sslModeOf(databaseUrl: string): string | undefined {
  */
 export const configSchema = baseConfigSchema.superRefine((config, ctx) => {
   if (config.APP_ENV !== 'production') return;
+
+  // ── EMAIL IS REQUIRED IN PRODUCTION, AND THE FAILURE MODE IS WHY ─────────
+  //
+  // Without a key the mailer is the no-op one: booking confirmations and
+  // cancellations change status correctly and nobody is ever told. That is
+  // silent — no error, no 500, nothing in a dashboard — and the first report
+  // comes from a client who turned up to a cancelled appointment.
+  //
+  // Checked at startup rather than at send time, for the same reason the
+  // Supabase keys are: discovering a missing credential halfway through a flow
+  // is how a half-finished state gets made.
+  for (const key of ['MAIL_PROVIDER_API_KEY', 'MAIL_FROM_ADDRESS'] as const) {
+    if (config[key] !== undefined) continue;
+    ctx.addIssue({
+      code: 'custom',
+      path: [key],
+      // Authored text, never derived from the value.
+      message:
+        'is required in production: booking confirmations and cancellations ' +
+        'are sent from here, and without it every status change is silent — ' +
+        'the status moves, the client is never told, and nothing reports it.',
+    });
+  }
 
   const mode = sslModeOf(config.DATABASE_URL);
   if (mode !== undefined && VERIFYING_SSL_MODES.includes(mode)) return;

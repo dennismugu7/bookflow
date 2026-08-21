@@ -21,5 +21,10 @@ void main() {
     test('to test the property `published`', () async {
       // TODO
     });
+
+    // String handle
+    test('to test the property `handle`', () async {
+      // TODO
+    });
   });
 }

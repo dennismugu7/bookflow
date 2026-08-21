@@ -11,6 +11,34 @@ export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface Bookings {
+  business_id: string;
+  client_email: string;
+  client_name: string;
+  client_phone: string;
+  created_at: Generated<Timestamp>;
+  duration_minutes: number;
+  ends_at: Timestamp;
+  id: Generated<string>;
+  /**
+   * ADR-011: the object is PRIVATE. This column confers no access; a signed-URL endpoint is owed.
+   */
+  payment_proof_url: string | null;
+  price_kes: number;
+  /**
+   * REPORTING ONLY (ADR-006). Never for display — the snapshot columns are what the booking was.
+   */
+  service_id: string | null;
+  service_name: string;
+  starts_at: Timestamp;
+  status: Generated<string>;
+  /**
+   * Null = "any professional". Departs from ADR-006; see the migration comment for what that costs.
+   */
+  team_member_id: string | null;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface Businesses {
   /**
    * Optional long-form description. "Tell your story".
@@ -122,6 +150,7 @@ export interface UserProfiles {
 }
 
 export interface DB {
+  bookings: Bookings;
   businesses: Businesses;
   memberships: Memberships;
   opening_hours: OpeningHours;

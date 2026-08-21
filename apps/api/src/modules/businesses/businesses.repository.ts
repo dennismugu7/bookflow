@@ -18,6 +18,8 @@ export interface BusinessRow {
   readonly id: string;
   readonly name: string;
   readonly published: boolean;
+  /** Null until published. See `businessSchema` for why it is on this read. */
+  readonly handle: string | null;
 }
 
 /**
@@ -37,7 +39,12 @@ export async function findBusinessForUser(
     .innerJoin('memberships', 'memberships.business_id', 'businesses.id')
     .where('businesses.id', '=', sql<string>`${scope.businessId}::uuid`)
     .where('memberships.user_id', '=', sql<string>`${scope.userId}::uuid`)
-    .select(['businesses.id', 'businesses.name', 'businesses.published'])
+    .select([
+      'businesses.id',
+      'businesses.name',
+      'businesses.published',
+      'businesses.handle',
+    ])
     .executeTakeFirst();
 
   return result;
@@ -177,7 +184,12 @@ export async function findBusinessOwnedBy(
     .innerJoin('memberships', 'memberships.business_id', 'businesses.id')
     .where('memberships.user_id', '=', sql<string>`${scope.userId}::uuid`)
     .where('memberships.role', '=', 'owner')
-    .select(['businesses.id', 'businesses.name', 'businesses.published'])
+    .select([
+      'businesses.id',
+      'businesses.name',
+      'businesses.published',
+      'businesses.handle',
+    ])
     .orderBy('memberships.created_at', 'asc')
     .limit(1)
     .executeTakeFirst();
@@ -216,7 +228,7 @@ export async function createBusinessForUser(
   const result = await sql<BusinessRow>`
     with new_business as (
       insert into public.businesses (name) values (${name})
-      returning id, name, published
+      returning id, name, published, handle
     ), new_membership as (
       -- ROLE STATED, NOT INHERITED. memberships.role defaults to 'owner', so
       -- this column could be omitted -- and must not be. The row has to fall
@@ -236,7 +248,7 @@ export async function createBusinessForUser(
     -- silently drops the membership insert, leaving a business owned by nobody --
     -- unreachable through the scoping rule, and invisible to every cleanup that
     -- resolves ownership through memberships (K79).
-    select id, name, published from new_business
+    select id, name, published, handle from new_business
   `.execute(executor);
 
   return result.rows[0];
@@ -369,7 +381,12 @@ export async function renameBusinessForUser(
           ),
       ),
     )
-    .returning(['businesses.id', 'businesses.name', 'businesses.published'])
+    .returning([
+      'businesses.id',
+      'businesses.name',
+      'businesses.published',
+      'businesses.handle',
+    ])
     .executeTakeFirst();
 }
 

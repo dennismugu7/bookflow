@@ -63,6 +63,32 @@ export const PROBLEM_TYPES = {
     status: 409,
     title: 'Business already exists',
   },
+  // The slot was taken between the availability read and the write.
+  //
+  // ── THIS IS THE RACE THE EXCLUSION CONSTRAINT EXISTS FOR ──────────────────
+  //
+  // Not a defect and not an error the client did anything wrong to cause. Two
+  // people booking the same slot in the same second both see it free; the
+  // database refuses the second, and this is how that refusal reaches them.
+  // The client's response is to re-read availability and pick again, which is
+  // why this has its own slug rather than folding into a generic conflict.
+  //
+  // It is also what a REINSTATED booking can hit: a cancelled booking occupies
+  // nothing, so its slot may have been taken while it was cancelled.
+  'slot-taken': {
+    status: 409,
+    title: 'That time is no longer free',
+  },
+  // The booking is not in a state that permits the requested move — confirming
+  // one that is cancelled, cancelling one that already is.
+  //
+  // Distinct from `not-found`, deliberately: the caller is the owner, the
+  // booking IS theirs, and telling them it does not exist would send them
+  // looking for a row that is on their own screen.
+  'invalid-booking-transition': {
+    status: 409,
+    title: 'That booking cannot change that way',
+  },
   // A name that has to be unique within one salon already is — today, a
   // service name (`uq_services_business_name`).
   //

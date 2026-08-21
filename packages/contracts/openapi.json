@@ -57,6 +57,255 @@
         ],
         "description": "Sign-up accepted; the address must be confirmed before login."
       },
+      "UploadedImageInput": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "The public URL. Safe to store and to render."
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "banner",
+              "team",
+              "portfolio"
+            ]
+          },
+          "portfolioImageId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "url",
+          "purpose",
+          "portfolioImageId"
+        ],
+        "description": "An image that is now stored and publicly readable."
+      },
+      "PortfolioImageInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "imageUrl",
+          "position"
+        ],
+        "description": "A gallery image on the public booking page."
+      },
+      "AvailabilityInput": {
+        "type": "object",
+        "properties": {
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Start times as HH:MM, local. Empty when nothing is free."
+          }
+        },
+        "required": [
+          "slots"
+        ],
+        "description": "The bookable start times for one service on one day."
+      },
+      "BookingReceiptInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "serviceName": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "priceKes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Whole Kenyan shillings."
+          },
+          "startsAt": {
+            "type": "string",
+            "description": "ISO 8601 instant, UTC."
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "serviceName",
+          "durationMinutes",
+          "priceKes",
+          "startsAt",
+          "status"
+        ],
+        "description": "Confirmation of a booking, as the person who made it sees it."
+      },
+      "OwnerBookingInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "serviceName": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "priceKes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "serviceId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "teamMemberId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "teamMemberName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "clientName": {
+            "type": "string"
+          },
+          "clientEmail": {
+            "type": "string"
+          },
+          "clientPhone": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "booked",
+              "confirmed",
+              "cancelled"
+            ]
+          },
+          "paymentProofUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "serviceName",
+          "durationMinutes",
+          "priceKes",
+          "serviceId",
+          "teamMemberId",
+          "teamMemberName",
+          "clientName",
+          "clientEmail",
+          "clientPhone",
+          "startsAt",
+          "status",
+          "paymentProofUrl"
+        ],
+        "description": "A booking, as the salon owner sees it."
+      },
+      "ContactInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "bookingCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "lastBookingAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "phone",
+          "bookingCount",
+          "lastBookingAt"
+        ],
+        "description": "Someone who has booked, derived from bookings."
+      },
       "RenameBusinessRequestInput": {
         "type": "object",
         "properties": {
@@ -121,12 +370,23 @@
           },
           "published": {
             "type": "boolean"
+          },
+          "handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "id",
           "name",
-          "published"
+          "published",
+          "handle"
         ],
         "description": "A business the caller is a member of."
       },
@@ -172,66 +432,6 @@
           "days"
         ],
         "description": "The week’s opening hours. Replaces whatever is there."
-      },
-      "UploadedImageInput": {
-        "type": "object",
-        "properties": {
-          "url": {
-            "type": "string",
-            "format": "uri",
-            "description": "The public URL. Safe to store and to render."
-          },
-          "purpose": {
-            "type": "string",
-            "enum": [
-              "banner",
-              "team",
-              "portfolio"
-            ]
-          },
-          "portfolioImageId": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "url",
-          "purpose",
-          "portfolioImageId"
-        ],
-        "description": "An image that is now stored and publicly readable."
-      },
-      "PortfolioImageInput": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "imageUrl": {
-            "type": "string"
-          },
-          "position": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          }
-        },
-        "required": [
-          "id",
-          "imageUrl",
-          "position"
-        ],
-        "description": "A gallery image on the public booking page."
       },
       "ProfileInput": {
         "type": "object",
@@ -796,6 +996,261 @@
         "additionalProperties": false,
         "description": "Sign-up accepted; the address must be confirmed before login."
       },
+      "UploadedImage": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "The public URL. Safe to store and to render."
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "banner",
+              "team",
+              "portfolio"
+            ]
+          },
+          "portfolioImageId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "url",
+          "purpose",
+          "portfolioImageId"
+        ],
+        "additionalProperties": false,
+        "description": "An image that is now stored and publicly readable."
+      },
+      "PortfolioImage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "imageUrl",
+          "position"
+        ],
+        "additionalProperties": false,
+        "description": "A gallery image on the public booking page."
+      },
+      "Availability": {
+        "type": "object",
+        "properties": {
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Start times as HH:MM, local. Empty when nothing is free."
+          }
+        },
+        "required": [
+          "slots"
+        ],
+        "additionalProperties": false,
+        "description": "The bookable start times for one service on one day."
+      },
+      "BookingReceipt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "serviceName": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "priceKes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Whole Kenyan shillings."
+          },
+          "startsAt": {
+            "type": "string",
+            "description": "ISO 8601 instant, UTC."
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "serviceName",
+          "durationMinutes",
+          "priceKes",
+          "startsAt",
+          "status"
+        ],
+        "additionalProperties": false,
+        "description": "Confirmation of a booking, as the person who made it sees it."
+      },
+      "OwnerBooking": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "serviceName": {
+            "type": "string"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "priceKes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "serviceId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "teamMemberId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "teamMemberName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "clientName": {
+            "type": "string"
+          },
+          "clientEmail": {
+            "type": "string"
+          },
+          "clientPhone": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "booked",
+              "confirmed",
+              "cancelled"
+            ]
+          },
+          "paymentProofUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "serviceName",
+          "durationMinutes",
+          "priceKes",
+          "serviceId",
+          "teamMemberId",
+          "teamMemberName",
+          "clientName",
+          "clientEmail",
+          "clientPhone",
+          "startsAt",
+          "status",
+          "paymentProofUrl"
+        ],
+        "additionalProperties": false,
+        "description": "A booking, as the salon owner sees it."
+      },
+      "Contact": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "bookingCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "lastBookingAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "phone",
+          "bookingCount",
+          "lastBookingAt"
+        ],
+        "additionalProperties": false,
+        "description": "Someone who has booked, derived from bookings."
+      },
       "RenameBusinessRequest": {
         "type": "object",
         "properties": {
@@ -862,12 +1317,23 @@
           },
           "published": {
             "type": "boolean"
+          },
+          "handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "id",
           "name",
-          "published"
+          "published",
+          "handle"
         ],
         "additionalProperties": false,
         "description": "A business the caller is a member of."
@@ -916,68 +1382,6 @@
         ],
         "additionalProperties": false,
         "description": "The week’s opening hours. Replaces whatever is there."
-      },
-      "UploadedImage": {
-        "type": "object",
-        "properties": {
-          "url": {
-            "type": "string",
-            "format": "uri",
-            "description": "The public URL. Safe to store and to render."
-          },
-          "purpose": {
-            "type": "string",
-            "enum": [
-              "banner",
-              "team",
-              "portfolio"
-            ]
-          },
-          "portfolioImageId": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "url",
-          "purpose",
-          "portfolioImageId"
-        ],
-        "additionalProperties": false,
-        "description": "An image that is now stored and publicly readable."
-      },
-      "PortfolioImage": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "imageUrl": {
-            "type": "string"
-          },
-          "position": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          }
-        },
-        "required": [
-          "id",
-          "imageUrl",
-          "position"
-        ],
-        "additionalProperties": false,
-        "description": "A gallery image on the public booking page."
       },
       "Profile": {
         "type": "object",
@@ -2113,6 +2517,275 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublishedBusiness"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/salons/{handle}/availability": {
+      "get": {
+        "operationId": "getSalonAvailability",
+        "summary": "Bookable start times for one service on one day",
+        "tags": [
+          "public"
+        ],
+        "description": "Unauthenticated. Slots are on a 30-minute grid anchored to the opening time, and a slot is offered only when the service fits before closing AND nothing already occupies it — matching the exclusion constraint exactly, so an offered slot does not 409. Times are Africa/Nairobi (ADR-005). A past date or one beyond 60 days is refused as validation-failed rather than answered with an empty list.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "serviceId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "description": "A date in the salon’s local calendar (Africa/Nairobi)."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "teamMemberId",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 60,
+              "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+            },
+            "in": "path",
+            "name": "handle",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Availability"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/public/salons/{handle}/bookings": {
+      "post": {
+        "operationId": "createSalonBooking",
+        "summary": "Book a slot",
+        "tags": [
+          "public"
+        ],
+        "description": "Unauthenticated, multipart/form-data. Fields: serviceId, startsAt (ISO 8601), clientName, clientEmail, clientPhone, optional teamMemberId, optional paymentProof (JPEG or PNG, 5 MB). The service name, duration and price are snapshotted from the service row at booking time (ADR-006) and never taken from the request. A slot taken concurrently answers 409 slot-taken — that race is what the database exclusion constraint exists for, and the client should re-read availability.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 60,
+              "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+            },
+            "in": "path",
+            "name": "handle",
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingReceipt"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/business/bookings": {
+      "get": {
+        "operationId": "listMyBookings",
+        "summary": "The salon's bookings",
+        "tags": [
+          "bookings"
+        ],
+        "description": "Newest start time first, optionally filtered by status. Carries the snapshot and the client’s details, which is what the salon needs to serve the appointment.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "booked",
+                "confirmed",
+                "cancelled"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The salon’s bookings, soonest-starting last.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OwnerBooking"
+                  },
+                  "description": "The salon’s bookings, soonest-starting last."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/business/bookings/{bookingId}/confirm": {
+      "post": {
+        "operationId": "confirmBooking",
+        "summary": "Confirm a booking",
+        "tags": [
+          "bookings"
+        ],
+        "description": "booked → confirmed. Emails the client the confirmation. A booking in any other state answers 409 invalid-booking-transition.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "bookingId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerBooking"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/business/bookings/{bookingId}/cancel": {
+      "post": {
+        "operationId": "cancelBooking",
+        "summary": "Cancel a booking",
+        "tags": [
+          "bookings"
+        ],
+        "description": "booked or confirmed → cancelled. Emails the client. The slot becomes bookable again immediately — a cancelled booking occupies nothing.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "bookingId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerBooking"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/business/bookings/{bookingId}/reinstate": {
+      "post": {
+        "operationId": "reinstateBooking",
+        "summary": "Reinstate a booking",
+        "tags": [
+          "bookings"
+        ],
+        "description": "cancelled → booked. May answer 409 slot-taken: the slot was free while the booking was cancelled and something else may have taken it, which the exclusion constraint refuses.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "bookingId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerBooking"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/business/contacts": {
+      "get": {
+        "operationId": "listMyContacts",
+        "summary": "The salon's clients",
+        "tags": [
+          "bookings"
+        ],
+        "description": "Derived from bookings — there is no contacts table to keep in step. Grouped by email, because a name is not unique and a phone number gets retyped; the name and phone shown are from that client’s most recent booking.",
+        "responses": {
+          "200": {
+            "description": "The salon’s clients, most recent first.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Contact"
+                  },
+                  "description": "The salon’s clients, most recent first."
                 }
               }
             }

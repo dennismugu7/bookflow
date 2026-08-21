@@ -66,6 +66,11 @@ All URIs are relative to *http://localhost*
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
 [*AuthApi*](doc/AuthApi.md) | [**signUp**](doc/AuthApi.md#signup) | **POST** /v1/auth/signup | Create an owner account
+[*BookingsApi*](doc/BookingsApi.md) | [**cancelBooking**](doc/BookingsApi.md#cancelbooking) | **POST** /v1/me/business/bookings/{bookingId}/cancel | Cancel a booking
+[*BookingsApi*](doc/BookingsApi.md) | [**confirmBooking**](doc/BookingsApi.md#confirmbooking) | **POST** /v1/me/business/bookings/{bookingId}/confirm | Confirm a booking
+[*BookingsApi*](doc/BookingsApi.md) | [**listMyBookings**](doc/BookingsApi.md#listmybookings) | **GET** /v1/me/business/bookings | The salon&#39;s bookings
+[*BookingsApi*](doc/BookingsApi.md) | [**listMyContacts**](doc/BookingsApi.md#listmycontacts) | **GET** /v1/me/business/contacts | The salon&#39;s clients
+[*BookingsApi*](doc/BookingsApi.md) | [**reinstateBooking**](doc/BookingsApi.md#reinstatebooking) | **POST** /v1/me/business/bookings/{bookingId}/reinstate | Reinstate a booking
 [*BusinessesApi*](doc/BusinessesApi.md) | [**createBusiness**](doc/BusinessesApi.md#createbusiness) | **POST** /v1/businesses | Create the caller&#39;s business
 [*BusinessesApi*](doc/BusinessesApi.md) | [**getBusiness**](doc/BusinessesApi.md#getbusiness) | **GET** /v1/businesses/{businessId} | A business the caller belongs to
 [*BusinessesApi*](doc/BusinessesApi.md) | [**renameBusiness**](doc/BusinessesApi.md#renamebusiness) | **PATCH** /v1/businesses/{businessId} | Edit a business the caller belongs to
@@ -77,7 +82,9 @@ Class | Method | HTTP request | Description
 [*MediaApi*](doc/MediaApi.md) | [**uploadBusinessImage**](doc/MediaApi.md#uploadbusinessimage) | **POST** /v1/me/business/images | Upload an image
 [*OpeningHoursApi*](doc/OpeningHoursApi.md) | [**getMyOpeningHours**](doc/OpeningHoursApi.md#getmyopeninghours) | **GET** /v1/me/business/opening-hours | The caller&#39;s opening hours
 [*OpeningHoursApi*](doc/OpeningHoursApi.md) | [**replaceMyOpeningHours**](doc/OpeningHoursApi.md#replacemyopeninghours) | **PUT** /v1/me/business/opening-hours | Replace the week
+[*PublicApi*](doc/PublicApi.md) | [**createSalonBooking**](doc/PublicApi.md#createsalonbooking) | **POST** /v1/public/salons/{handle}/bookings | Book a slot
 [*PublicApi*](doc/PublicApi.md) | [**getPublicSalon**](doc/PublicApi.md#getpublicsalon) | **GET** /v1/public/salons/{handle} | A published salon’s booking page
+[*PublicApi*](doc/PublicApi.md) | [**getSalonAvailability**](doc/PublicApi.md#getsalonavailability) | **GET** /v1/public/salons/{handle}/availability | Bookable start times for one service on one day
 [*PublishingApi*](doc/PublishingApi.md) | [**publishMyBusiness**](doc/PublishingApi.md#publishmybusiness) | **POST** /v1/me/business/publish | Publish the salon
 [*ServicesApi*](doc/ServicesApi.md) | [**createService**](doc/ServicesApi.md#createservice) | **POST** /v1/me/business/services | Add a service
 [*ServicesApi*](doc/ServicesApi.md) | [**deleteService**](doc/ServicesApi.md#deleteservice) | **DELETE** /v1/me/business/services/{serviceId} | Remove a service
@@ -91,8 +98,14 @@ Class | Method | HTTP request | Description
 
 ## Documentation For Models
 
+ - [Availability](doc/Availability.md)
+ - [AvailabilityInput](doc/AvailabilityInput.md)
+ - [BookingReceipt](doc/BookingReceipt.md)
+ - [BookingReceiptInput](doc/BookingReceiptInput.md)
  - [Business](doc/Business.md)
  - [BusinessInput](doc/BusinessInput.md)
+ - [Contact](doc/Contact.md)
+ - [ContactInput](doc/ContactInput.md)
  - [CreateBusinessRequest](doc/CreateBusinessRequest.md)
  - [CreateBusinessRequestInput](doc/CreateBusinessRequestInput.md)
  - [CreateServiceRequest](doc/CreateServiceRequest.md)
@@ -103,6 +116,8 @@ Class | Method | HTTP request | Description
  - [HealthResponseInput](doc/HealthResponseInput.md)
  - [OpeningHoursEntry](doc/OpeningHoursEntry.md)
  - [OpeningHoursEntryInput](doc/OpeningHoursEntryInput.md)
+ - [OwnerBooking](doc/OwnerBooking.md)
+ - [OwnerBookingInput](doc/OwnerBookingInput.md)
  - [PortfolioImage](doc/PortfolioImage.md)
  - [PortfolioImageInput](doc/PortfolioImageInput.md)
  - [Profile](doc/Profile.md)

@@ -61,7 +61,13 @@ describe('the business-already-exists entry (decision 8)', () => {
     expect(with409).toEqual([
       'business-already-exists',
       'duplicate-name',
+      // The bookings slice added two. Both are things a client acts on
+      // differently: `slot-taken` means re-read availability and pick again,
+      // `invalid-booking-transition` means the owner is looking at a stale
+      // screen. A single generic conflict would have made them the same event.
+      'invalid-booking-transition',
       'publish-requirements-not-met',
+      'slot-taken',
     ]);
   });
 });

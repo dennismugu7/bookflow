@@ -25,6 +25,12 @@ function validEnv(): Record<string, string> {
     SUPABASE_ANON_KEY: 'anon-key-not-a-secret',
     SUPABASE_SERVICE_ROLE_KEY: SECRET_SERVICE_KEY,
     MAIL_PROVIDER_API_KEY: SECRET_MAIL_KEY,
+    // Added with the bookings slice, which makes both mail variables REQUIRED
+    // in production. The key was already here and the From address was not, so
+    // the `accepts sslmode=… in production` cases began failing on a missing
+    // variable rather than on the thing they assert — which is exactly what a
+    // shared fixture is for catching.
+    MAIL_FROM_ADDRESS: 'bookings@bookflow.test',
   };
 }
 

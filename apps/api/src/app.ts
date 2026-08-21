@@ -22,6 +22,7 @@ import {
   registerAuthRoutes,
   type SignupRateLimit,
 } from './modules/auth/auth.routes.ts';
+import { registerBookingRoutes } from './modules/bookings/bookings.routes.ts';
 import { registerBusinessRoutes } from './modules/businesses/businesses.routes.ts';
 import { registerHoursRoutes } from './modules/hours/hours.routes.ts';
 import { registerMediaRoutes } from './modules/media/media.routes.ts';
@@ -31,6 +32,11 @@ import { registerPublishingRoutes } from './modules/publishing/publishing.routes
 import { registerServiceRoutes } from './modules/services/services.routes.ts';
 import { registerTeamRoutes } from './modules/team/team.routes.ts';
 import { MAX_IMAGE_BYTES } from './modules/media/media.schema.ts';
+import {
+  createMailer,
+  createNoopMailer,
+  type Mailer,
+} from './platform/resend.ts';
 import { createStorageClient, type StorageClient } from './platform/storage.ts';
 
 /**
@@ -90,6 +96,12 @@ export interface BuildAppOptions {
    * talks to the real Supabase Storage.
    */
   readonly storage?: StorageClient;
+  /**
+   * Injected so a test can assert that a status change dispatched mail — and
+   * that a FAILING send still leaves the status changed, which is the rule
+   * `DEFINITION_OF_DONE.md` sets and the one worth a test.
+   */
+  readonly mailer?: Mailer;
   /**
    * Overrides the sign-up throttle. Present because the limiter's store is
    * in-memory and therefore PER INSTANCE: a test file sharing one app would
@@ -220,16 +232,34 @@ export async function buildApp(
   registerServiceRoutes(app, options.db);
   registerTeamRoutes(app, options.db);
   registerHoursRoutes(app, options.db);
-  registerMediaRoutes(
+  // Built once and shared: the media routes and the booking route both upload,
+  // and two clients would mean two timeouts and two places to change the bucket.
+  const storage =
+    options.storage ??
+    createStorageClient({
+      baseUrl: config.SUPABASE_URL,
+      serviceRoleKey: config.SUPABASE_SERVICE_ROLE_KEY,
+    });
+
+  registerMediaRoutes(app, options.db, storage);
+  registerPublishingRoutes(app, options.db);
+  registerBookingRoutes(
     app,
     options.db,
-    options.storage ??
-      createStorageClient({
-        baseUrl: config.SUPABASE_URL,
-        serviceRoleKey: config.SUPABASE_SERVICE_ROLE_KEY,
-      }),
+    storage,
+    options.mailer ??
+      // No key configured means the no-op mailer, which LOGS what it would have
+      // sent rather than being silent — local and the integration suite have no
+      // Resend account and must not need one. `config.ts` makes the key
+      // required in production, so this branch cannot be reached there.
+      (config.MAIL_PROVIDER_API_KEY === undefined ||
+      config.MAIL_FROM_ADDRESS === undefined
+        ? createNoopMailer(app.log)
+        : createMailer({
+            apiKey: config.MAIL_PROVIDER_API_KEY,
+            from: config.MAIL_FROM_ADDRESS,
+          })),
   );
-  registerPublishingRoutes(app, options.db);
   // Last, and the only one that is unauthenticated. Registration order does not
   // affect the auth hook — `platform/auth.ts` is default-deny over every route
   // regardless — but keeping the public surface at the bottom of this list

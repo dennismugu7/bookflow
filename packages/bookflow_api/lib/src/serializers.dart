@@ -14,8 +14,14 @@ import 'package:built_value/iso_8601_date_time_serializer.dart';
 import 'package:bookflow_api/src/date_serializer.dart';
 import 'package:bookflow_api/src/model/date.dart';
 
+import 'package:bookflow_api/src/model/availability.dart';
+import 'package:bookflow_api/src/model/availability_input.dart';
+import 'package:bookflow_api/src/model/booking_receipt.dart';
+import 'package:bookflow_api/src/model/booking_receipt_input.dart';
 import 'package:bookflow_api/src/model/business.dart';
 import 'package:bookflow_api/src/model/business_input.dart';
+import 'package:bookflow_api/src/model/contact.dart';
+import 'package:bookflow_api/src/model/contact_input.dart';
 import 'package:bookflow_api/src/model/create_business_request.dart';
 import 'package:bookflow_api/src/model/create_business_request_input.dart';
 import 'package:bookflow_api/src/model/create_service_request.dart';
@@ -26,6 +32,8 @@ import 'package:bookflow_api/src/model/health_response.dart';
 import 'package:bookflow_api/src/model/health_response_input.dart';
 import 'package:bookflow_api/src/model/opening_hours_entry.dart';
 import 'package:bookflow_api/src/model/opening_hours_entry_input.dart';
+import 'package:bookflow_api/src/model/owner_booking.dart';
+import 'package:bookflow_api/src/model/owner_booking_input.dart';
 import 'package:bookflow_api/src/model/portfolio_image.dart';
 import 'package:bookflow_api/src/model/portfolio_image_input.dart';
 import 'package:bookflow_api/src/model/profile.dart';
@@ -62,8 +70,14 @@ import 'package:bookflow_api/src/model/uploaded_image_input.dart';
 part 'serializers.g.dart';
 
 @SerializersFor([
+  Availability,
+  AvailabilityInput,
+  BookingReceipt,
+  BookingReceiptInput,
   Business,
   BusinessInput,
+  Contact,
+  ContactInput,
   CreateBusinessRequest,
   CreateBusinessRequestInput,
   CreateServiceRequest,
@@ -74,6 +88,8 @@ part 'serializers.g.dart';
   HealthResponseInput,
   OpeningHoursEntry,
   OpeningHoursEntryInput,
+  OwnerBooking,
+  OwnerBookingInput,
   PortfolioImage,
   PortfolioImageInput,
   Profile,
@@ -109,12 +125,20 @@ part 'serializers.g.dart';
 ])
 Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(Contact)]),
+        () => ListBuilder<Contact>(),
+      )
+      ..addBuilderFactory(
         const FullType(BuiltList, [FullType(TeamMember)]),
         () => ListBuilder<TeamMember>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(Service)]),
         () => ListBuilder<Service>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(OwnerBooking)]),
+        () => ListBuilder<OwnerBooking>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(PortfolioImage)]),

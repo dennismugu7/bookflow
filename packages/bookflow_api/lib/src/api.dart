@@ -10,6 +10,7 @@ import 'package:bookflow_api/src/auth/basic_auth.dart';
 import 'package:bookflow_api/src/auth/bearer_auth.dart';
 import 'package:bookflow_api/src/auth/oauth.dart';
 import 'package:bookflow_api/src/api/auth_api.dart';
+import 'package:bookflow_api/src/api/bookings_api.dart';
 import 'package:bookflow_api/src/api/businesses_api.dart';
 import 'package:bookflow_api/src/api/health_api.dart';
 import 'package:bookflow_api/src/api/me_api.dart';
@@ -89,6 +90,12 @@ class BookflowApi {
   /// by doing that all interceptors will not be executed
   AuthApi getAuthApi() {
     return AuthApi(dio, serializers);
+  }
+
+  /// Get BookingsApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  BookingsApi getBookingsApi() {
+    return BookingsApi(dio, serializers);
   }
 
   /// Get BusinessesApi instance, base route and serializer can be overridden by a given but be careful,

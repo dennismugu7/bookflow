@@ -274,5 +274,6 @@ class ApiBusinessRepository implements BusinessRepository {
     id: business.id,
     name: business.name,
     published: business.published,
+    handle: business.handle,
   );
 }
