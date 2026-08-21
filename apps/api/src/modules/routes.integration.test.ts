@@ -433,6 +433,26 @@ describe('default-deny, swept over the registered route table', () => {
     'GET /v1/public/salons/:handle/availability',
     'HEAD /v1/public/salons/:handle/availability',
     'POST /v1/public/salons/:handle/bookings',
+    // ── THE CORS PREFLIGHT, AND IT CANNOT BE ANYTHING ELSE ───────────────────
+    //
+    // `@fastify/cors` registers one wildcard `OPTIONS *` route to answer
+    // preflights. **This entry was added because the sweep caught it**, which is
+    // the sweep working: a route appeared that nobody wrote and it was
+    // unauthenticated.
+    //
+    // It has to be. A browser sends a preflight WITHOUT credentials — no
+    // `Authorization` header, by specification — so a preflight that required a
+    // token could never succeed, and cross-origin requests would be impossible
+    // rather than merely protected.
+    //
+    // **What stops this being a hole is that it publishes nothing.** The route
+    // answers with CORS headers and an empty body; it reads no database and
+    // returns no data for any path. And the headers it answers WITH are still
+    // decided by the delegator, so a preflight for `/v1/me/business` gets no
+    // `access-control-allow-origin` and the browser refuses the real request
+    // before making it. `CORS is scoped to the public surface` below drives
+    // exactly that.
+    'OPTIONS *',
   ]);
 
   /** `:param` segments filled with a real UUID so routing matches. */
@@ -571,5 +591,102 @@ describe('default-deny, swept over the registered route table', () => {
     } finally {
       await probe.close();
     }
+  });
+});
+
+/**
+ * ══ CORS IS OPEN ON `/v1/public/*` AND CLOSED EVERYWHERE ELSE ═══════════════
+ *
+ * The client web app is a static site on its own origin, so the browser needs
+ * `access-control-allow-origin` to hand it a salon page. That header is the
+ * whole point of the plugin, and **the half that matters is where it is
+ * absent**: the authenticated surface is owner data, and CORS is what stops a
+ * page the owner happens to have open from reading it.
+ *
+ * Driven rather than read, because the delegator branches on `req.url` — a
+ * prefix test written slightly wrong (`/v1/public` without the trailing slash,
+ * `includes` instead of `startsWith`) would open routes nobody meant to open,
+ * and would look correct.
+ */
+describe('CORS is scoped to the public surface', () => {
+  const ORIGIN = 'https://bookflow-staging-web.onrender.com';
+
+  // ── THE HANDLE NEED NOT RESOLVE, AND DELIBERATELY DOES NOT ────────────────
+  //
+  // CORS headers are written by an `onRequest` hook, before routing has decided
+  // anything — so a 404 from an unknown handle carries them exactly as a 200
+  // would. Using a made-up handle keeps these tests independent of what the
+  // seed happens to publish, which has changed twice already.
+  const SEEDED_HANDLE = 'any-salon';
+
+  it('allows any origin to read a public salon', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: `/v1/public/salons/${SEEDED_HANDLE}`,
+      headers: { origin: ORIGIN },
+    });
+
+    expect(response.headers['access-control-allow-origin']).toBe(ORIGIN);
+  });
+
+  it('answers a preflight for the booking POST', async () => {
+    const response = await app.inject({
+      method: 'OPTIONS',
+      url: `/v1/public/salons/${SEEDED_HANDLE}/bookings`,
+      headers: {
+        origin: ORIGIN,
+        'access-control-request-method': 'POST',
+        'access-control-request-headers': 'content-type',
+      },
+    });
+
+    expect(response.statusCode).toBeLessThan(300);
+    expect(response.headers['access-control-allow-origin']).toBe(ORIGIN);
+    expect(String(response.headers['access-control-allow-methods'])).toContain(
+      'POST',
+    );
+  });
+
+  it('sends NO allow-origin on an authenticated route', async () => {
+    // ── THE ASSERTION THIS WHOLE BLOCK EXISTS FOR ─────────────────────────
+    //
+    // The route answers 401 either way, and a 401 is not the protection here —
+    // a browser that received `access-control-allow-origin` on a 401 would
+    // happily retry with a token if it had one. The absence of the header is
+    // what stops script on another origin reading owner data at all.
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/me/business',
+      headers: { origin: ORIGIN },
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('does not open a route whose path merely CONTAINS the public prefix', async () => {
+    // A `includes('/v1/public/')` test rather than `startsWith` would open
+    // this, and so would any future route that embedded the string. The route
+    // does not exist, so 404 is expected — the header is the assertion.
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/me/business/v1/public/nope',
+      headers: { origin: ORIGIN },
+    });
+
+    expect(response.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('opens the public prefix even with a query string attached', async () => {
+    // `req.url` carries the query, so a prefix test run against the raw url
+    // works — but a test run against something that had already been trimmed
+    // wrongly would not. Availability is the route that always has a query.
+    const response = await app.inject({
+      method: 'GET',
+      url: `/v1/public/salons/${SEEDED_HANDLE}/availability?serviceId=${SEEDED_BUSINESS}&date=2026-09-01`,
+      headers: { origin: ORIGIN },
+    });
+
+    expect(response.headers['access-control-allow-origin']).toBe(ORIGIN);
   });
 });

@@ -254,6 +254,54 @@ jobs:
   # This is the job ADR-014 leans on. Without it, "the spec is generated from
   # code" and "hand-written Dart models are prohibited" are conventions rather
   # than guarantees.
+  # ── Web ────────────────────────────────────────────────────────────────────
+  #
+  # A job of its own rather than steps appended to `verify`, for the reason
+  # `mobile` is separate: independent failures arrive independently, so a broken
+  # React component does not hide a broken query, and both results land on the
+  # PR at once.
+  #
+  # It also has nothing `verify` has. `verify` spends most of its wall clock
+  # starting a Supabase stack — a database, GoTrue, Kong, Mailpit — and this
+  # builds a static site that talks to no one at build time. Bolting it on would
+  # make a 30-second job wait several minutes for a database it never opens.
+  #
+  # **Lint is deliberately NOT repeated here.** `npm run lint` in `verify`
+  # already covers `apps/web` — eslint.config.js resolves the whole repository —
+  # and a second invocation would be a second place the rule set could be
+  # configured differently from the one the checklist names.
+  web:
+    name: web
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The build script is `tsc --noEmit && vite build`, so typecheck and
+      # bundle are one step by construction — a build that emits cannot have
+      # skipped the typecheck.
+      #
+      # No VITE_API_BASE_URL is set: this run proves the committed default
+      # produces a working build, which is the configuration a developer gets
+      # from a fresh clone and the one most likely to be wrong unnoticed.
+      - name: Typecheck and build
+        run: npm run web:build
+
+      - name: Test
+        run: npm run web:test
+
   contracts:
     name: contracts
     runs-on: ubuntu-latest

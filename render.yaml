@@ -2,8 +2,8 @@
 #
 # ══ WHAT THIS FILE IS, AND WHAT IT DELIBERATELY IS NOT ══════════════════════
 #
-# It declares ONE web service: the Bookflow API, on the free instance type,
-# built from apps/api/Dockerfile.
+# It declares TWO services: the Bookflow API, built from apps/api/Dockerfile,
+# and the client booking site as a static site. Both on free instance types.
 #
 # ── THERE IS NO WORKER SERVICE, AND THAT IS A DECISION ──────────────────────
 #
@@ -149,6 +149,98 @@ services:
       # ── NOT SET YET ──────────────────────────────────────────────────────
       # MAIL_PROVIDER_API_KEY and MAIL_FROM_ADDRESS stay unset: ADR-027 puts
       # auth email inside GoTrue, and the outbox that would need a provider does
-      # not ship in Phase 3. PUBLIC_WEB_ORIGIN stays unset until apps/web
-      # exists (ADR-001). All three are optional in `platform/config.ts`, so the
+      # not ship in Phase 3. Both are optional in `platform/config.ts`, so the
       # service starts without them.
+      #
+      # **PUBLIC_WEB_ORIGIN also stays unset, and now for a different reason.**
+      # It was "until apps/web exists". It exists — see below — and the API
+      # still does not need to know its origin: CORS on `/v1/public/*` allows
+      # ANY origin, because a published salon page is public data by
+      # construction (ADR-004, ADR-020) and pinning one origin would break the
+      # salon's own page the day it moves to a custom domain. If the API ever
+      # needs to BUILD a web URL — an email linking a client to their booking —
+      # that is when this gets set.
+
+  # ── The client booking site ────────────────────────────────────────────────
+  #
+  # A static site: HTML, CSS and one JS bundle, with no server of its own. It
+  # reads the API cross-origin from the browser, which is what `@fastify/cors`
+  # in `apps/api/src/app.ts` exists for.
+  #
+  # ── FREE HERE IS NOT THE COMPROMISE IT IS FOR THE API ────────────────────
+  #
+  # Render's free web services sleep after 15 minutes and take about a minute to
+  # wake, which is why the API's `plan: free` carries an apology. **Static sites
+  # do not sleep** — they are served from a CDN — so this one is fast on a cold
+  # visit, which matters more here than anywhere else in the system: this page is
+  # opened from a WhatsApp link by someone deciding whether to book.
+  #
+  # The API behind it still sleeps, so the FIRST salon page load after a quiet
+  # period waits on that cold start. That is the API's problem and is recorded
+  # against it, not worked around here with a keep-alive ping.
+  - type: web
+    name: bookflow-staging-web
+    runtime: static
+
+    # Same region as the API and the database. A static site is CDN-served so
+    # the region matters less, but there is no reason to choose differently.
+    region: frankfurt
+
+    # Built from the repository root: this is an npm workspace, so the install
+    # needs the root lockfile and every member's manifest (ADR-022). `npm ci`
+    # rather than `install`, for the reason CI gives — the lockfile is
+    # authoritative and a build must never resolve a tree nobody reviewed.
+    buildCommand: npm ci && npm run web:build
+    staticPublishPath: ./apps/web/dist
+
+    # ── AUTO-DEPLOY IS OFF HERE TOO, FOR A WEAKER REASON ────────────────────
+    #
+    # The API's `off` is load-bearing: ADR-034 requires migrations to run before
+    # the deploy, and a Render commit hook would race that. A static site has no
+    # migration to race.
+    #
+    # It is still off, so that ONE system decides what is live. With auto-deploy
+    # on, a commit to main would publish a site built against an API that had
+    # not been deployed yet — the new page calling an endpoint that does not
+    # exist, for the minute or two between. Same quoting caveat as above:
+    # unquoted `off` is boolean `false` in YAML 1.1.
+    autoDeployTrigger: 'off'
+
+    # ── THE SPA REWRITE, WITHOUT WHICH EVERY LINK 404s ──────────────────────
+    #
+    # Every URL this site serves is `/:handle` — and there is no `vera-salon`
+    # file in `dist/`. A visitor who taps a shared link, or reloads the page, or
+    # opens a bookmark, asks the CDN for a path that does not exist on disk.
+    #
+    # **This is not a nicety; without it the product does not work at all.** The
+    # only URL that would load is `/`, which is the one nobody has.
+    #
+    # `rewrite`, not `redirect`: the browser must keep the URL it asked for so
+    # React Router can read the handle out of it. A redirect would send everyone
+    # to `/` and lose the salon.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+    envVars:
+      # ── SET HERE, NOT `sync: false`, BECAUSE IT IS NOT A SECRET ───────────
+      #
+      # Every other envVar in this file is `sync: false` because it is a
+      # credential. This is a public origin that appears in the network tab of
+      # every browser that opens a salon page.
+      #
+      # It is also BUILD-TIME: Vite substitutes `import.meta.env.*` into the
+      # bundle, so changing it requires a rebuild rather than a restart. Written
+      # here means the blueprint and the bundle cannot disagree.
+      #
+      # `client.ts` carries the same value as its committed default, so a build
+      # with this unset still works. The duplication is deliberate — the default
+      # is what a fresh clone and a local `npm run web:dev` get.
+      #
+      # The `-gabm` suffix is Render's own — it appends one when a service name
+      # is not globally unique. **Do not "correct" this to match the `name:`
+      # field above**; the deployed origin has the suffix and the tidy-looking
+      # version 404s.
+      - key: VITE_API_BASE_URL
+        value: https://bookflow-api-staging-gabm.onrender.com
