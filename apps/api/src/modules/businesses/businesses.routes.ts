@@ -22,26 +22,60 @@ import {
 
 /** Knows HTTP. Parses, calls the repository, serialises. No logic. */
 
+/**
+ * ══ THE WHOLE OWNER-VISIBLE BUSINESS, AND WHY IT IS WORTH SAYING SO ══════════
+ *
+ * This used to be `{id, name, published}`, and the omissions were not neutral —
+ * **each one grew a workaround in the Flutter app that outlived its reason.**
+ *
+ *   - `handle` was returned only by `POST /v1/me/business/publish`, so the
+ *     dashboard learned its own booking address by calling a POST on a read
+ *     path. Idempotent by design, so it was safe, and it had an edge it could
+ *     not cover: a published salon whose services were all deleted fails the
+ *     requirements check and answers 409 instead of handing back its handle.
+ *
+ *   - The five profile fields were absent, so the edit form could not prefill.
+ *     Its workaround was subtler and worse: **blank had to mean "leave
+ *     unchanged"**, because a form that cannot show a stored tagline must not
+ *     wipe one the owner cannot see. The cost was that nothing could ever be
+ *     cleared, and the form carried a line of apology explaining it.
+ *
+ * Both are gone now, and the general lesson is the one worth keeping: a read
+ * that returns less than the resource does not merely omit — it pushes the
+ * missing state into the client as a guess, and the guess hardens.
+ *
+ * **Every field but `id`, `name` and `published` is nullable**, which is the
+ * column shape: the profile fields are optional on screen #5, and businesses
+ * created before them exist.
+ */
 export const businessSchema = z
   .object({
     id: z.uuid(),
     name: z.string(),
     published: z.boolean(),
     /**
-     * ── ADDED BECAUSE ITS ABSENCE SHAPED TWO CLIENT FEATURES ────────────────
-     *
-     * The handle used to be returned only by `POST /v1/me/business/publish`, so
-     * an owner reopening the app on an already-published salon had no way to
-     * find their own booking address. The Flutter side worked around it by
-     * calling the publish endpoint — which is idempotent by design, so it was
-     * safe, and it was still a POST on a read path with one edge it could not
-     * cover: a published salon whose services were all deleted answers 409 and
-     * hands back no handle.
-     *
      * Null until the salon is published, and permanent from that moment
      * (ADR-021: a rename retires a handle, nothing reassigns one).
      */
     handle: z.string().nullable(),
+    tagline: z.string().nullable(),
+    about: z.string().nullable(),
+    category: z.string().nullable(),
+    address: z.string().nullable(),
+    mapsUrl: z.string().nullable(),
+    /**
+     * ── READ-ONLY ON THIS SURFACE, AND DELIBERATELY ASYMMETRIC ──────────────
+     *
+     * `bannerUrl` is here and is **absent from `RenameBusinessRequest`**. That
+     * asymmetry is the point: `POST /v1/me/business/images` writes
+     * `banner_url` when the purpose is `banner`, so by the time a client could
+     * send it the column is already set. A field on the PATCH would be a
+     * second writer for one column, and the two writers would disagree the
+     * first time an upload succeeded and the save that followed it failed.
+     *
+     * So the client shows this and never sends it.
+     */
+    bannerUrl: z.string().nullable(),
   })
   .describe('A business the caller is a member of.')
   .meta({ id: 'Business' });
@@ -191,7 +225,7 @@ export function registerBusinessRoutes(
         operationId: 'renameBusiness',
         summary: 'Edit a business the caller belongs to',
         description:
-          'The name is required; tagline, about, category, address and mapsUrl are optional and an omitted one is left UNCHANGED, not cleared. Scoped through membership: a business the caller has no membership in is indistinguishable from one that does not exist. Text is trimmed before it is stored.',
+          'The name is required. tagline, about, category, address and mapsUrl are optional: an OMITTED one is left unchanged, an EMPTY one clears it to null. bannerUrl is returned by this endpoint but cannot be sent — the image upload route is the only writer of that column. Scoped through membership: a business the caller has no membership in is indistinguishable from one that does not exist. Text is trimmed before it is stored.',
         tags: ['businesses'],
         params: z.object({ businessId: z.uuid() }),
         body: renameBusinessRequestSchema,

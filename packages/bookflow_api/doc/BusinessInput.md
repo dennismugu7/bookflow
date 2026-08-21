@@ -12,6 +12,12 @@ Name | Type | Description | Notes
 **name** | **String** |  | 
 **published** | **bool** |  | 
 **handle** | **String** |  | 
+**tagline** | **String** |  | 
+**about** | **String** |  | 
+**category** | **String** |  | 
+**address** | **String** |  | 
+**mapsUrl** | **String** |  | 
+**bannerUrl** | **String** |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

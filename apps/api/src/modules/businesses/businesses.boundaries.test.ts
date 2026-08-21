@@ -1,6 +1,10 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
+
+import { businessSchema } from './businesses.routes.ts';
+import { renameBusinessRequestSchema } from './businesses.schema.ts';
 
 /**
  * The boundary around `businessExistsUnscoped`, enforced by reading the source.
@@ -134,5 +138,106 @@ describe('businessExistsUnscoped — the unscoped read stays where it was put', 
     expect(service).toContain(
       'export async function logScopedMiss(\n  db: Executor,\n  log: BusinessLogger,\n  scope: BusinessScope,\n): Promise<void> {',
     );
+  });
+});
+
+/**
+ * The second boundary in this module: **`banner_url` has exactly one writer.**
+ *
+ * ══ WHY THE ASYMMETRY NEEDS A TEST AND NOT A COMMENT ════════════════════════
+ *
+ * `bannerUrl` is on the RESPONSE — the edit form shows the current banner — and
+ * absent from the REQUEST, because `POST /v1/me/business/images` sets that
+ * column when the purpose is `banner`. Every other field on this resource is on
+ * both, so **the natural, symmetrical, wrong edit is to add it to the request**,
+ * and it would look like a fix for an oversight.
+ *
+ * What breaks if someone does: an upload writes the column, the form saves a
+ * moment later carrying whatever `bannerUrl` it was holding when it loaded, and
+ * the newer value is overwritten by the older one. The client would then show
+ * the banner it just replaced and be correct to.
+ *
+ * These run against the SCHEMAS THEMSELVES rather than the source text, so they
+ * cannot be satisfied by moving a line or defeated by a comment mentioning the
+ * word. Zod strips unknown keys, which is exactly the behaviour being pinned.
+ */
+describe('the business profile surface — what may be read, what may be written', () => {
+  const parsed = renameBusinessRequestSchema.parse({
+    name: 'Vera Salon',
+    bannerUrl: 'https://cdn.invalid/banner.jpg',
+  });
+
+  it('the request refuses bannerUrl — the image route owns that column', () => {
+    expect(
+      Object.hasOwn(parsed, 'bannerUrl'),
+      'bannerUrl reached the PATCH body: banner_url now has two writers, and the older one wins whenever a save follows an upload',
+    ).toBe(false);
+  });
+
+  it('the response carries every field the owner can see, bannerUrl included', () => {
+    // The read is what the edit form prefills from. A field missing here is a
+    // field the client has to guess at, and the guesses become workarounds —
+    // which is the whole history this surface just finished unwinding.
+    expect(Object.keys(businessSchema.shape).sort()).toEqual([
+      'about',
+      'address',
+      'bannerUrl',
+      'category',
+      'handle',
+      'id',
+      'mapsUrl',
+      'name',
+      'published',
+      'tagline',
+    ]);
+  });
+
+  it('distinguishes an omitted field from an empty one', () => {
+    // The distinction the whole clear-a-field feature rests on. An omitted key
+    // must stay omitted through parsing — if Zod defaulted it to `''`, every
+    // partial save would clear four fields it never mentioned.
+    const omitted = renameBusinessRequestSchema.parse({ name: 'Vera Salon' });
+    expect(Object.hasOwn(omitted, 'tagline')).toBe(false);
+
+    const cleared = renameBusinessRequestSchema.parse({
+      name: 'Vera Salon',
+      tagline: '',
+      mapsUrl: '',
+    });
+    expect(cleared.tagline).toBe('');
+    // `mapsUrl` specifically, because it is the one field with real validation
+    // and therefore the one that would otherwise be unclearable: `z.url()`
+    // rejects `''`. Its refinement lets the empty case through and nothing else.
+    expect(cleared.mapsUrl).toBe('');
+    expect(() =>
+      renameBusinessRequestSchema.parse({
+        name: 'Vera Salon',
+        mapsUrl: 'not a url',
+      }),
+    ).toThrow();
+  });
+
+  it('keeps every request field a plain string in the generated shape', () => {
+    // ── A REGRESSION GUARD WITH A SPECIFIC HISTORY ────────────────────────────
+    //
+    // The clear signal was `null` first, via `.nullish()`. It parsed correctly,
+    // every test passed, and the DART CLIENT came out with five wrapper classes
+    // — `RenameBusinessRequestTagline` and four more — because openapi-generator
+    // renders `anyOf: [string, null]` as a type of its own.
+    //
+    // Nothing on this side would have caught it; the damage was two packages
+    // away in generated code nobody reads. So the schema is asserted to emit
+    // plain optional strings, which is the property that keeps the client clean.
+    const emitted = z.toJSONSchema(renameBusinessRequestSchema, {
+      io: 'input',
+    }) as { properties: Record<string, { type?: unknown; anyOf?: unknown }> };
+
+    for (const [field, shape] of Object.entries(emitted.properties)) {
+      expect(
+        shape.anyOf,
+        `${field} emits anyOf, which generates a wrapper class`,
+      ).toBeUndefined();
+      expect(shape.type, `${field} must be a plain string`).toBe('string');
+    }
   });
 });

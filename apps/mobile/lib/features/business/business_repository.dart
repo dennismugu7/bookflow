@@ -16,24 +16,25 @@ abstract interface class BusinessRepository {
 
   /// Saves the business's editable profile and returns it as stored.
   ///
-  /// ══ AN OMITTED FIELD IS UNCHANGED, NOT CLEARED ═══════════════════════════
+  /// ══ EVERY FIELD, EVERY TIME — AND AN EMPTY ONE CLEARS ════════════════════
   ///
-  /// The API applies `coalesce(param, column)` to every optional field, so a
-  /// field this does not send is left exactly as it was. **That is load-bearing
-  /// here rather than a nicety**: `GET /v1/me/business` returns
-  /// `{id, name, published, handle}` and NONE of the profile fields below, so
-  /// the app cannot prefill them — and if it sent every field on every save, an
-  /// untouched blank input would wipe a tagline the owner set last week.
+  /// **This used to send only what was filled in.** The API applied
+  /// `coalesce(param, column)`, so an omitted field was left alone, and the
+  /// client depended on that because `GET /v1/me/business` returned neither the
+  /// tagline nor anything else the form edits. A form that cannot show a stored
+  /// value must not send a blank over it.
   ///
-  /// **`handle` arriving did not fix this.** That read gained the two fields the
-  /// dashboard needed and stopped there; `tagline`, `about`, `category`,
-  /// `address` and `mapsUrl` are still write-only from this app's side.
+  /// It worked and it had a cost that could not be paid off from this side:
+  /// **nothing could ever be cleared.** An owner who pasted the wrong maps link
+  /// could replace it and never remove it.
   ///
-  /// So blank means "leave it alone", and the cost is that **there is no way to
-  /// clear a field through this app**. Stated rather than discovered: the fix
-  /// for both halves is the same one line in `businesses.routes.ts` adding
-  /// these fields to `businessSchema`, after which the form can prefill and a
-  /// deliberate clear becomes expressible.
+  /// The read returns all five now. The form prefills from them, so a blank box
+  /// is a box the owner emptied, and this sends the whole set on every save —
+  /// `''` where they cleared something, which the API stores as NULL.
+  ///
+  /// **The parameters are non-nullable for that reason.** A `String?` would
+  /// reintroduce exactly the ambiguity just removed: null would have to mean
+  /// either "unchanged" or "clear", and the caller could not say which.
   ///
   /// **No `bannerUrl` here, and that is the API's shape rather than an
   /// omission.** `RenameBusinessRequest` does not carry one: the upload
@@ -43,11 +44,11 @@ abstract interface class BusinessRepository {
   Future<OwnedBusiness> rename({
     required String id,
     required String name,
-    String? tagline,
-    String? about,
-    String? category,
-    String? address,
-    String? mapsUrl,
+    required String tagline,
+    required String about,
+    required String category,
+    required String address,
+    required String mapsUrl,
   });
 
   /// Creates the caller's business and returns it as stored.
@@ -121,11 +122,11 @@ class ApiBusinessRepository implements BusinessRepository {
   Future<OwnedBusiness> rename({
     required String id,
     required String name,
-    String? tagline,
-    String? about,
-    String? category,
-    String? address,
-    String? mapsUrl,
+    required String tagline,
+    required String about,
+    required String category,
+    required String address,
+    required String mapsUrl,
   }) async {
     // Not caught. A rename failing IS a failure — a 404 here means the business
     // is not the caller's or does not exist, which is nothing like "you have
@@ -137,18 +138,21 @@ class ApiBusinessRepository implements BusinessRepository {
           renameBusinessRequestInput: RenameBusinessRequestInput((
             RenameBusinessRequestInputBuilder b,
           ) {
+            // ── ALL OF THEM, UNCONDITIONALLY ────────────────────────────────
+            //
+            // The `if (x.isNotEmpty)` guards that used to stand here were the
+            // client half of blank-means-unchanged. They are gone with it: the
+            // form prefills from the stored values now, so an empty string is
+            // the owner having emptied a box and the API clears the column.
+            //
+            // Re-adding a guard would break the clear silently — the save would
+            // report success and the field would come back on the next read.
             b.name = name;
-            // Only what was actually filled in. See the interface comment:
-            // the app cannot read these back, so an empty input means
-            // "unchanged" and sending `""` would wipe a value the owner set
-            // and cannot currently see.
-            if (tagline != null && tagline.isNotEmpty) b.tagline = tagline;
-            if (about != null && about.isNotEmpty) b.about = about;
-            if (category != null && category.isNotEmpty) {
-              b.category = category;
-            }
-            if (address != null && address.isNotEmpty) b.address = address;
-            if (mapsUrl != null && mapsUrl.isNotEmpty) b.mapsUrl = mapsUrl;
+            b.tagline = tagline;
+            b.about = about;
+            b.category = category;
+            b.address = address;
+            b.mapsUrl = mapsUrl;
           }),
         );
 
@@ -274,5 +278,11 @@ class ApiBusinessRepository implements BusinessRepository {
     name: business.name,
     published: business.published,
     handle: business.handle,
+    tagline: business.tagline,
+    about: business.about,
+    category: business.category,
+    address: business.address,
+    mapsUrl: business.mapsUrl,
+    bannerUrl: business.bannerUrl,
   );
 }

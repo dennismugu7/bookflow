@@ -8,7 +8,7 @@ import 'package:built_value/serializer.dart';
 
 part 'rename_business_request.g.dart';
 
-/// The business’s editable profile. The name is required.
+/// The business’s editable profile. The name is required. An omitted field is left unchanged; an empty one clears it.
 ///
 /// Properties:
 /// * [name] - Required. Trimmed. 1–200 characters after trimming.

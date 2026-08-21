@@ -1,3 +1,4 @@
+import { sql } from 'kysely';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -6,7 +7,11 @@ import {
   unrelatedAccountWithBusiness,
 } from '../../../test/integration/accounts.ts';
 import { useTransaction } from '../../../test/integration/harness.ts';
-import { findBusinessOwnedBy } from './businesses.repository.ts';
+import {
+  createBusinessForUser,
+  findBusinessOwnedBy,
+  renameBusinessForUser,
+} from './businesses.repository.ts';
 import { getMyBusiness } from './businesses.service.ts';
 
 /**
@@ -119,5 +124,178 @@ describe('getMyBusiness — the service layer', () => {
     await expect(
       getMyBusiness(ctx.db, { userId: noBusiness.userId }),
     ).resolves.toBeUndefined();
+  });
+});
+
+/**
+ * ══ THE FOUR STATEMENTS THAT HAVE TO AGREE ══════════════════════════════════
+ *
+ * A business row is produced by two selects, one `returning`, and a raw
+ * `returning` inside the creation CTE. Three read `BUSINESS_COLUMNS`; the fourth
+ * cannot, because it is raw SQL, and it is therefore the one that will drift.
+ *
+ * **Drift here is silent in the worst way.** The route serialises through
+ * `businessSchema`, and Zod strips what it does not recognise — so a CTE that
+ * returned `maps_url` instead of `"mapsUrl"` would produce a 201 whose body is
+ * missing a field, with no error anywhere, and the client would conclude the
+ * salon has no maps link rather than that the response forgot to mention it.
+ *
+ * Comparing KEY SETS rather than values is deliberate: the values legitimately
+ * differ (a created business has no handle), and it is the shape that drifts.
+ */
+describe('the created row and the read row are the same shape', () => {
+  it('createBusinessForUser returns exactly what findBusinessOwnedBy returns', async () => {
+    const account = await accountWithoutBusiness(ctx);
+
+    const created = await createBusinessForUser(
+      ctx.db,
+      account.userId,
+      'Shape Salon',
+    );
+    const read = await findBusinessOwnedBy(ctx.db, { userId: account.userId });
+
+    expect(created, 'the CTE must return its row').toBeDefined();
+    expect(read, 'the created business must then be readable').toBeDefined();
+
+    expect(Object.keys(created ?? {}).sort()).toEqual(
+      Object.keys(read ?? {}).sort(),
+    );
+    // And the aliases specifically, since those are what raw SQL gets wrong:
+    // an unquoted `maps_url as mapsUrl` is folded to `mapsurl` by PostgreSQL,
+    // which is a key neither TypeScript nor Zod would recognise.
+    expect(Object.keys(created ?? {})).toContain('mapsUrl');
+    expect(Object.keys(created ?? {})).toContain('bannerUrl');
+  });
+});
+
+/**
+ * ══ CLEARING A FIELD, WHICH WAS NOT POSSIBLE UNTIL NOW ══════════════════════
+ *
+ * The old shape was `coalesce(param, column)` throughout: an omitted field was
+ * left alone and **so was a blank one**, because the client could not read these
+ * values back and a form showing an empty box where a stored tagline lived must
+ * not wipe it.
+ *
+ * Now the form prefills, so an empty box means the owner emptied it. These two
+ * tests pin the pair — and they are a pair on purpose, because either one alone
+ * is satisfied by a broken implementation. Only-clears passes for an update that
+ * writes every column unconditionally, which destroys untouched fields.
+ * Only-unchanged passes for the `coalesce` this replaced.
+ */
+describe('renameBusinessForUser — omitted leaves alone, empty clears', () => {
+  it('an empty string clears the column to NULL', async () => {
+    const mine = await accountWithBusiness(ctx, 'Clearable Salon');
+    await unrelatedAccountWithBusiness(ctx, mine, 'Decoy Salon');
+
+    await renameBusinessForUser(
+      ctx.db,
+      { userId: mine.userId, businessId: mine.businessId },
+      {
+        name: 'Clearable Salon',
+        tagline: 'Cuts and colour',
+        about: 'A long story',
+        category: 'salon',
+        address: 'Kilimani',
+        mapsUrl: 'https://maps.example.invalid/vera',
+      },
+    );
+
+    const cleared = await renameBusinessForUser(
+      ctx.db,
+      { userId: mine.userId, businessId: mine.businessId },
+      {
+        // Empty, not absent. The distinction is the feature.
+        name: 'Clearable Salon',
+        tagline: '',
+        about: '',
+        category: '',
+        address: '',
+        mapsUrl: '',
+      },
+    );
+
+    // NULL, not `''`. What the client sends and what the column holds are
+    // deliberately different: a cleared field and a never-set field must be the
+    // same row, or `tagline is not null` starts lying.
+    expect(cleared?.tagline).toBeNull();
+    expect(cleared?.about).toBeNull();
+    expect(cleared?.category).toBeNull();
+    expect(cleared?.address).toBeNull();
+    expect(cleared?.mapsUrl).toBeNull();
+
+    // Read back rather than trusting `returning`: the point is what is STORED,
+    // and an update that returned the right thing while writing the wrong one
+    // is precisely the bug this guards.
+    const read = await findBusinessOwnedBy(ctx.db, { userId: mine.userId });
+    expect(read?.tagline).toBeNull();
+    expect(read?.mapsUrl).toBeNull();
+  });
+
+  it('an omitted field is left exactly as it was', async () => {
+    const mine = await accountWithBusiness(ctx, 'Partial Salon');
+
+    await renameBusinessForUser(
+      ctx.db,
+      { userId: mine.userId, businessId: mine.businessId },
+      {
+        name: 'Partial Salon',
+        tagline: 'Cuts and colour',
+        about: 'A long story',
+        category: 'salon',
+        address: 'Kilimani',
+        mapsUrl: 'https://maps.example.invalid/vera',
+      },
+    );
+
+    // Only the name is sent. Every other key is absent — not null.
+    const renamed = await renameBusinessForUser(
+      ctx.db,
+      { userId: mine.userId, businessId: mine.businessId },
+      {
+        name: 'Partial Salon Renamed',
+        tagline: undefined,
+        about: undefined,
+        category: undefined,
+        address: undefined,
+        mapsUrl: undefined,
+      },
+    );
+
+    expect(renamed?.name).toBe('Partial Salon Renamed');
+    expect(renamed?.tagline).toBe('Cuts and colour');
+    expect(renamed?.about).toBe('A long story');
+    expect(renamed?.category).toBe('salon');
+    expect(renamed?.address).toBe('Kilimani');
+    expect(renamed?.mapsUrl).toBe('https://maps.example.invalid/vera');
+  });
+
+  it('never writes banner_url, whatever the profile save contains', async () => {
+    const mine = await accountWithBusiness(ctx, 'Bannered Salon');
+
+    await sql`
+      update public.businesses
+      set banner_url = 'https://cdn.invalid/uploaded.jpg'
+      where id = ${mine.businessId}::uuid
+    `.execute(ctx.db);
+
+    // The scenario the boundary exists for: an upload lands, then a profile
+    // save follows. The save must not touch the column the upload just wrote.
+    const saved = await renameBusinessForUser(
+      ctx.db,
+      { userId: mine.userId, businessId: mine.businessId },
+      {
+        name: 'Bannered Salon',
+        tagline: '',
+        about: '',
+        category: '',
+        address: '',
+        mapsUrl: '',
+      },
+    );
+
+    expect(
+      saved?.bannerUrl,
+      'a profile save overwrote the banner the image route had just uploaded',
+    ).toBe('https://cdn.invalid/uploaded.jpg');
   });
 });

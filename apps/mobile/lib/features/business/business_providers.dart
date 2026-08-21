@@ -47,17 +47,21 @@ class RenameBusinessController extends AutoDisposeNotifier<AsyncValue<void>> {
   @override
   AsyncValue<void> build() => const AsyncData<void>(null);
 
-  /// Renames, then refreshes the read so the section shows the stored name
-  /// rather than the typed one. They differ whenever the server trims
+  /// Saves the profile, then refreshes the read so the section shows the stored
+  /// values rather than the typed ones. They differ whenever the server trims
   /// (decision 9), and showing the typed value would quietly hide that.
+  ///
+  /// **Every field is required and the whole set is sent.** See
+  /// `business_repository.dart`: an empty string clears, which only works
+  /// because the form prefills from this same read.
   Future<void> rename({
     required String id,
     required String name,
-    String? tagline,
-    String? about,
-    String? category,
-    String? address,
-    String? mapsUrl,
+    required String tagline,
+    required String about,
+    required String category,
+    required String address,
+    required String mapsUrl,
   }) async {
     state = const AsyncLoading<void>();
 

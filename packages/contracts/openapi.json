@@ -333,14 +333,13 @@
           },
           "mapsUrl": {
             "type": "string",
-            "maxLength": 2000,
-            "format": "uri"
+            "maxLength": 2000
           }
         },
         "required": [
           "name"
         ],
-        "description": "The business’s editable profile. The name is required."
+        "description": "The business’s editable profile. The name is required. An omitted field is left unchanged; an empty one clears it."
       },
       "CreateBusinessRequestInput": {
         "type": "object",
@@ -380,13 +379,79 @@
                 "type": "null"
               }
             ]
+          },
+          "tagline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "about": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mapsUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bannerUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "id",
           "name",
           "published",
-          "handle"
+          "handle",
+          "tagline",
+          "about",
+          "category",
+          "address",
+          "mapsUrl",
+          "bannerUrl"
         ],
         "description": "A business the caller is a member of."
       },
@@ -1278,15 +1343,14 @@
           },
           "mapsUrl": {
             "type": "string",
-            "maxLength": 2000,
-            "format": "uri"
+            "maxLength": 2000
           }
         },
         "required": [
           "name"
         ],
         "additionalProperties": false,
-        "description": "The business’s editable profile. The name is required."
+        "description": "The business’s editable profile. The name is required. An omitted field is left unchanged; an empty one clears it."
       },
       "CreateBusinessRequest": {
         "type": "object",
@@ -1327,13 +1391,79 @@
                 "type": "null"
               }
             ]
+          },
+          "tagline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "about": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mapsUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bannerUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "id",
           "name",
           "published",
-          "handle"
+          "handle",
+          "tagline",
+          "about",
+          "category",
+          "address",
+          "mapsUrl",
+          "bannerUrl"
         ],
         "additionalProperties": false,
         "description": "A business the caller is a member of."
@@ -2026,7 +2156,7 @@
         "tags": [
           "businesses"
         ],
-        "description": "The name is required; tagline, about, category, address and mapsUrl are optional and an omitted one is left UNCHANGED, not cleared. Scoped through membership: a business the caller has no membership in is indistinguishable from one that does not exist. Text is trimmed before it is stored.",
+        "description": "The name is required. tagline, about, category, address and mapsUrl are optional: an OMITTED one is left unchanged, an EMPTY one clears it to null. bannerUrl is returned by this endpoint but cannot be sent — the image upload route is the only writer of that column. Scoped through membership: a business the caller has no membership in is indistinguishable from one that does not exist. Text is trimmed before it is stored.",
         "requestBody": {
           "required": true,
           "content": {

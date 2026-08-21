@@ -26,7 +26,7 @@ void main() {
 
     // Edit a business the caller belongs to
     //
-    // The name is required; tagline, about, category, address and mapsUrl are optional and an omitted one is left UNCHANGED, not cleared. Scoped through membership: a business the caller has no membership in is indistinguishable from one that does not exist. Text is trimmed before it is stored.
+    // The name is required. tagline, about, category, address and mapsUrl are optional: an OMITTED one is left unchanged, an EMPTY one clears it to null. bannerUrl is returned by this endpoint but cannot be sent — the image upload route is the only writer of that column. Scoped through membership: a business the caller has no membership in is indistinguishable from one that does not exist. Text is trimmed before it is stored.
     //
     //Future<Business> renameBusiness(String businessId, RenameBusinessRequestInput renameBusinessRequestInput) async
     test('test renameBusiness', () async {

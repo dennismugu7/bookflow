@@ -20,7 +20,42 @@ export interface BusinessRow {
   readonly published: boolean;
   /** Null until published. See `businessSchema` for why it is on this read. */
   readonly handle: string | null;
+  readonly tagline: string | null;
+  readonly about: string | null;
+  readonly category: string | null;
+  readonly address: string | null;
+  readonly mapsUrl: string | null;
+  /** Read-only here. The image route is `banner_url`'s only writer. */
+  readonly bannerUrl: string | null;
 }
+
+/**
+ * The columns every read of a business returns, aliased to the wire's casing.
+ *
+ * ── ONE LIST, BECAUSE THERE ARE FOUR PLACES THAT MUST AGREE ─────────────────
+ *
+ * Two selects, one `returning`, and a raw `returning` inside the creation CTE.
+ * When this was `{id, name, published}` keeping them in step was easy and they
+ * still drifted once; at ten columns a hand-maintained fourth copy is a matter
+ * of time. **The CTE cannot use this** — it is raw SQL and must spell the list
+ * out — so `businesses.integration.test.ts` asserts that a freshly created
+ * business and a freshly read one have identical key sets.
+ *
+ * `as const` so Kysely infers the aliases rather than widening to `string[]`,
+ * which is what makes `mapsUrl` a typed property instead of an assertion.
+ */
+const BUSINESS_COLUMNS = [
+  'businesses.id',
+  'businesses.name',
+  'businesses.published',
+  'businesses.handle',
+  'businesses.tagline',
+  'businesses.about',
+  'businesses.category',
+  'businesses.address',
+  'businesses.maps_url as mapsUrl',
+  'businesses.banner_url as bannerUrl',
+] as const;
 
 /**
  * The caller's business, or `undefined`.
@@ -39,12 +74,7 @@ export async function findBusinessForUser(
     .innerJoin('memberships', 'memberships.business_id', 'businesses.id')
     .where('businesses.id', '=', sql<string>`${scope.businessId}::uuid`)
     .where('memberships.user_id', '=', sql<string>`${scope.userId}::uuid`)
-    .select([
-      'businesses.id',
-      'businesses.name',
-      'businesses.published',
-      'businesses.handle',
-    ])
+    .select(BUSINESS_COLUMNS)
     .executeTakeFirst();
 
   return result;
@@ -184,12 +214,7 @@ export async function findBusinessOwnedBy(
     .innerJoin('memberships', 'memberships.business_id', 'businesses.id')
     .where('memberships.user_id', '=', sql<string>`${scope.userId}::uuid`)
     .where('memberships.role', '=', 'owner')
-    .select([
-      'businesses.id',
-      'businesses.name',
-      'businesses.published',
-      'businesses.handle',
-    ])
+    .select(BUSINESS_COLUMNS)
     .orderBy('memberships.created_at', 'asc')
     .limit(1)
     .executeTakeFirst();
@@ -228,7 +253,14 @@ export async function createBusinessForUser(
   const result = await sql<BusinessRow>`
     with new_business as (
       insert into public.businesses (name) values (${name})
-      returning id, name, published, handle
+      -- SPELLED OUT, because raw SQL cannot read BUSINESS_COLUMNS. The aliases
+      -- are what make this row the same SHAPE as a read: without them the
+      -- creation response would carry maps_url and banner_url in snake_case and
+      -- the route's Zod schema would strip both to undefined, so a 201 would
+      -- silently describe a different resource than the 200 that follows it.
+      -- businesses.integration.test.ts compares the two key sets.
+      returning id, name, published, handle, tagline, about, category, address,
+                maps_url as "mapsUrl", banner_url as "bannerUrl"
     ), new_membership as (
       -- ROLE STATED, NOT INHERITED. memberships.role defaults to 'owner', so
       -- this column could be omitted -- and must not be. The row has to fall
@@ -248,7 +280,9 @@ export async function createBusinessForUser(
     -- silently drops the membership insert, leaving a business owned by nobody --
     -- unreachable through the scoping rule, and invisible to every cleanup that
     -- resolves ownership through memberships (K79).
-    select id, name, published, handle from new_business
+    select id, name, published, handle, tagline, about, category, address,
+           "mapsUrl", "bannerUrl"
+    from new_business
   `.execute(executor);
 
   return result.rows[0];
@@ -313,6 +347,38 @@ export function isSecondBusinessConflict(error: unknown): boolean {
  * event that makes it reachable. Until then this is unreachable rather than
  * wrong.
  */
+/**
+ * ══ THREE STATES, NOT TWO, AND `''` IS NOT `undefined` ══════════════════════
+ *
+ * A non-empty `string` sets, **`''` clears the column to NULL**, and `undefined`
+ * leaves it alone. That middle case is new, and it is the whole change.
+ *
+ * ── WHAT THIS REPLACED, AND WHY IT HAD TO GO ────────────────────────────────
+ *
+ * Every field used to be `coalesce(param, column)`: absent meant unchanged, and
+ * **nothing could ever be cleared**. That was the right call while it stood,
+ * because the client could not read these fields back — an edit form showing a
+ * blank box where a stored tagline lived would have wiped it on every save of
+ * any other field.
+ *
+ * `businessSchema` returns them now, so the form prefills, and a box the owner
+ * has emptied ON PURPOSE is a box that should end up empty. Keeping `coalesce`
+ * would have made the app's clear silently do nothing — the worst available
+ * outcome, because the value would reappear on the next read and look like the
+ * save had failed.
+ *
+ * ── `''` BECOMES NULL RATHER THAN BEING STORED ──────────────────────────────
+ *
+ * A cleared field and a never-set field are then the same row, not two states
+ * that render identically and compare unequal. It also keeps the public
+ * projection honest: `''` and `null` are both falsy in the web app, so storing
+ * the empty string would work by accident right up until something asked
+ * `tagline is not null`.
+ *
+ * See `renameBusinessRequestSchema` for why the clear signal is `''` rather
+ * than the `null` this first used — openapi-generator turns a nullable request
+ * field into a wrapper class per field.
+ */
 export interface BusinessProfileInput {
   readonly name: string;
   readonly tagline: string | undefined;
@@ -327,43 +393,37 @@ export async function renameBusinessForUser(
   scope: BusinessScope,
   input: BusinessProfileInput,
 ): Promise<BusinessRow | undefined> {
+  // Built rather than expressed in SQL, because SQL cannot see the difference.
+  // A parameter carrying nothing is indistinguishable from a parameter that was
+  // never supplied once it reaches the database, which is exactly why the old
+  // `coalesce` shape could not express a clear. TypeScript can tell them apart,
+  // so the decision is made here and the statement only ever names columns that
+  // are genuinely being written.
+  //
+  // `banner_url` is absent from this type and cannot be added by a caller: the
+  // image route owns that column (see `businessSchema`).
+  const patch: {
+    name: string;
+    tagline?: string | null;
+    about?: string | null;
+    category?: string | null;
+    address?: string | null;
+    maps_url?: string | null;
+  } = { name: input.name };
+
+  /** `''` → null, anything else → itself. The clear, in one place. */
+  const cleared = (value: string): string | null =>
+    value === '' ? null : value;
+
+  if (input.tagline !== undefined) patch.tagline = cleared(input.tagline);
+  if (input.about !== undefined) patch.about = cleared(input.about);
+  if (input.category !== undefined) patch.category = cleared(input.category);
+  if (input.address !== undefined) patch.address = cleared(input.address);
+  if (input.mapsUrl !== undefined) patch.maps_url = cleared(input.mapsUrl);
+
   return await executor
     .updateTable('businesses')
-    .set((eb) => ({
-      name: input.name,
-      // ── ABSENT MEANS UNCHANGED, NOT CLEARED ─────────────────────────────
-      //
-      // `coalesce(param, column)`, the same shape the services and team
-      // repositories use. A PATCH that omitted `tagline` and wiped it would
-      // make every partial save destructive — and the client saves partially
-      // all the time, because the design's screens edit one section at a time.
-      //
-      // The cost, stated: **there is no way to clear a field through this
-      // route.** Sending `""` sets it to the empty string rather than null,
-      // which is a different value that renders the same. A dedicated clear is
-      // a change to this schema when a screen needs one, not a null nobody
-      // asked for.
-      tagline: eb.fn.coalesce(
-        sql<string | null>`${input.tagline ?? null}::text`,
-        'businesses.tagline',
-      ),
-      about: eb.fn.coalesce(
-        sql<string | null>`${input.about ?? null}::text`,
-        'businesses.about',
-      ),
-      category: eb.fn.coalesce(
-        sql<string | null>`${input.category ?? null}::text`,
-        'businesses.category',
-      ),
-      address: eb.fn.coalesce(
-        sql<string | null>`${input.address ?? null}::text`,
-        'businesses.address',
-      ),
-      maps_url: eb.fn.coalesce(
-        sql<string | null>`${input.mapsUrl ?? null}::text`,
-        'businesses.maps_url',
-      ),
-    }))
+    .set(patch)
     .where('businesses.id', '=', sql<string>`${scope.businessId}::uuid`)
     // The builder is taken whole rather than destructured: pulling `exists` and
     // `selectFrom` off it separates the methods from their object, which
@@ -381,12 +441,7 @@ export async function renameBusinessForUser(
           ),
       ),
     )
-    .returning([
-      'businesses.id',
-      'businesses.name',
-      'businesses.published',
-      'businesses.handle',
-    ])
+    .returning(BUSINESS_COLUMNS)
     .executeTakeFirst();
 }
 

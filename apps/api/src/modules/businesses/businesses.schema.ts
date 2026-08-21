@@ -69,12 +69,36 @@ const tagline = z.string().trim().max(TAGLINE_MAX_LENGTH);
 const about = z.string().trim().max(ABOUT_MAX_LENGTH);
 const category = z.string().trim().max(CATEGORY_MAX_LENGTH);
 const address = z.string().trim().max(ADDRESS_MAX_LENGTH);
+
+const MAPS_URL_MAX_LENGTH = 2000;
+
 /**
- * A map link. `z.url()` and nothing more — it is rendered as a link by the
- * client web app and never parsed, so validating it against a provider's URL
- * shape would reject a perfectly good link to a different provider.
+ * A map link, or `''` to clear it.
+ *
+ * ── IT WAS `z.url()`, AND THE EMPTY CASE IS WHY IT IS NOT ANY MORE ──────────
+ *
+ * A URL and nothing more, because the link is rendered by the client web app
+ * and parsed by nothing — validating it against one provider's shape would
+ * reject a perfectly good link to another. That reasoning is unchanged.
+ *
+ * What changed is that **the form can now clear a field**, and `''` is the clear
+ * signal every field carries (see `renameBusinessRequestSchema`). `z.url()`
+ * rejects `''`, so the one field with real validation would have been the one
+ * field that could not be cleared — an owner who deleted a wrong link would get
+ * a 400 and no way to remove it.
+ *
+ * Written as a refinement rather than `z.union([z.url(), z.literal('')])`
+ * deliberately: a union emits `anyOf` into the spec, and openapi-generator turns
+ * `anyOf` into a wrapper CLASS per field. Five of them appeared in the Dart
+ * client the first time this was tried. A refined string stays a `String?`.
  */
-const mapsUrl = z.url().max(2000);
+const mapsUrl = z
+  .string()
+  .trim()
+  .max(MAPS_URL_MAX_LENGTH)
+  .refine((value) => value === '' || z.url().safeParse(value).success, {
+    message: 'must be a URL, or empty to clear it',
+  });
 
 /**
  * `PATCH` — the editable fields.
@@ -92,6 +116,34 @@ const mapsUrl = z.url().max(2000);
  * resource, so the generated Dart type keeps its name and existing call sites
  * keep compiling; a new id would be a second model describing the same PATCH.
  */
+/**
+ * ── THREE STATES, AND THE EMPTY STRING IS THE INTERESTING ONE ───────────────
+ *
+ * An **omitted** field is left unchanged, which is what PATCH means. An
+ * **empty** field clears the column — that is new, and it is the whole change:
+ * see `renameBusinessForUser` for why the old `coalesce` shape could not express
+ * a clear at all, and why removing it became correct the moment `businessSchema`
+ * started returning these fields for the form to prefill from.
+ *
+ * ── WHY `''` AND NOT `null`, WHICH WAS TRIED FIRST ─────────────────────────
+ *
+ * `null` is the better-looking design and it does not survive code generation.
+ * `.nullish()` emits `anyOf: [string, null]`, and openapi-generator answers
+ * `anyOf` with a **wrapper class per field** — `RenameBusinessRequestTagline`,
+ * `RenameBusinessRequestAbout`, three more — which every Dart call site would
+ * then have to construct. ADR-014 makes the generated client the contract's
+ * consumer, so a schema that generates badly IS a bad schema.
+ *
+ * `''` costs one refinement on `mapsUrl` (the only field with real validation)
+ * and keeps all five as plain optional strings on both sides of the wire.
+ *
+ * **`bannerUrl` is deliberately not here and must not be added.** It is on the
+ * RESPONSE, because the form shows the current banner; it is absent from the
+ * REQUEST, because `POST /v1/me/business/images` writes `banner_url` and a
+ * second writer for one column is how the two come to disagree — an upload that
+ * succeeds followed by a save that fails would leave the client believing the
+ * older of two values. `businesses.boundaries.test.ts` fails if the key appears.
+ */
 export const renameBusinessRequestSchema = z
   .object({
     name: businessName,
@@ -101,7 +153,9 @@ export const renameBusinessRequestSchema = z
     address: address.optional(),
     mapsUrl: mapsUrl.optional(),
   })
-  .describe('The business’s editable profile. The name is required.')
+  .describe(
+    'The business’s editable profile. The name is required. An omitted field is left unchanged; an empty one clears it.',
+  )
   .meta({ id: 'RenameBusinessRequest' });
 
 /**

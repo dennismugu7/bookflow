@@ -283,13 +283,25 @@ describe('GET /v1/businesses/:businessId — the scoping rule', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    // Exact, so a new response field lands here deliberately. `handle` is null
-    // because the seed publishes this salon without minting one.
+    // Exact, so a new response field lands here deliberately — which is what
+    // just happened: the read used to be `{id, name, published}` and now
+    // carries the whole owner-visible business.
+    //
+    // Every added field is null, and each for its own reason rather than by
+    // coincidence: the seed publishes this salon WITHOUT minting a handle, and
+    // it sets no profile fields at all. `bannerUrl` is null because only the
+    // image upload route ever writes that column and the seed does not call it.
     expect(response.json()).toEqual({
       id: SEEDED_BUSINESS,
       name: 'Demo Salon',
       published: true,
       handle: null,
+      tagline: null,
+      about: null,
+      category: null,
+      address: null,
+      mapsUrl: null,
+      bannerUrl: null,
     });
   });
 

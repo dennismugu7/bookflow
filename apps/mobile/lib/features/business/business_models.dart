@@ -10,6 +10,12 @@ class OwnedBusiness {
     required this.name,
     required this.published,
     this.handle,
+    this.tagline,
+    this.about,
+    this.category,
+    this.address,
+    this.mapsUrl,
+    this.bannerUrl,
   });
 
   final String id;
@@ -33,6 +39,30 @@ class OwnedBusiness {
   /// The API now returns it. `publishedSalonProvider` and its extra round trip
   /// are deleted.
   final String? handle;
+
+  /// ── THE PROFILE FIELDS, AND THE WORKAROUND THEY ALSO ENDED ────────────────
+  ///
+  /// These were absent from `GET /v1/me/business` for the same stretch as
+  /// `handle`, and their absence cost more. The edit form could not prefill, so
+  /// **blank had to mean "leave unchanged"** — a form that cannot show a stored
+  /// tagline must not wipe one — and the consequence was that nothing could ever
+  /// be cleared. The form carried a line of apology saying so.
+  ///
+  /// Now they arrive, the form prefills, and an emptied box means the owner
+  /// emptied it. `business_repository.dart` sends all five on every save.
+  final String? tagline;
+  final String? about;
+  final String? category;
+  final String? address;
+  final String? mapsUrl;
+
+  /// The banner, shown as a thumbnail and **never sent back**.
+  ///
+  /// `POST /v1/me/business/images` writes this column when the purpose is
+  /// `banner`, so the upload has already saved it by the time the form could
+  /// include it. `RenameBusinessRequest` has no field for it, which is the API
+  /// making the same point structurally.
+  final String? bannerUrl;
 }
 
 /// Publishing was refused because the salon is not ready.
