@@ -132,21 +132,143 @@ void main() {
     });
   });
 
-  testWidgets('no Edit affordance is rendered', (WidgetTester tester) async {
-    // Deliberate: there is no PATCH /v1/me. A visible control that does nothing
-    // is a promise the app does not keep, so it is absent until the
-    // profile-editing slice builds it.
+  // ══ THIS TEST'S PREMISE CHANGED, AND SO DID THE TEST ═══════════════════════
+  //
+  // It read: "no Edit affordance is rendered … Deliberate: there is no
+  // PATCH /v1/me. A visible control that does nothing is a promise the app does
+  // not keep, so it is absent until the profile-editing slice builds it."
+  //
+  // That slice is this one. `PATCH /v1/me` exists, so the Edit link is rendered
+  // and does what the design draws it doing — and the half of the old assertion
+  // that still holds is kept below: the AVATAR's pencil badge is still absent,
+  // because there is still no avatar upload.
+  testWidgets('the Edit affordance exists; the avatar pencil still does not', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       screenWith(<Override>[
         profileRepositoryProvider.overrideWithValue(
-          const _StubRepository(value: ada),
+          _StubRepository(value: ada),
         ),
       ]),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Edit'), findsNothing);
+    expect(find.byKey(const Key('profile-edit')), findsOneWidget);
+    // The pencil badge the design draws on the avatar. `PATCH /v1/me` does not
+    // write `avatar_path` and no upload exists, so a badge here would open a
+    // picker leading nowhere.
     expect(find.byIcon(Icons.edit), findsNothing);
+  });
+
+  testWidgets('editing prefills, and Save sends both names trimmed', (
+    WidgetTester tester,
+  ) async {
+    final _StubRepository repository = _StubRepository(value: ada);
+
+    await tester.pumpWidget(
+      screenWith(<Override>[
+        profileRepositoryProvider.overrideWithValue(repository),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('profile-edit')));
+    await tester.pumpAndSettle();
+
+    // Prefilled from the fetched values. Read off the controllers rather than
+    // by text search: `find.text` would also match a label or a hint, and a
+    // hint is exactly what an unprefilled field shows.
+    String valueOf(String key) =>
+        tester.widget<TextField>(find.byKey(Key(key))).controller!.text;
+    expect(valueOf('profile-first-name-field'), ada.firstName);
+    expect(valueOf('profile-last-name-field'), ada.lastName);
+
+    await tester.enterText(
+      find.byKey(const Key('profile-first-name-field')),
+      '  Grace  ',
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const Key('profile-save')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('profile-save')));
+    await tester.pumpAndSettle();
+
+    // Trimmed before sending, and BOTH names travel — `PATCH /v1/me` requires
+    // both, so a payload carrying only the edited one would be a 400.
+    expect(repository.renamed, <String, String>{
+      'firstName': 'Grace',
+      'lastName': ada.lastName,
+    });
+  });
+
+  testWidgets('an empty name is never submitted', (WidgetTester tester) async {
+    final _StubRepository repository = _StubRepository(value: ada);
+
+    await tester.pumpWidget(
+      screenWith(<Override>[
+        profileRepositoryProvider.overrideWithValue(repository),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('profile-edit')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('profile-first-name-field')),
+      '   ',
+    );
+    await tester.pumpAndSettle();
+
+    // Whitespace only. The API trims before validating and would refuse it, so
+    // the client refuses it first rather than sending a request it knows fails.
+    final FilledButton save = tester.widget<FilledButton>(
+      find.byKey(const Key('profile-save')),
+    );
+    expect(save.onPressed, isNull);
+    expect(repository.renamed, isNull);
+  });
+
+  testWidgets('a failed save keeps the form and what was typed', (
+    WidgetTester tester,
+  ) async {
+    final _StubRepository repository = _StubRepository(
+      value: ada,
+      renameFails: true,
+    );
+
+    await tester.pumpWidget(
+      screenWith(<Override>[
+        profileRepositoryProvider.overrideWithValue(repository),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('profile-edit')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('profile-first-name-field')),
+      'Grace',
+    );
+    await tester.ensureVisible(find.byKey(const Key('profile-save')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('profile-save')));
+    await tester.pumpAndSettle();
+
+    // The error is shown and the form is NOT replaced — `ErrorView` would take
+    // the field and the typed value with it, and say "something went wrong"
+    // where the truth is more specific.
+    expect(find.byKey(const Key('profile-rename-error')), findsOneWidget);
+    expect(find.byKey(const Key('profile-first-name-field')), findsOneWidget);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('profile-first-name-field')))
+          .controller!
+          .text,
+      'Grace',
+    );
   });
 
   testWidgets('a 401 from the API ends with the user on the signed-out shell', (
@@ -228,11 +350,20 @@ Override apiClientProviderOverride(Dio dio) {
 }
 
 class _StubRepository implements ProfileRepository {
-  const _StubRepository({this.value, this.error, this.future});
+  _StubRepository({
+    this.value,
+    this.error,
+    this.future,
+    this.renameFails = false,
+  });
 
   final OwnerProfile? value;
   final Object? error;
   final Future<OwnerProfile>? future;
+  final bool renameFails;
+
+  /// What the last save sent, or null if none happened.
+  Map<String, String>? renamed;
 
   @override
   Future<OwnerProfile> fetchMine() {
@@ -242,6 +373,25 @@ class _StubRepository implements ProfileRepository {
     if (failure != null) return Future<OwnerProfile>.error(failure);
     return Future<OwnerProfile>.value(value);
   }
+
+  /// Records what a save sent, so a test can assert on the payload rather than
+  /// on the fact that something happened.
+  ///
+  /// Non-const now, unlike every other stub in this file — the fake has to
+  /// remember something, and `const _StubRepository()` cannot.
+  @override
+  Future<OwnerProfile> rename({
+    required String firstName,
+    required String lastName,
+  }) async {
+    renamed = <String, String>{'firstName': firstName, 'lastName': lastName};
+    if (renameFails) throw StateError('rename failed');
+    return OwnerProfile(id: 'u1', firstName: firstName, lastName: lastName);
+  }
+
+  @override
+  Future<void> deleteAccount({required String? reason}) =>
+      throw UnimplementedError('this screen never deletes the account');
 }
 
 class _MemberRepository implements MembershipRepository {
@@ -285,6 +435,12 @@ class _FakeAuthGateway implements AuthGateway {
   @override
   Future<void> setNewPassword({required String newPassword}) =>
       throw UnimplementedError();
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) => throw UnimplementedError();
 
   @override
   SessionStatus status = SessionStatus.signedIn;

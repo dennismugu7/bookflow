@@ -165,6 +165,12 @@ class _FakeAuthGateway implements AuthGateway {
       throw UnimplementedError();
 
   @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) => throw UnimplementedError();
+
+  @override
   SessionStatus status;
 
   final StreamController<SessionStatus> _controller =
@@ -197,6 +203,16 @@ class _StubProfile implements ProfileRepository {
     firstName: 'Ada',
     lastName: 'Lovelace',
   );
+
+  @override
+  Future<OwnerProfile> rename({
+    required String firstName,
+    required String lastName,
+  }) => throw UnimplementedError('these tests never edit the profile');
+
+  @override
+  Future<void> deleteAccount({required String? reason}) =>
+      throw UnimplementedError('these tests never delete the account');
 }
 
 class _FakeMembershipRepository implements MembershipRepository {

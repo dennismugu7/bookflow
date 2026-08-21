@@ -166,21 +166,42 @@ void main() {
       );
     }
 
-    testWidgets(
-      'criterion 56 — shows no row whose destination does not exist',
-      (WidgetTester tester) async {
-        await tester.pumpWidget(menuWith());
-        await tester.pumpAndSettle();
+    // ══ CRITERION 56 IS CLOSED, AND THIS TEST INVERTS ═════════════════════
+    //
+    // It read: "shows no row whose destination does not exist … Absent —
+    // #21/#22, #23 and #18 do not exist." Every one of those destinations
+    // exists now, so the criterion described a screen that no longer does.
+    //
+    // **The property it protected is kept, not dropped.** The rule was never
+    // "show two rows" — it was "every row goes somewhere". So this asserts all
+    // five are present AND that each has a destination, which is the same rule
+    // read forwards.
+    testWidgets('shows the design’s five rows, each with a destination', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(menuWith());
+      await tester.pumpAndSettle();
 
-        // Present.
-        expect(find.text('Profile'), findsOneWidget);
-        expect(find.text('Log out'), findsOneWidget);
-        // Absent — #21/#22, #23 and #18 do not exist.
-        expect(find.text('My services'), findsNothing);
-        expect(find.text('Settings'), findsNothing);
-        expect(find.text('Support'), findsNothing);
-      },
-    );
+      expect(find.text('Profile'), findsOneWidget);
+      expect(find.text('My services'), findsOneWidget);
+      expect(find.text('Settings'), findsOneWidget);
+      expect(find.text('Support'), findsOneWidget);
+      expect(find.text('Log out'), findsOneWidget);
+
+      // A row with a null `onTap` is a row that renders and does nothing —
+      // which is the promise this criterion existed to prevent, and is
+      // invisible to a text search.
+      for (final String key in <String>[
+        'account-profile',
+        'account-services',
+        'account-settings',
+        'account-support',
+        'account-log-out',
+      ]) {
+        final ListTile row = tester.widget<ListTile>(find.byKey(Key(key)));
+        expect(row.onTap, isNotNull, reason: '$key leads nowhere');
+      }
+    });
 
     testWidgets('criterion 59 — a loading header leaves the rows working', (
       WidgetTester tester,
@@ -478,6 +499,16 @@ class _StubProfile implements ProfileRepository {
       const OwnerProfile(id: 'u1', firstName: 'Ada', lastName: 'Lovelace'),
     );
   }
+
+  @override
+  Future<OwnerProfile> rename({
+    required String firstName,
+    required String lastName,
+  }) => throw UnimplementedError('these tests never edit the profile');
+
+  @override
+  Future<void> deleteAccount({required String? reason}) =>
+      throw UnimplementedError('these tests never delete the account');
 }
 
 class _FakeGateway implements AuthGateway {
@@ -514,6 +545,12 @@ class _FakeGateway implements AuthGateway {
   @override
   Future<void> setNewPassword({required String newPassword}) =>
       throw UnimplementedError();
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) => throw UnimplementedError();
 
   @override
   SessionStatus get status => SessionStatus.signedIn;

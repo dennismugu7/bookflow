@@ -19,6 +19,8 @@ doc/CreateServiceRequest.md
 doc/CreateServiceRequestInput.md
 doc/CreateTeamMemberRequest.md
 doc/CreateTeamMemberRequestInput.md
+doc/DeleteAccountRequest.md
+doc/DeleteAccountRequestInput.md
 doc/HealthApi.md
 doc/HealthResponse.md
 doc/HealthResponseInput.md
@@ -61,6 +63,8 @@ doc/SignupRequestInput.md
 doc/TeamApi.md
 doc/TeamMember.md
 doc/TeamMemberInput.md
+doc/UpdateProfileRequest.md
+doc/UpdateProfileRequestInput.md
 doc/UpdateServiceRequest.md
 doc/UpdateServiceRequestInput.md
 doc/UpdateTeamMemberRequest.md
@@ -102,6 +106,8 @@ lib/src/model/create_service_request_input.dart
 lib/src/model/create_team_member_request.dart
 lib/src/model/create_team_member_request_input.dart
 lib/src/model/date.dart
+lib/src/model/delete_account_request.dart
+lib/src/model/delete_account_request_input.dart
 lib/src/model/health_response.dart
 lib/src/model/health_response_input.dart
 lib/src/model/opening_hours_entry.dart
@@ -136,6 +142,8 @@ lib/src/model/signup_request.dart
 lib/src/model/signup_request_input.dart
 lib/src/model/team_member.dart
 lib/src/model/team_member_input.dart
+lib/src/model/update_profile_request.dart
+lib/src/model/update_profile_request_input.dart
 lib/src/model/update_service_request.dart
 lib/src/model/update_service_request_input.dart
 lib/src/model/update_team_member_request.dart
@@ -161,6 +169,8 @@ test/create_service_request_input_test.dart
 test/create_service_request_test.dart
 test/create_team_member_request_input_test.dart
 test/create_team_member_request_test.dart
+test/delete_account_request_input_test.dart
+test/delete_account_request_test.dart
 test/health_api_test.dart
 test/health_response_input_test.dart
 test/health_response_test.dart
@@ -203,6 +213,8 @@ test/signup_request_test.dart
 test/team_api_test.dart
 test/team_member_input_test.dart
 test/team_member_test.dart
+test/update_profile_request_input_test.dart
+test/update_profile_request_test.dart
 test/update_service_request_input_test.dart
 test/update_service_request_test.dart
 test/update_team_member_request_input_test.dart

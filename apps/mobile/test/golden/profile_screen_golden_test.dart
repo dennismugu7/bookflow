@@ -174,6 +174,18 @@ class _GoldenProfile implements ProfileRepository {
     firstName: 'dennis',
     lastName: 'mugu',
   );
+
+  // The golden renders the read-only card and never enters edit mode, so a
+  // throw here says so at the line rather than letting a stray save pass.
+  @override
+  Future<OwnerProfile> rename({
+    required String firstName,
+    required String lastName,
+  }) => throw UnimplementedError('the golden never edits');
+
+  @override
+  Future<void> deleteAccount({required String? reason}) =>
+      throw UnimplementedError('the golden never deletes');
 }
 
 /// The demo salon, so the artefact shows the section populated rather than
@@ -242,6 +254,12 @@ class _GoldenGateway implements AuthGateway {
   @override
   Future<void> setNewPassword({required String newPassword}) =>
       throw UnimplementedError();
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) => throw UnimplementedError();
 
   @override
   SessionStatus get status => SessionStatus.signedIn;

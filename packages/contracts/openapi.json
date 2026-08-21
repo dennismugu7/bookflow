@@ -504,6 +504,39 @@
         ],
         "description": "The week’s opening hours. Replaces whatever is there."
       },
+      "UpdateProfileRequestInput": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Required. Trimmed. 1–100 characters after trimming."
+          },
+          "lastName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Required. Trimmed. 1–100 characters after trimming."
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName"
+        ],
+        "description": "The owner’s own name. Both fields are required."
+      },
+      "DeleteAccountRequestInput": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "description": "Free text from the exit survey. Logged, never stored.",
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "description": "Optional feedback accompanying an account deletion."
+      },
       "ProfileInput": {
         "type": "object",
         "properties": {
@@ -1526,6 +1559,41 @@
         "additionalProperties": false,
         "description": "The week’s opening hours. Replaces whatever is there."
       },
+      "UpdateProfileRequest": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Required. Trimmed. 1–100 characters after trimming."
+          },
+          "lastName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Required. Trimmed. 1–100 characters after trimming."
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName"
+        ],
+        "additionalProperties": false,
+        "description": "The owner’s own name. Both fields are required."
+      },
+      "DeleteAccountRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "description": "Free text from the exit survey. Logged, never stored.",
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "additionalProperties": false,
+        "description": "Optional feedback accompanying an account deletion."
+      },
       "Profile": {
         "type": "object",
         "properties": {
@@ -2126,6 +2194,59 @@
                 }
               }
             }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateMe",
+        "summary": "Edit the authenticated owner’s own name",
+        "tags": [
+          "me"
+        ],
+        "description": "Both names are required and are trimmed before storage. The email address is not editable here — it belongs to Supabase Auth and changing it is a verification flow. The avatar is not editable here either; the upload does not exist yet.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteMe",
+        "summary": "Delete the authenticated owner’s account",
+        "tags": [
+          "me"
+        ],
+        "description": "Irreversible. Deletes the caller’s business and everything it owns in one transaction, then its storage objects (best-effort — a storage failure is logged and does not stop the deletion), then the profile, then the Supabase Auth user LAST so that a partial failure leaves an account that can retry rather than one that cannot sign in. An optional reason is written to the structured log and is never stored. Answers 204.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Default Response"
           }
         }
       }

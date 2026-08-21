@@ -145,6 +145,28 @@ abstract interface class AuthGateway {
   ///
   /// Throws [AuthFailure] and nothing else.
   Future<void> setNewPassword({required String newPassword});
+
+  /// Changes the password of a signed-in owner (screen #24).
+  ///
+  /// ══ RE-AUTHENTICATES FIRST, AND THAT IS THE POINT ═════════════════════════
+  ///
+  /// `updateUser(password:)` alone would change the password of whoever holds
+  /// the session — which is exactly the wrong guarantee for an unattended
+  /// phone. Anyone who picks up an unlocked device could lock the owner out of
+  /// their own salon without knowing a thing.
+  ///
+  /// So the current password is verified by signing in with it before anything
+  /// is written. That is what makes screen #24's "Enter current password" field
+  /// load-bearing rather than a formality, and what lets a wrong entry produce
+  /// [AuthFailureKind.invalidCredentials] with nothing changed.
+  ///
+  /// **Distinct from [setNewPassword]**, which serves the RESET flow: that one
+  /// runs inside a recovery session minted from an emailed code, where the code
+  /// was the proof and there is no old password to know.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
 }
 
 /// The real one, over `supabase_flutter`.
@@ -273,6 +295,59 @@ class SupabaseAuthGateway implements AuthGateway {
       await _client.auth.signOut();
     } on Object catch (_) {
       // Deliberately swallowed. See above.
+    }
+  }
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    // ── THE EMAIL COMES FROM THE SESSION, NEVER FROM THE FORM ──────────────
+    //
+    // Screen #24 shows the address but has no field for it, and that is right:
+    // an email the caller could supply would turn this into a login attempt
+    // against an arbitrary account, with the "current password" as the guess.
+    final String? email = _client.auth.currentUser?.email;
+    if (email == null) {
+      // No session, or a session with no email. Neither is reachable from a
+      // screen behind the auth redirect; reported as unavailable rather than as
+      // a wrong password, because it says nothing about what was typed.
+      throw const AuthFailure(AuthFailureKind.unavailable);
+    }
+
+    // ── STEP ONE: PROVE THEY KNOW THE CURRENT PASSWORD ────────────────────
+    //
+    // A successful sign-in replaces the session with an equivalent one, which
+    // is harmless — it is the same user on the same device. A FAILED one throws
+    // before anything is written, which is the whole guarantee.
+    try {
+      await _client.auth.signInWithPassword(
+        email: email,
+        password: currentPassword,
+      );
+    } on AuthException catch (error) {
+      throw AuthFailure(_kindOf(error, wrongCredentialFallback: true));
+    } on Object catch (_) {
+      throw const AuthFailure(AuthFailureKind.unavailable);
+    }
+
+    // ── STEP TWO: WRITE THE NEW ONE ───────────────────────────────────────
+    //
+    // **No sign-out afterwards, unlike `setNewPassword`.** That one ends the
+    // recovery session because a code-minted session has served its purpose and
+    // should not linger. This is an ordinary signed-in owner changing their
+    // password mid-session; throwing them back to the welcome screen for
+    // succeeding would be a punishment for good security hygiene.
+    try {
+      await _client.auth.updateUser(UserAttributes(password: newPassword));
+    } on AuthException catch (error) {
+      // `passwordRejected` reaches the screen intact — ADR-030's breach check
+      // is the one input error the client cannot predict locally, and the
+      // owner needs to be told which of the two things went wrong.
+      throw AuthFailure(_kindOf(error));
+    } on Object catch (_) {
+      throw const AuthFailure(AuthFailureKind.unavailable);
     }
   }
 

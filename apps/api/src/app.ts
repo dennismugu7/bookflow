@@ -286,31 +286,43 @@ export async function buildApp(
     },
   );
 
-  registerAuthRoutes(
-    app,
-    options.db,
+  // ── BOTH CLIENTS ARE BUILT ONCE, BEFORE ANY ROUTE IS REGISTERED ──────────
+  //
+  // `storage` used to be constructed halfway down this list, which was fine
+  // while only the media and booking routes needed it. `DELETE /v1/me` needs
+  // both it and GoTrue, and it registers earlier — so both are hoisted rather
+  // than the route being moved to suit the wiring.
+  //
+  // One instance each, deliberately: two GoTrue clients would be two timeouts
+  // and two places to change a base URL, and two storage clients two places to
+  // change a bucket name.
+  const gotrue =
     options.gotrue ??
-      createGoTrueClient({
-        baseUrl: config.SUPABASE_URL,
-        serviceRoleKey: config.SUPABASE_SERVICE_ROLE_KEY,
-        anonKey: config.SUPABASE_ANON_KEY,
-      }),
-    options.breachChecker ?? createBreachChecker(),
-    options.signupRateLimit,
-  );
-  registerMeRoutes(app, options.db);
-  registerBusinessRoutes(app, options.db);
-  registerServiceRoutes(app, options.db);
-  registerTeamRoutes(app, options.db);
-  registerHoursRoutes(app, options.db);
-  // Built once and shared: the media routes and the booking route both upload,
-  // and two clients would mean two timeouts and two places to change the bucket.
+    createGoTrueClient({
+      baseUrl: config.SUPABASE_URL,
+      serviceRoleKey: config.SUPABASE_SERVICE_ROLE_KEY,
+      anonKey: config.SUPABASE_ANON_KEY,
+    });
+
   const storage =
     options.storage ??
     createStorageClient({
       baseUrl: config.SUPABASE_URL,
       serviceRoleKey: config.SUPABASE_SERVICE_ROLE_KEY,
     });
+
+  registerAuthRoutes(
+    app,
+    options.db,
+    gotrue,
+    options.breachChecker ?? createBreachChecker(),
+    options.signupRateLimit,
+  );
+  registerMeRoutes(app, options.db, { gotrue, storage });
+  registerBusinessRoutes(app, options.db);
+  registerServiceRoutes(app, options.db);
+  registerTeamRoutes(app, options.db);
+  registerHoursRoutes(app, options.db);
 
   registerMediaRoutes(app, options.db, storage);
   registerPublishingRoutes(app, options.db);
