@@ -1,3 +1,5 @@
+import 'package:bookflow/features/bookings/bookings_models.dart';
+import 'package:bookflow/features/bookings/bookings_providers.dart';
 import 'package:bookflow/features/business/business_models.dart';
 import 'package:bookflow/features/business/business_providers.dart';
 import 'package:bookflow/features/dashboard/dashboard_screen.dart';
@@ -251,15 +253,24 @@ void main() {
       expect(find.text('Open 0 days a week'), findsOneWidget);
     });
 
-    testWidgets('a published salon shows its booking link, not the checklist', (
+    testWidgets('a published salon gets the diary, not the checklist', (
       WidgetTester tester,
     ) async {
+      // ══ THIS TEST'S PREMISE CHANGED, AND THE ASSERTIONS CHANGED WITH IT ═══
+      //
+      // It used to assert that a published salon showed `dashboard-published`
+      // and its booking link in a card, "not the checklist". That WAS the
+      // published dashboard — the link was the only thing there was to show.
+      //
+      // The design's dashboard for a live salon is the diary: three tabs over
+      // real bookings. The link has not disappeared; it moved to where the
+      // design draws it, in the Bookings tab's empty state. So the half of this
+      // test that still holds — a published salon must not see the setup
+      // checklist — is kept, and the half about the link card is replaced by
+      // what now stands in its place.
       await tester.pumpWidget(
         _host(
           overrides: <Override>[
-            // ONE override, where there used to be two. The handle arrives on
-            // the business read now; the second provider and the extra round
-            // trip behind it are gone.
             myBusinessProvider.overrideWith(
               (Ref ref) async => const HasBusiness(
                 OwnedBusiness(
@@ -270,17 +281,31 @@ void main() {
                 ),
               ),
             ),
+            // The diary is empty, which is what puts screen #5's empty state on
+            // screen. Overridden rather than left to a real repository: this
+            // test is about which dashboard renders, not about fetching.
+            bookingsProvider(
+              BookingStatus.booked,
+            ).overrideWith((Ref ref) async => <Booking>[]),
           ],
           child: const DashboardScreen(),
         ),
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('dashboard-published')), findsOneWidget);
+      // The design's pill row, which this screen refused to draw for as long as
+      // the tabs led nowhere.
+      expect(find.byKey(const Key('tab-bookings')), findsOneWidget);
+      expect(find.byKey(const Key('tab-contacts')), findsOneWidget);
+      expect(find.byKey(const Key('tab-calendar')), findsOneWidget);
+
+      // The half of the old assertion that still holds.
       expect(find.byKey(const Key('setup-continuation')), findsNothing);
-      // Built from the config's base URL plus the handle, so the one constant
-      // is the only thing that changes when the web app deploys.
-      expect(find.text('https://example.invalid/vera-salon'), findsOneWidget);
+
+      // And the link's new home: screen #5's empty state, with its share
+      // affordance. The button is what the old link card's Share button became.
+      expect(find.text('No Bookings yet'), findsOneWidget);
+      expect(find.byKey(const Key('bookings-empty-share')), findsOneWidget);
     });
   });
 }

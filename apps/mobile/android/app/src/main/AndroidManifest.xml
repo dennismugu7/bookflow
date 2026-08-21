@@ -41,5 +41,33 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+
+        <!-- ── WITHOUT THESE, THE CONTACTS TAB'S LINKS DO NOTHING ─────────────
+
+             Android 11 (API 30) made package visibility opt-in: an app cannot
+             see which activities handle a scheme unless it declares the intent
+             here. url_launcher then reports that nothing can open a `mailto:`
+             or `tel:` URI even when the phone has both a mail app and a
+             dialler.
+
+             Screen #8 specifies both — tapping an email opens the mail client,
+             tapping a phone number opens the dialler — so these are what make
+             that specification true on a modern Android rather than an
+             optimisation.
+
+             `https` is for the payment proof's "Open in browser" escape, which
+             is the fallback for a proof that is not an image. -->
+        <intent>
+            <action android:name="android.intent.action.SENDTO"/>
+            <data android:scheme="mailto"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL"/>
+            <data android:scheme="tel"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
     </queries>
 </manifest>

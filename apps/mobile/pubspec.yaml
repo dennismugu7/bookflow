@@ -53,6 +53,13 @@ dependencies:
   built_collection: ^5.1.1
   image_picker: ^1.2.3
 
+  # Hands a URI to the operating system. Three uses, all of them things this
+  # app should not try to be: `mailto:` and `tel:` from the contacts list
+  # (screen #8 specifies both), and opening a payment proof's signed URL in the
+  # browser when the in-app image view cannot render it — a proof may be a PDF,
+  # and `Image.network` would show a broken box rather than say so.
+  url_launcher: ^6.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
