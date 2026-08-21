@@ -155,25 +155,75 @@ class ApiBusinessRepository implements BusinessRepository {
     return _toModel(business);
   }
 
+  /// ══ THE CONFLICT IS TRANSLATED; EVERYTHING ELSE IS STILL RETHROWN ═════════
+  ///
+  /// **This comment used to say the 409 was deliberately not caught, and that
+  /// was correct when it was written.** A 409 here is a real failure, unlike the
+  /// 404 in `fetchMine`, and catching a real failure to hand the screen
+  /// something quieter would have been wrong. The reasoning held because
+  /// **the screen had nothing to say about a conflict**: every failed submission
+  /// rendered one string, so translating the error changed nothing an owner
+  /// could see and only removed it from `AsyncValue.guard`'s reach.
+  ///
+  /// **What changed is the screen, not the verdict about 409.** Criterion 63
+  /// and K82 — raised by the owner's review pass on PR #15 — require an owner
+  /// whose creation is refused because they already have a business to be told
+  /// that, rather than to be told to check their connection. Now that there is
+  /// a distinct thing to show, the distinction has to survive the trip, and this
+  /// is the only file allowed to know what a problem document is: ADR-028 keeps
+  /// `package:bookflow_api` and Dio out of every screen.
+  ///
+  /// **It is still not a swallow.** `BusinessAlreadyExists` is thrown, not
+  /// returned — it travels as an error, `AsyncValue.guard` still catches it, and
+  /// the screen still renders its error state. Only the sentence differs. Every
+  /// other `DioException`, including a 409 whose slug is anything else, is
+  /// rethrown exactly as before.
+  ///
+  /// **The branch is on the `type` slug and never on the status code** (ADR-014:
+  /// `type` is "a stable, machine-readable slug and is part of the contract").
+  /// 409 is the conflict's transport, not its meaning, and a second conflict on
+  /// this endpoint would arrive wearing the same number.
   @override
   Future<OwnedBusiness> create(String name) async {
-    // Not caught. A 409 here means the account already has one — a real
-    // failure for a screen whose whole purpose is creating the first, and
-    // nothing like the 404 above that means "not yet".
-    final Response<Business> response = await _api
-        .getBusinessesApi()
-        .createBusiness(
-          createBusinessRequestInput: CreateBusinessRequestInput(
-            (CreateBusinessRequestInputBuilder b) => b.name = name,
-          ),
-        );
+    try {
+      final Response<Business> response = await _api
+          .getBusinessesApi()
+          .createBusiness(
+            createBusinessRequestInput: CreateBusinessRequestInput(
+              (CreateBusinessRequestInputBuilder b) => b.name = name,
+            ),
+          );
 
-    final Business? business = response.data;
-    if (business == null) {
-      throw StateError('POST /v1/businesses returned no body');
+      final Business? business = response.data;
+      if (business == null) {
+        throw StateError('POST /v1/businesses returned no body');
+      }
+
+      return _toModel(business);
+    } on DioException catch (error) {
+      if (_slugOf(error) == _businessAlreadyExists) {
+        throw const BusinessAlreadyExists();
+      }
+      rethrow;
     }
+  }
 
-    return _toModel(business);
+  static const String _businessAlreadyExists =
+      '/problems/business-already-exists';
+
+  /// The problem document's `type`, or null when the body is not one.
+  ///
+  /// Defensive by construction: a transport failure has no response, an error
+  /// page is not a map, and a truncated body has no `type`. Every one of those
+  /// yields null and the caller rethrows — the failure mode of this helper is
+  /// "behave exactly as before", never "claim a conflict".
+  static String? _slugOf(DioException error) {
+    final Object? body = error.response?.data;
+    if (body is! Map<String, dynamic>) {
+      return null;
+    }
+    final Object? type = body['type'];
+    return type is String ? type : null;
   }
 
   /// ══ THIS IS ALSO HOW THE DASHBOARD LEARNS ITS OWN HANDLE ═══════════════════

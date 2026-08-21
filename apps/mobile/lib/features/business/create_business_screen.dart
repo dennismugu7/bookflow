@@ -1,4 +1,5 @@
 import 'package:bookflow/features/auth/logout_confirmation.dart';
+import 'package:bookflow/features/business/business_models.dart';
 import 'package:bookflow/features/business/business_providers.dart';
 import 'package:bookflow/platform/providers.dart';
 import 'package:bookflow/theme/tokens.dart';
@@ -122,12 +123,26 @@ class _CreateBusinessScreenState extends ConsumerState<CreateBusinessScreen> {
               // which would discard the typed name and say "Something went
               // wrong" where the truth is more specific. The form stays
               // mounted; the message sits under the field.
+              //
+              // ── ONE FAILURE READS DIFFERENTLY FROM THE REST ───────────────
+              //
+              // Criterion 63 and K82. Until the owner's review pass on PR #15
+              // every failure showed the connection message, INCLUDING the one
+              // that is not a connection problem: an owner who already had a
+              // business was told to check their network. The repository
+              // translates `/problems/business-already-exists` into
+              // `BusinessAlreadyExists` — the branch is on the problem `type`
+              // per ADR-014, and it happens there because ADR-028 keeps Dio and
+              // the generated client out of every screen. This widget only asks
+              // which kind of failure it has.
               if (submission.hasError)
                 Padding(
                   padding: const EdgeInsets.only(bottom: BookflowSpacing.md),
                   child: Text(
                     key: const Key('create-business-error'),
-                    'That did not save. Check your connection and try again.',
+                    submission.error is BusinessAlreadyExists
+                        ? 'You already have a business on this account.'
+                        : 'That did not save. Check your connection and try again.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.error,
                     ),

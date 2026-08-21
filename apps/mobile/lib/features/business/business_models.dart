@@ -69,3 +69,26 @@ final class HasBusiness extends BusinessStatus {
 
   final OwnedBusiness business;
 }
+
+/// Creation was refused because the account already has a business (K82,
+/// criterion 63).
+///
+/// ── WHY A TYPE AND NOT A STATUS CODE THE SCREEN READS ───────────────────────
+///
+/// ADR-014 fixes that the client branches on the problem document's `type` slug
+/// and never on a message — and a screen cannot read either, because ADR-028
+/// forbids it importing `package:bookflow_api` or Dio at all. So the mapping
+/// from `/problems/business-already-exists` to something a widget can branch on
+/// happens in the repository, which is the only file allowed to know what a
+/// problem document is, and this is what comes out.
+///
+/// **The status code is deliberately not the discriminator.** 409 is the
+/// conflict's transport, not its meaning; a future conflict on this endpoint
+/// would share the code and mean something else entirely, and a screen keyed on
+/// `409` would confidently show the wrong sentence.
+class BusinessAlreadyExists implements Exception {
+  const BusinessAlreadyExists();
+
+  @override
+  String toString() => 'BusinessAlreadyExists';
+}
