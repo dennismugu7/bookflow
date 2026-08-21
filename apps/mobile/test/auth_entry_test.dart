@@ -302,6 +302,12 @@ class _RecordingGateway implements AuthGateway {
   Future<void> setNewPassword({required String newPassword}) async {}
 
   @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) => throw UnimplementedError();
+
+  @override
   SessionStatus get status => SessionStatus.signedOut;
 
   @override

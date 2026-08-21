@@ -309,6 +309,12 @@ class _FakeAuthGateway implements AuthGateway {
       throw UnimplementedError();
 
   @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) => throw UnimplementedError();
+
+  @override
   SessionStatus status;
 
   final StreamController<SessionStatus> _controller =

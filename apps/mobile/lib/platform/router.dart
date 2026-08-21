@@ -6,6 +6,9 @@ import 'package:bookflow/features/media/portfolio_screen.dart';
 import 'package:bookflow/features/membership/membership_repository.dart';
 import 'package:bookflow/features/profile/profile_screen.dart';
 import 'package:bookflow/features/services/services_screen.dart';
+import 'package:bookflow/features/settings/change_password_screen.dart';
+import 'package:bookflow/features/settings/delete_account_screen.dart';
+import 'package:bookflow/features/settings/settings_screen.dart';
 import 'package:bookflow/features/signed_out/signed_out_screen.dart';
 import 'package:bookflow/features/startup/startup_screen.dart';
 import 'package:bookflow/features/startup/unavailable_screen.dart';
@@ -137,6 +140,27 @@ const Map<String, AppDestination> pushedRouteShells = <String, AppDestination>{
   '/opening-hours': AppDestination.home,
   '/team': AppDestination.home,
   '/portfolio': AppDestination.home,
+  // The settings branch, reached from the account menu. Same shell for the same
+  // reason — an owner is on one of these because they tapped a row.
+  '/settings': AppDestination.home,
+  '/change-password': AppDestination.home,
+  '/legal/privacy': AppDestination.home,
+  '/legal/terms': AppDestination.home,
+  // ── `/delete-account` IS A HOME ROUTE, AND THAT CONSTRAINS THE FLOW ──────
+  //
+  // Listing it here keeps a push from being undone, like every route above.
+  // What it does NOT do — and an earlier version of this comment claimed it
+  // did — is hold the screen once the session ends. Rule 2 only stays put when
+  // the owning shell IS the computed destination; sign out and the destination
+  // becomes `welcome`, the owner is still `home`, and the redirect wins. That
+  // is ADR-042 working exactly as written: "Level 1 always overrides level 2."
+  //
+  // **The consequence lands on the deletion flow**: its terminal success screen
+  // (#27) cannot be shown after the local session is cleared, because the
+  // redirect would move off it in the same frame. So the session is cleared by
+  // the Done button rather than on the API's success — see
+  // `delete_account_screen.dart`, which explains what that costs.
+  '/delete-account': AppDestination.home,
 };
 
 /// Where the router should send a user currently at `matchedLocation`, or
@@ -276,6 +300,34 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
         path: '/portfolio',
         builder: (BuildContext context, GoRouterState state) =>
             const PortfolioScreen(),
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (BuildContext context, GoRouterState state) =>
+            const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/change-password',
+        builder: (BuildContext context, GoRouterState state) =>
+            const ChangePasswordScreen(),
+      ),
+      // Two routes rather than one with a parameter: the set is closed at two
+      // and always will be, and a `/legal/:slug` would need a not-found branch
+      // for a slug nobody can type.
+      GoRoute(
+        path: '/legal/privacy',
+        builder: (BuildContext context, GoRouterState state) =>
+            const LegalDocumentScreen(document: LegalDocument.privacy),
+      ),
+      GoRoute(
+        path: '/legal/terms',
+        builder: (BuildContext context, GoRouterState state) =>
+            const LegalDocumentScreen(document: LegalDocument.terms),
+      ),
+      GoRoute(
+        path: '/delete-account',
+        builder: (BuildContext context, GoRouterState state) =>
+            const DeleteAccountScreen(),
       ),
       GoRoute(
         path: AppDestination.unavailable.path,
