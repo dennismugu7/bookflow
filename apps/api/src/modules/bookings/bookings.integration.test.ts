@@ -8,6 +8,7 @@ import {
 import { useTransaction } from '../../../test/integration/harness.ts';
 import { ProblemError } from '../../platform/problem.ts';
 import type { Mail, Mailer } from '../../platform/resend.ts';
+import { StorageError, type StorageClient } from '../../platform/storage.ts';
 import { setOpeningHours } from '../hours/hours.service.ts';
 import { addService } from '../services/services.service.ts';
 import { publishMyBusiness } from '../publishing/publishing.service.ts';
@@ -16,7 +17,9 @@ import {
   actOnBooking,
   createBooking,
   getAvailability,
+  getBookings,
   getContacts,
+  getPaymentProof,
 } from './bookings.service.ts';
 
 /**
@@ -48,7 +51,7 @@ const ctx = useTransaction();
  * `signup.integration.test.ts`'s job for the one event where an unasserted log
  * is the whole signal, and this is not that.
  */
-const testLog = { warn: (): void => {} };
+const testLog = { warn: (): void => {}, info: (): void => {} };
 
 const MONDAY = 0;
 /** A Monday well inside the 60-day horizon, so no test depends on today. */
@@ -96,7 +99,7 @@ async function book(
     // with an explicit +03:00 rather than computed. An explicit offset is what
     // makes these tests independent of the machine's zone.
     startsAt: `${BOOKING_DAY}T${localTime}:00+03:00`,
-    paymentProofUrl: undefined,
+    paymentProofKey: undefined,
   });
   return created.id;
 }
@@ -498,6 +501,151 @@ describe('the availability predicate on its own', () => {
       // Opens 09:15. Anchoring to the hour would make the first quarter-hour of
       // every such day unbookable and nobody would be able to say why.
     ).toEqual(['09:15', '09:45', '10:15', '10:45']);
+  });
+});
+
+/**
+ * ══ THE PAYMENT-PROOF ACCESS PATH (`CLAUDE.md` §6, DO-NOT-VIBE) ═════════════
+ *
+ * A payment proof is a client's financial document, and until this change it
+ * sat at a permanently public URL. What has to be driven against a real
+ * database is the SCOPING — the property that makes the endpoint safe — because
+ * it is the one part that cannot be checked by reading the schema.
+ *
+ * Storage is faked. What is under test is which key, if any, reaches the
+ * signing call, and whether one owner can reach another's booking. Whether
+ * Supabase signs correctly is Supabase's test.
+ */
+describe('the payment proof is reachable only by the salon that owns it', () => {
+  /** Records what was asked to be signed, and can be told the object is gone. */
+  function fakeStorage(options: { missing?: boolean } = {}): StorageClient & {
+    signed: string[];
+  } {
+    const signed: string[] = [];
+    return {
+      signed,
+      signedUrl: (key: string) => {
+        signed.push(key);
+        if (options.missing === true) {
+          return Promise.reject(
+            new StorageError('not-found', 'no such object'),
+          );
+        }
+        return Promise.resolve({
+          url: `https://signed.invalid/${key}?token=x`,
+        });
+      },
+      upload: () => Promise.reject(new Error('not used')),
+      uploadPrivate: () => Promise.reject(new Error('not used')),
+      remove: () => Promise.reject(new Error('not used')),
+      publicUrl: (key: string) => `https://public.invalid/${key}`,
+    };
+  }
+
+  /** Attaches a proof key the way the route would, without a real upload. */
+  async function attachProof(bookingId: string, key: string): Promise<void> {
+    await sql`
+      update public.bookings set payment_proof_key = ${key}
+       where id = ${bookingId}::uuid
+    `.execute(ctx.db);
+  }
+
+  it('signs the key stored on the booking, and returns the url', async () => {
+    const salon = await publishedSalon();
+    const bookingId = await book(salon.handle, salon.serviceId, '09:00');
+    await attachProof(bookingId, 'biz/proof/abc.jpg');
+
+    const storage = fakeStorage();
+    const result = await getPaymentProof(
+      { db: ctx.db, storage, log: testLog },
+      { userId: salon.owner.userId },
+      bookingId,
+    );
+
+    expect(result.url).toContain('signed.invalid');
+    // The key came from the ROW, not from the caller — which is the property
+    // that stops this being a signing oracle for the whole bucket.
+    expect(storage.signed).toEqual(['biz/proof/abc.jpg']);
+  });
+
+  it('refuses another owner’s booking, and signs nothing', async () => {
+    const salon = await publishedSalon();
+    const bookingId = await book(salon.handle, salon.serviceId, '09:00');
+    await attachProof(bookingId, 'biz/proof/secret.jpg');
+
+    // A second, unrelated salon owner. The distractor: without one, a query
+    // missing its scoping clause passes.
+    const stranger = await accountWithBusiness(ctx, 'Other Salon');
+
+    const storage = fakeStorage();
+    await expect(
+      getPaymentProof(
+        { db: ctx.db, storage, log: testLog },
+        { userId: stranger.userId },
+        bookingId,
+      ),
+    ).rejects.toBeInstanceOf(ProblemError);
+
+    // ── THE ASSERTION THAT MATTERS MORE THAN THE THROW ────────────────────
+    //
+    // A refusal that had already called out to Storage would mean the key left
+    // the database for a caller with no right to it. Nothing was signed.
+    expect(storage.signed).toEqual([]);
+  });
+
+  it('answers the same way for a booking with no proof', async () => {
+    const salon = await publishedSalon();
+    const bookingId = await book(salon.handle, salon.serviceId, '09:00');
+
+    const storage = fakeStorage();
+    const error = await getPaymentProof(
+      { db: ctx.db, storage, log: testLog },
+      { userId: salon.owner.userId },
+      bookingId,
+    ).catch((caught: unknown) => caught);
+
+    // Same slug as "not your booking" above. An owner learns that there is
+    // nothing to see, and a stranger learns exactly the same thing.
+    expect(error).toBeInstanceOf(ProblemError);
+    expect((error as ProblemError).slug).toBe('not-found');
+    expect(storage.signed).toEqual([]);
+  });
+
+  it('answers 404 when the row has a key but the object is gone', async () => {
+    const salon = await publishedSalon();
+    const bookingId = await book(salon.handle, salon.serviceId, '09:00');
+    // Every proof written before this change is this case: the column holds a
+    // stale public URL that names nothing in the private bucket.
+    await attachProof(bookingId, 'https://old.invalid/public-media/x.jpg');
+
+    const storage = fakeStorage({ missing: true });
+    const error = await getPaymentProof(
+      { db: ctx.db, storage, log: testLog },
+      { userId: salon.owner.userId },
+      bookingId,
+    ).catch((caught: unknown) => caught);
+
+    // 404, not 503. The proof is genuinely not there, and saying so is honest;
+    // a 503 would invite a retry that can never succeed.
+    expect((error as ProblemError).slug).toBe('not-found');
+  });
+
+  it('the owner list reports the proof as a boolean and carries no key', async () => {
+    const salon = await publishedSalon();
+    const bookingId = await book(salon.handle, salon.serviceId, '09:00');
+    await attachProof(bookingId, 'biz/proof/abc.jpg');
+
+    const [booking] = await getBookings(
+      ctx.db,
+      { userId: salon.owner.userId },
+      undefined,
+    );
+
+    expect(booking?.hasPaymentProof).toBe(true);
+    // Asserted over the whole serialised row rather than field by field: the
+    // risk is a key travelling under SOME name, and naming the ones we thought
+    // of would miss the one somebody adds later.
+    expect(JSON.stringify(booking)).not.toContain('biz/proof/abc.jpg');
   });
 });
 

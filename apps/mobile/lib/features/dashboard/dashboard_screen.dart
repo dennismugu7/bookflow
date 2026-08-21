@@ -1,3 +1,6 @@
+import 'package:bookflow/features/bookings/bookings_tab.dart';
+import 'package:bookflow/features/bookings/calendar_tab.dart';
+import 'package:bookflow/features/bookings/contacts_tab.dart';
 import 'package:bookflow/features/business/business_models.dart';
 import 'package:bookflow/features/business/business_providers.dart';
 import 'package:bookflow/features/dashboard/publish_sheet.dart';
@@ -16,34 +19,38 @@ import 'package:bookflow/theme/tokens.dart';
 import 'package:bookflow/ui/async_value_view.dart';
 import 'package:bookflow/ui/initials_avatar.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
 /// Screen #12 — the dashboard (`native-11`), at `/home`.
 ///
-/// ══ THE CHECKLIST IS LIVE NOW ═══════════════════════════════════════════════
+/// ══ TWO DIFFERENT SCREENS UNDER ONE ROUTE ═══════════════════════════════════
 ///
-/// It used to list four things as text — "a row that navigates nowhere is a
-/// promise the app does not keep", which was right while none of them had a
-/// destination. Three now do and the fourth publishes. Each row computes its
-/// own done/todo state from data the screen already fetched, so nothing claims
-/// a step is finished without having read what finished it.
+/// A PUBLISHED salon gets the design's dashboard: the Bookings / Contacts /
+/// Calendar pill row, the avatar, and three tabs of real data. An UNPUBLISHED
+/// one keeps the setup checklist, untouched.
 ///
-/// ── WHAT IS STILL NOT HERE ─────────────────────────────────────────────────
+/// **That split is the point rather than a compromise.** The design draws one
+/// dashboard because it assumes a working salon; a salon with no services and no
+/// hours cannot be booked, so all three tabs would be empty and the one thing
+/// that owner needs — the list of steps left — would not be on screen.
 ///
-/// `native-11`'s **Bookings / Contacts / Calendar** segmented control. Bookings
-/// do not exist, and the seventh design deviation stands unchanged: drawing
-/// three tabs that lead nowhere would make K75's promise three times on one
-/// screen.
+/// ── THE SEVENTH DESIGN DEVIATION IS NOW RESOLVED ───────────────────────────
 ///
-/// ── AND THE EMPTY STATE IS STILL REPLACED, UNTIL IT IS TRUE ────────────────
+/// This file used to record that the segmented control was deliberately absent
+/// because "bookings do not exist, and drawing three tabs that lead nowhere
+/// would make K75's promise three times on one screen". Bookings exist. The
+/// tabs lead somewhere. The deviation is closed for a published salon, and
+/// stands for an unpublished one for the reason above.
 ///
-/// The designed empty state offers a "booking link" to share. For an
-/// unpublished salon there is no link, so the checklist stands in for it — and
-/// once the salon IS published the link is real and the published state shows
-/// it, which is the first time that part of the design has been honest.
+/// ── AND THE EMPTY STATE HAS MOVED TO WHERE IT BELONGS ──────────────────────
+///
+/// Screen #5's "No Bookings yet" with its share button is the BOOKINGS TAB's
+/// empty state, which is what the design always meant — it sits under the tab
+/// row in the drawing. The published dashboard no longer shows a booking link
+/// as its whole content; it shows the diary, and offers the link when the diary
+/// is empty.
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
@@ -51,19 +58,133 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<BusinessStatus> business = ref.watch(myBusinessProvider);
 
+    return AsyncValueView<BusinessStatus>(
+      value: business,
+      onRetry: () => ref.invalidate(myBusinessProvider),
+      // ── CRITERION 46 LIVES IN THESE BRANCHES ──────────────────────────────
+      //
+      // On a failed load this renders `ErrorView` and NOTHING else — not the
+      // checklist, not the dashboard. Both assert something about a business
+      // whose state is unknown, and `router.dart` argues the same point for the
+      // redirect: guessing wrong is worse than saying "we could not load this".
+      //
+      // It wraps the whole Scaffold rather than sitting inside one, because the
+      // two states need DIFFERENT scaffolds — the published one has a tab row in
+      // its app bar and the checklist does not.
+      data: (BusinessStatus status) => switch (status) {
+        // Unreachable from here — an owner with no business is at /setup — but
+        // the compiler requires it, which is why `BusinessStatus` is sealed.
+        NoBusinessYet() => const _SetupScaffold(businessName: null),
+        HasBusiness(business: final OwnedBusiness value) =>
+          value.published
+              ? _LiveDashboard(businessName: value.name, handle: value.handle)
+              : _SetupScaffold(businessName: value.name),
+      },
+    );
+  }
+}
+
+/// The published salon's dashboard: three tabs, and the avatar.
+class _LiveDashboard extends ConsumerStatefulWidget {
+  const _LiveDashboard({required this.businessName, required this.handle});
+
+  final String businessName;
+  final String? handle;
+
+  @override
+  ConsumerState<_LiveDashboard> createState() => _LiveDashboardState();
+}
+
+class _LiveDashboardState extends ConsumerState<_LiveDashboard>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabs = TabController(length: 3, vsync: this);
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
+
+  /// Opens the system share sheet with the booking link.
+  ///
+  /// Lives here rather than in the Bookings tab because the link comes from the
+  /// business read this widget already holds — a tab that fetched the handle
+  /// again would be a second source for one string.
+  Future<void> _shareLink() async {
+    final String? handle = widget.handle;
+    if (handle == null) return;
+
+    final String link = ref.read(appConfigProvider).bookingLinkFor(handle);
+    await SharePlus.instance.share(
+      ShareParams(text: link, subject: 'Book with us on Bookflow'),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        // ── THE PILLS ARE THE TITLE, NOT A ROW BENEATH IT ────────────────────
+        //
+        // The design's top bar is the three tabs and the avatar — there is no
+        // "Bookflow" wordmark on this screen. An owner in their own diary knows
+        // which app they are in, and the space buys a legible tab row.
+        title: TabBar(
+          controller: _tabs,
+          isScrollable: false,
+          // Pill-shaped, per the design: the selected tab is outlined rather
+          // than underlined, so the three read as one segmented control.
+          indicator: BoxDecoration(
+            borderRadius: BorderRadius.circular(BookflowRadii.pill),
+            border: Border.all(color: theme.colorScheme.primary),
+          ),
+          indicatorSize: TabBarIndicatorSize.tab,
+          // The one colour literal the design-system rule permits, and it is
+          // permitted because it is the absence of a colour rather than a
+          // choice of one — there is no token that could be wrong here.
+          dividerColor: Colors.transparent,
+          labelStyle: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+          unselectedLabelStyle: theme.textTheme.bodySmall,
+          tabs: const <Widget>[
+            Tab(key: Key('tab-bookings'), text: 'Bookings'),
+            Tab(key: Key('tab-contacts'), text: 'Contacts'),
+            Tab(key: Key('tab-calendar'), text: 'Calendar'),
+          ],
+        ),
+        actions: const <Widget>[_ProfileAvatar()],
+      ),
+      body: SafeArea(
+        child: TabBarView(
+          controller: _tabs,
+          children: <Widget>[
+            BookingsTab(onShareLink: widget.handle == null ? null : _shareLink),
+            const ContactsTab(),
+            const CalendarTab(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The unpublished salon's dashboard: the setup checklist, unchanged.
+class _SetupScaffold extends ConsumerWidget {
+  const _SetupScaffold({required this.businessName});
+
+  final String? businessName;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bookflow'),
         actions: const <Widget>[_ProfileAvatar()],
       ),
       body: SafeArea(
-        // ── CRITERION 46 LIVES IN THIS WIDGET'S BRANCHES ────────────────────
-        //
-        // On a failed load this renders `ErrorView` and NOTHING else — not the
-        // checklist, not the published state. Both assert something about a
-        // business whose state is unknown, and `router.dart` argues the same
-        // point for the redirect: guessing wrong in that direction is worse
-        // than saying "we could not load this" and offering a retry.
         child: RefreshIndicator(
           // One refresh on demand. No realtime, no polling: the only thing that
           // changes this screen is the owner's own action on another screen,
@@ -77,23 +198,7 @@ class DashboardScreen extends ConsumerWidget {
               ..invalidate(myPortfolioProvider);
             await ref.read(myBusinessProvider.future);
           },
-          child: AsyncValueView<BusinessStatus>(
-            value: business,
-            onRetry: () => ref.invalidate(myBusinessProvider),
-            data: (BusinessStatus status) => switch (status) {
-              // Unreachable from here — an owner with no business is at /setup
-              // — but the compiler requires it, which is why `BusinessStatus`
-              // is sealed.
-              NoBusinessYet() => const _Checklist(businessName: null),
-              HasBusiness(business: final OwnedBusiness value) =>
-                value.published
-                    ? _PublishedState(
-                        businessName: value.name,
-                        handle: value.handle,
-                      )
-                    : _Checklist(businessName: value.name),
-            },
-          ),
+          child: _Checklist(businessName: businessName),
         ),
       ),
     );
@@ -289,103 +394,17 @@ class _SetupRow extends StatelessWidget {
   }
 }
 
-/// The salon is live. The heading is its name and the link is real.
-class _PublishedState extends ConsumerWidget {
-  const _PublishedState({required this.businessName, required this.handle});
-
-  final String businessName;
-
-  /// From the business read itself. There is no second fetch and no second
-  /// async state — `handle` arrives with `published`, so a salon that is
-  /// published always has its address in hand.
-  final String? handle;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final ThemeData theme = Theme.of(context);
-
-    return ListView(
-      padding: const EdgeInsets.all(BookflowSpacing.xl),
-      children: <Widget>[
-        Text(
-          businessName,
-          key: const Key('dashboard-published'),
-          style: theme.textTheme.titleLarge,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: BookflowSpacing.sm),
-        Text(
-          'Your booking page is live. Share the link and clients can book with '
-          'you.',
-          style: theme.textTheme.bodyMedium,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: BookflowSpacing.xl),
-        // ── NO NESTED ASYNC STATE ANY MORE ──────────────────────────────────
-        //
-        // This used to be a second `AsyncValueView` over a second read, because
-        // the handle came from a different endpoint than `published` did. It
-        // comes from the same row now, so there is nothing left to load and
-        // nothing that can fail on its own.
-        //
-        // The null branch survives for the compiler: `handle` is nullable
-        // because an unpublished salon has none, and reaching here means
-        // `published` is true — a combination the API does not produce.
-        if (handle != null) _BookingLink(handle: handle!),
-      ],
-    );
-  }
-}
-
-class _BookingLink extends ConsumerWidget {
-  const _BookingLink({required this.handle});
-
-  final String handle;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final ThemeData theme = Theme.of(context);
-    final String link = ref.watch(appConfigProvider).bookingLinkFor(handle);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(BookflowSpacing.lg),
-            child: Text(
-              link,
-              key: const Key('booking-link'),
-              style: theme.textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-        const SizedBox(height: BookflowSpacing.md),
-        FilledButton.icon(
-          key: const Key('booking-link-copy'),
-          onPressed: () async {
-            await Clipboard.setData(ClipboardData(text: link));
-            if (!context.mounted) return;
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(const SnackBar(content: Text('Link copied.')));
-          },
-          icon: const Icon(Icons.copy),
-          label: const Text('Copy link'),
-        ),
-        const SizedBox(height: BookflowSpacing.sm),
-        OutlinedButton.icon(
-          key: const Key('booking-link-share'),
-          onPressed: () async {
-            await SharePlus.instance.share(
-              ShareParams(text: link, subject: 'Book with us on Bookflow'),
-            );
-          },
-          icon: const Icon(Icons.ios_share),
-          label: const Text('Share'),
-        ),
-      ],
-    );
-  }
-}
+// ── `_PublishedState` AND `_BookingLink` LIVED HERE AND ARE GONE ────────────
+//
+// They were the whole content of a published salon's dashboard: its name, a
+// sentence saying the page was live, the link in a card, and Copy and Share
+// buttons. That was the right screen while there was nothing else to show.
+//
+// There is now. The design's dashboard for a live salon is the diary, and the
+// link belongs to the Bookings tab's empty state — which is where the design
+// draws it, beneath the tab row. Keeping this as a fourth thing would mean an
+// owner with bookings scrolling past their own URL to reach them.
+//
+// **Copy-to-clipboard went with it, and that is a real loss**: the share sheet
+// covers it on both platforms (every share sheet offers Copy), but it is now
+// two taps rather than one. Recorded rather than quietly dropped.

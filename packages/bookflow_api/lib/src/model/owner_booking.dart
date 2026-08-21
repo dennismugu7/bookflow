@@ -24,7 +24,7 @@ part 'owner_booking.g.dart';
 /// * [clientPhone]
 /// * [startsAt]
 /// * [status]
-/// * [paymentProofUrl]
+/// * [hasPaymentProof]
 @BuiltValue()
 abstract class OwnerBooking
     implements Built<OwnerBooking, OwnerBookingBuilder> {
@@ -65,8 +65,8 @@ abstract class OwnerBooking
   OwnerBookingStatusEnum get status;
   // enum statusEnum {  booked,  confirmed,  cancelled,  };
 
-  @BuiltValueField(wireName: r'paymentProofUrl')
-  String? get paymentProofUrl;
+  @BuiltValueField(wireName: r'hasPaymentProof')
+  bool get hasPaymentProof;
 
   OwnerBooking._();
 
@@ -157,13 +157,11 @@ class _$OwnerBookingSerializer implements PrimitiveSerializer<OwnerBooking> {
       object.status,
       specifiedType: const FullType(OwnerBookingStatusEnum),
     );
-    yield r'paymentProofUrl';
-    yield object.paymentProofUrl == null
-        ? null
-        : serializers.serialize(
-            object.paymentProofUrl,
-            specifiedType: const FullType.nullable(String),
-          );
+    yield r'hasPaymentProof';
+    yield serializers.serialize(
+      object.hasPaymentProof,
+      specifiedType: const FullType(bool),
+    );
   }
 
   @override
@@ -276,13 +274,12 @@ class _$OwnerBookingSerializer implements PrimitiveSerializer<OwnerBooking> {
           ) as OwnerBookingStatusEnum;
           result.status = valueDes;
           break;
-        case r'paymentProofUrl':
+        case r'hasPaymentProof':
           final valueDes = serializers.deserialize(
             value,
-            specifiedType: const FullType.nullable(String),
-          ) as String?;
-          if (valueDes == null) continue;
-          result.paymentProofUrl = valueDes;
+            specifiedType: const FullType(bool),
+          ) as bool;
+          result.hasPaymentProof = valueDes;
           break;
         default:
           unhandled.add(key);

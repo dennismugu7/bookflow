@@ -29,6 +29,8 @@ doc/OpeningHoursEntry.md
 doc/OpeningHoursEntryInput.md
 doc/OwnerBooking.md
 doc/OwnerBookingInput.md
+doc/PaymentProof.md
+doc/PaymentProofInput.md
 doc/PortfolioImage.md
 doc/PortfolioImageInput.md
 doc/Profile.md
@@ -106,6 +108,8 @@ lib/src/model/opening_hours_entry.dart
 lib/src/model/opening_hours_entry_input.dart
 lib/src/model/owner_booking.dart
 lib/src/model/owner_booking_input.dart
+lib/src/model/payment_proof.dart
+lib/src/model/payment_proof_input.dart
 lib/src/model/portfolio_image.dart
 lib/src/model/portfolio_image_input.dart
 lib/src/model/profile.dart
@@ -167,6 +171,8 @@ test/opening_hours_entry_input_test.dart
 test/opening_hours_entry_test.dart
 test/owner_booking_input_test.dart
 test/owner_booking_test.dart
+test/payment_proof_input_test.dart
+test/payment_proof_test.dart
 test/portfolio_image_input_test.dart
 test/portfolio_image_test.dart
 test/profile_input_test.dart

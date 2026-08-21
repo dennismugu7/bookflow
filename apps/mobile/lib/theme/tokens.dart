@@ -80,6 +80,24 @@ abstract final class BookflowColors {
   /// colour, and the two are never interchangeable.
   static const Color actionBlue = Color(0xFF0278FF);
 
+  /// The dashboard's "Confirmed" green — status pills, the "Confirm booking?"
+  /// link, and a confirmed block on the calendar.
+  ///
+  /// ── NOT `ctaGreen`, AND THE DISTINCTION IS §2's ───────────────────────────
+  ///
+  /// `ctaGreen` is documented as "the single highest-priority action on a
+  /// screen" and "should stay rare". A bookings list can show a dozen Confirmed
+  /// pills at once, and painting them the hero colour would spend the loudest
+  /// green in the palette on a passive label — after which the one control that
+  /// is meant to shout has nothing left to shout with.
+  ///
+  /// So this is a darker, quieter green chosen to read as a STATE beside the
+  /// blue and the error red, and to keep contrast against white at text size,
+  /// which `ctaGreen` does not. Derived rather than measured: the design's
+  /// Generation A screenshots do not include this dashboard, and ADR-039 forbids
+  /// taking colour from the Generation B references.
+  static const Color statusConfirmed = Color(0xFF1E9E5A);
+
   // ── Neutrals: surfaces ────────────────────────────────────────────────────
 
   /// MEASURED — `native-03`, 100% of a large sampled region. DOCUMENTED §2.
@@ -260,6 +278,47 @@ abstract final class BookflowSizes {
   /// the platform-conventional proportions.
   static const double grabberWidth = 36;
   static const double grabberHeight = 4;
+
+  /// INVENTED — the label column on an expanded booking card, so "Appointment"
+  /// and "With" line their values up. A fixed width rather than an `IntrinsicWidth`
+  /// because the labels are known and short, and intrinsic sizing inside a
+  /// scrolling list is a per-frame cost for an alignment two constants settle.
+  static const double detailLabel = 96;
+
+  // ── The calendar grid ──────────────────────────────────────────────────────
+  //
+  // All INVENTED. The design's Calendar Tab is a Generation B reference (ADR-039)
+  // — it is read for structure and never for measurement, so these are chosen to
+  // make the grid legible rather than to match a screenshot.
+
+  /// One hour's height. Tall enough that a 30-minute booking is still a visible
+  /// block rather than a line.
+  static const double calendarHourHeight = 56;
+
+  /// One day column. Seven of these overflow a phone, which is why the grid
+  /// scrolls horizontally — the design shows columns "continuing off-screen".
+  static const double calendarDayWidth = 92;
+
+  /// The hour-label gutter down the left. Wide enough for "12 AM" and pinned so
+  /// it does not scroll away from the rows it labels.
+  static const double calendarGutterWidth = 56;
+}
+
+/// Alpha values used to tint a token rather than introduce a second colour.
+///
+/// A pill's fill is its text colour at low opacity: that keeps the two provably
+/// related, so changing `statusConfirmed` moves both, and avoids six more
+/// hand-picked hex values that would drift apart from the ones they belong to.
+abstract final class BookflowOpacity {
+  /// The wash behind a status pill's text.
+  static const double pillFill = 0.12;
+
+  /// A booking block on the calendar — solid enough to read as filled, light
+  /// enough that the hour gridlines behind it still give it a position.
+  static const double calendarBlock = 0.85;
+
+  /// A day from an adjacent month in the mini picker ("muted styling").
+  static const double adjacentMonth = 0.38;
 }
 
 /// Type scale.

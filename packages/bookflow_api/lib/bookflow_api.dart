@@ -42,6 +42,8 @@ export 'package:bookflow_api/src/model/opening_hours_entry.dart';
 export 'package:bookflow_api/src/model/opening_hours_entry_input.dart';
 export 'package:bookflow_api/src/model/owner_booking.dart';
 export 'package:bookflow_api/src/model/owner_booking_input.dart';
+export 'package:bookflow_api/src/model/payment_proof.dart';
+export 'package:bookflow_api/src/model/payment_proof_input.dart';
 export 'package:bookflow_api/src/model/portfolio_image.dart';
 export 'package:bookflow_api/src/model/portfolio_image_input.dart';
 export 'package:bookflow_api/src/model/profile.dart';

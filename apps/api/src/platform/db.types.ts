@@ -21,9 +21,9 @@ export interface Bookings {
   ends_at: Timestamp;
   id: Generated<string>;
   /**
-   * ADR-011: the object is PRIVATE. This column confers no access; a signed-URL endpoint is owed.
+   * Optional. An object key in the PRIVATE private-media bucket. Never a URL, and confers no access on its own: reads go through GET /v1/me/business/bookings/{id}/payment-proof, which returns a short-lived signed URL. Never exposed to a client — the owner bookings list carries a hasPaymentProof boolean instead.
    */
-  payment_proof_url: string | null;
+  payment_proof_key: string | null;
   price_kes: number;
   /**
    * REPORTING ONLY (ADR-006). Never for display — the snapshot columns are what the booking was.

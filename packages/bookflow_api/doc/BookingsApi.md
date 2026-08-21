@@ -11,6 +11,7 @@ Method | HTTP request | Description
 ------------- | ------------- | -------------
 [**cancelBooking**](BookingsApi.md#cancelbooking) | **POST** /v1/me/business/bookings/{bookingId}/cancel | Cancel a booking
 [**confirmBooking**](BookingsApi.md#confirmbooking) | **POST** /v1/me/business/bookings/{bookingId}/confirm | Confirm a booking
+[**getBookingPaymentProof**](BookingsApi.md#getbookingpaymentproof) | **GET** /v1/me/business/bookings/{bookingId}/payment-proof | A short-lived link to a booking’s payment proof
 [**listMyBookings**](BookingsApi.md#listmybookings) | **GET** /v1/me/business/bookings | The salon&#39;s bookings
 [**listMyContacts**](BookingsApi.md#listmycontacts) | **GET** /v1/me/business/contacts | The salon&#39;s clients
 [**reinstateBooking**](BookingsApi.md#reinstatebooking) | **POST** /v1/me/business/bookings/{bookingId}/reinstate | Reinstate a booking
@@ -90,6 +91,49 @@ Name | Type | Description  | Notes
 ### Return type
 
 [**OwnerBooking**](OwnerBooking.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+ - **Content-Type**: Not defined
+ - **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+# **getBookingPaymentProof**
+> PaymentProof getBookingPaymentProof(bookingId)
+
+A short-lived link to a booking’s payment proof
+
+Returns a signed URL valid for about five minutes. The object lives in a PRIVATE bucket and is unreachable any other way (ADR-011) — the booking list carries only hasPaymentProof. Answers 404 for a booking that is not this owner’s, does not exist, has no proof, or whose object is missing: the four are deliberately indistinguishable, since a caller who may not read the proof may not learn whether there is one. Do not cache the URL; request another.
+
+### Example
+```dart
+import 'package:bookflow_api/api.dart';
+
+final api = BookflowApi().getBookingsApi();
+final String bookingId = 38400000-8cf0-11bd-b23e-10b96e4ef00d; // String | 
+
+try {
+    final response = api.getBookingPaymentProof(bookingId);
+    print(response);
+} catch on DioException (e) {
+    print('Exception when calling BookingsApi->getBookingPaymentProof: $e\n');
+}
+```
+
+### Parameters
+
+Name | Type | Description  | Notes
+------------- | ------------- | ------------- | -------------
+ **bookingId** | **String**|  | 
+
+### Return type
+
+[**PaymentProof**](PaymentProof.md)
 
 ### Authorization
 

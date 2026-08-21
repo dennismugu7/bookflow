@@ -92,7 +92,7 @@ class _$OwnerBooking extends OwnerBooking {
   @override
   final OwnerBookingStatusEnum status;
   @override
-  final String? paymentProofUrl;
+  final bool hasPaymentProof;
 
   factory _$OwnerBooking([void Function(OwnerBookingBuilder)? updates]) =>
       (OwnerBookingBuilder()..update(updates))._build();
@@ -110,7 +110,7 @@ class _$OwnerBooking extends OwnerBooking {
       required this.clientPhone,
       required this.startsAt,
       required this.status,
-      this.paymentProofUrl})
+      required this.hasPaymentProof})
       : super._();
   @override
   OwnerBooking rebuild(void Function(OwnerBookingBuilder) updates) =>
@@ -135,7 +135,7 @@ class _$OwnerBooking extends OwnerBooking {
         clientPhone == other.clientPhone &&
         startsAt == other.startsAt &&
         status == other.status &&
-        paymentProofUrl == other.paymentProofUrl;
+        hasPaymentProof == other.hasPaymentProof;
   }
 
   @override
@@ -153,7 +153,7 @@ class _$OwnerBooking extends OwnerBooking {
     _$hash = $jc(_$hash, clientPhone.hashCode);
     _$hash = $jc(_$hash, startsAt.hashCode);
     _$hash = $jc(_$hash, status.hashCode);
-    _$hash = $jc(_$hash, paymentProofUrl.hashCode);
+    _$hash = $jc(_$hash, hasPaymentProof.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -173,7 +173,7 @@ class _$OwnerBooking extends OwnerBooking {
           ..add('clientPhone', clientPhone)
           ..add('startsAt', startsAt)
           ..add('status', status)
-          ..add('paymentProofUrl', paymentProofUrl))
+          ..add('hasPaymentProof', hasPaymentProof))
         .toString();
   }
 }
@@ -232,10 +232,10 @@ class OwnerBookingBuilder
   OwnerBookingStatusEnum? get status => _$this._status;
   set status(OwnerBookingStatusEnum? status) => _$this._status = status;
 
-  String? _paymentProofUrl;
-  String? get paymentProofUrl => _$this._paymentProofUrl;
-  set paymentProofUrl(String? paymentProofUrl) =>
-      _$this._paymentProofUrl = paymentProofUrl;
+  bool? _hasPaymentProof;
+  bool? get hasPaymentProof => _$this._hasPaymentProof;
+  set hasPaymentProof(bool? hasPaymentProof) =>
+      _$this._hasPaymentProof = hasPaymentProof;
 
   OwnerBookingBuilder() {
     OwnerBooking._defaults(this);
@@ -256,7 +256,7 @@ class OwnerBookingBuilder
       _clientPhone = $v.clientPhone;
       _startsAt = $v.startsAt;
       _status = $v.status;
-      _paymentProofUrl = $v.paymentProofUrl;
+      _hasPaymentProof = $v.hasPaymentProof;
       _$v = null;
     }
     return this;
@@ -298,7 +298,8 @@ class OwnerBookingBuilder
               startsAt, r'OwnerBooking', 'startsAt'),
           status: BuiltValueNullFieldError.checkNotNull(
               status, r'OwnerBooking', 'status'),
-          paymentProofUrl: paymentProofUrl,
+          hasPaymentProof: BuiltValueNullFieldError.checkNotNull(
+              hasPaymentProof, r'OwnerBooking', 'hasPaymentProof'),
         );
     replace(_$result);
     return _$result;

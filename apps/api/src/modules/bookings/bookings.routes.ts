@@ -21,6 +21,7 @@ import {
   contactsSchema,
   ownerBookingSchema,
   ownerBookingsSchema,
+  paymentProofSchema,
 } from './bookings.schema.ts';
 import {
   actOnBooking,
@@ -28,6 +29,7 @@ import {
   getAvailability,
   getBookings,
   getContacts,
+  getPaymentProof,
   type BookingAction,
 } from './bookings.service.ts';
 import { findPublishedSalonId } from './bookings.repository.ts';
@@ -191,6 +193,39 @@ export function registerBookingRoutes(
     );
   }
 
+  // ── OWNER: THE PAYMENT PROOF ──────────────────────────────────────────────
+  //
+  // **DO-NOT-VIBE: the payment-proof access path (`CLAUDE.md` §6).**
+  //
+  // Declared BEFORE the `:bookingId/{action}` POSTs is irrelevant — different
+  // method — but its shape is deliberately the same: the caller names a BOOKING
+  // and never an object. An endpoint that took a key would sign anything in the
+  // bucket for any authenticated owner.
+  //
+  // GET rather than POST even though it mints something: it is a read of a
+  // booking's proof, it is idempotent, and nothing is stored. The short-lived
+  // URL is the representation, not a created resource.
+  app.withTypeProvider<ZodTypeProvider>().get(
+    '/v1/me/business/bookings/:bookingId/payment-proof',
+    {
+      schema: {
+        operationId: 'getBookingPaymentProof',
+        summary: 'A short-lived link to a booking’s payment proof',
+        description:
+          'Returns a signed URL valid for about five minutes. The object lives in a PRIVATE bucket and is unreachable any other way (ADR-011) — the booking list carries only hasPaymentProof. Answers 404 for a booking that is not this owner’s, does not exist, has no proof, or whose object is missing: the four are deliberately indistinguishable, since a caller who may not read the proof may not learn whether there is one. Do not cache the URL; request another.',
+        tags: ['bookings'],
+        params: z.object({ bookingId: z.uuid() }),
+        response: { 200: paymentProofSchema },
+      },
+    },
+    async (request) =>
+      await getPaymentProof(
+        { db: db(), storage, log: request.log },
+        principalOf(request),
+        request.params.bookingId,
+      ),
+  );
+
   app.withTypeProvider<ZodTypeProvider>().get(
     '/v1/me/business/contacts',
     {
@@ -241,7 +276,7 @@ async function readBookingParts(
   clientEmail: string;
   clientPhone: string;
   startsAt: string;
-  paymentProofUrl: string | undefined;
+  paymentProofKey: string | undefined;
 }> {
   const values = new Map<string, string>();
   let proof: { buffer: Buffer; mimetype: string } | undefined;
@@ -295,7 +330,7 @@ async function readBookingParts(
     throw new ProblemError('validation-failed', 'malformed booking fields');
   }
 
-  let paymentProofUrl: string | undefined;
+  let paymentProofKey: string | undefined;
   if (proof !== undefined) {
     const extension = ACCEPTED_IMAGE_TYPES.get(proof.mimetype);
     if (extension === undefined) {
@@ -317,16 +352,22 @@ async function readBookingParts(
 
     if (salon !== undefined) {
       try {
-        const { url } = await storage.upload({
-          // ADR-011 puts proofs in the PRIVATE bucket. `storage.ts` only talks
-          // to the public one, so this is the gap recorded in the report: the
-          // object lands in `public-media` under a `proof/` prefix and the
-          // private bucket plus its authorizing endpoint are still owed.
+        // ── THE PRIVATE BUCKET, AND `uploadPrivate` RETURNS A KEY ───────────
+        //
+        // This used to call `storage.upload`, which put a client's payment
+        // proof in `public-media` under a `proof/` prefix — a permanently
+        // readable URL for somebody's financial document, stored in a column
+        // and returned in the owner's booking list.
+        //
+        // `uploadPrivate` hands back a key and there is no private equivalent
+        // of `publicUrl` to turn it into an address. Reaching the object needs
+        // `GET /v1/me/business/bookings/{id}/payment-proof` (ADR-011).
+        const stored = await storage.uploadPrivate({
           key: `${salon.businessId}/proof/${randomUUID()}.${extension}`,
           body: proof.buffer,
           contentType: proof.mimetype,
         });
-        paymentProofUrl = url;
+        paymentProofKey = stored.key;
       } catch (error) {
         if (!(error instanceof StorageError)) throw error;
         // A booking is worth more than its proof. The client can be asked for
@@ -350,7 +391,7 @@ async function readBookingParts(
     clientEmail: parsed.data.clientEmail,
     clientPhone: parsed.data.clientPhone,
     startsAt: parsed.data.startsAt,
-    paymentProofUrl,
+    paymentProofKey,
   };
 }
 
