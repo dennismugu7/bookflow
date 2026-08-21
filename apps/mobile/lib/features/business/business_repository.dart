@@ -20,16 +20,21 @@ abstract interface class BusinessRepository {
   ///
   /// The API applies `coalesce(param, column)` to every optional field, so a
   /// field this does not send is left exactly as it was. **That is load-bearing
-  /// here rather than a nicety**: `GET /v1/me/business` returns only
-  /// `{id, name, published}`, so the app cannot prefill the profile fields —
-  /// and if it sent every field on every save, an untouched blank input would
-  /// wipe a tagline the owner set last week.
+  /// here rather than a nicety**: `GET /v1/me/business` returns
+  /// `{id, name, published, handle}` and NONE of the profile fields below, so
+  /// the app cannot prefill them — and if it sent every field on every save, an
+  /// untouched blank input would wipe a tagline the owner set last week.
+  ///
+  /// **`handle` arriving did not fix this.** That read gained the two fields the
+  /// dashboard needed and stopped there; `tagline`, `about`, `category`,
+  /// `address` and `mapsUrl` are still write-only from this app's side.
   ///
   /// So blank means "leave it alone", and the cost is that **there is no way to
   /// clear a field through this app**. Stated rather than discovered: the fix
   /// for both halves is the same one line in `businesses.routes.ts` adding
   /// these fields to `businessSchema`, after which the form can prefill and a
   /// deliberate clear becomes expressible.
+  ///
   /// **No `bannerUrl` here, and that is the API's shape rather than an
   /// omission.** `RenameBusinessRequest` does not carry one: the upload
   /// endpoint writes `banner_url` on the business itself when the purpose is
@@ -226,24 +231,18 @@ class ApiBusinessRepository implements BusinessRepository {
     return type is String ? type : null;
   }
 
-  /// ══ THIS IS ALSO HOW THE DASHBOARD LEARNS ITS OWN HANDLE ═══════════════════
+  /// ══ THIS IS NO LONGER ON A READ PATH, AND THAT MATTERS ═════════════════════
   ///
-  /// **`GET /v1/me/business` does not return the handle.** Its response schema
-  /// is `{id, name, published}` and only the publish response carries
-  /// `handle` — so an owner reopening the app on an already-published salon has
-  /// no other way to find the address of their own booking page.
+  /// **This used to be called to LEARN the handle**, because `GET /v1/me
+  /// /business` returned `{id, name, published}` and only the publish response
+  /// carried one. It was safe — the endpoint is idempotent by design — but it
+  /// had an edge it could not cover: a published salon whose services were all
+  /// deleted fails the requirements check and answers 409, so its own dashboard
+  /// could not show its own link.
   ///
-  /// Calling this is safe for that purpose because the endpoint is idempotent
-  /// BY DESIGN and documents itself as such: an already-published salon is
-  /// confirmed published and handed back the handle it has, and no second
-  /// handle is ever minted. It is not a workaround built on an accident.
-  ///
-  /// **It is still the wrong shape, and the right fix is one line in the API:**
-  /// add `handle` to `businessSchema` in `apps/api/src/modules/businesses/
-  /// businesses.routes.ts` and this call disappears from the read path. Until
-  /// then there is one edge it cannot cover — a published salon whose services
-  /// were all deleted fails the requirements check and answers 409, so its own
-  /// dashboard cannot show its link.
+  /// `handle` is on `businessSchema` now, so `fetchMine` carries it and that
+  /// call site is gone. **This method is only ever invoked by an owner tapping
+  /// Publish**, which is what it always claimed to be for.
   @override
   Future<PublishedSalon> publish() async {
     try {
