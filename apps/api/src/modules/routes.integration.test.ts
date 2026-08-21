@@ -283,10 +283,13 @@ describe('GET /v1/businesses/:businessId — the scoping rule', () => {
     });
 
     expect(response.statusCode).toBe(200);
+    // Exact, so a new response field lands here deliberately. `handle` is null
+    // because the seed publishes this salon without minting one.
     expect(response.json()).toEqual({
       id: SEEDED_BUSINESS,
       name: 'Demo Salon',
       published: true,
+      handle: null,
     });
   });
 
@@ -406,6 +409,18 @@ describe('default-deny, swept over the registered route table', () => {
     // the answer to that lives in the schema, not here.
     'GET /v1/public/salons/:handle',
     'HEAD /v1/public/salons/:handle',
+    // ── THE BOOKING SURFACE, AND THE ONE UNAUTHENTICATED WRITE ───────────────
+    //
+    // Availability is a read of a published salon's diary, which is what a
+    // booking page is for. The POST is the API's only unauthenticated write
+    // apart from sign-up — it is rate-limited for that reason, and the
+    // exclusion constraint bounds what it can do even unthrottled.
+    //
+    // Neither returns owner data: the receipt is an allowlist, the same shape
+    // and for the same reason as the public salon page.
+    'GET /v1/public/salons/:handle/availability',
+    'HEAD /v1/public/salons/:handle/availability',
+    'POST /v1/public/salons/:handle/bookings',
   ]);
 
   /** `:param` segments filled with a real UUID so routing matches. */

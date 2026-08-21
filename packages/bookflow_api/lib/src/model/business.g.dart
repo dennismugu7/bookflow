@@ -13,11 +13,17 @@ class _$Business extends Business {
   final String name;
   @override
   final bool published;
+  @override
+  final String? handle;
 
   factory _$Business([void Function(BusinessBuilder)? updates]) =>
       (BusinessBuilder()..update(updates))._build();
 
-  _$Business._({required this.id, required this.name, required this.published})
+  _$Business._(
+      {required this.id,
+      required this.name,
+      required this.published,
+      this.handle})
       : super._();
   @override
   Business rebuild(void Function(BusinessBuilder) updates) =>
@@ -32,7 +38,8 @@ class _$Business extends Business {
     return other is Business &&
         id == other.id &&
         name == other.name &&
-        published == other.published;
+        published == other.published &&
+        handle == other.handle;
   }
 
   @override
@@ -41,6 +48,7 @@ class _$Business extends Business {
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, name.hashCode);
     _$hash = $jc(_$hash, published.hashCode);
+    _$hash = $jc(_$hash, handle.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -50,7 +58,8 @@ class _$Business extends Business {
     return (newBuiltValueToStringHelper(r'Business')
           ..add('id', id)
           ..add('name', name)
-          ..add('published', published))
+          ..add('published', published)
+          ..add('handle', handle))
         .toString();
   }
 }
@@ -70,6 +79,10 @@ class BusinessBuilder implements Builder<Business, BusinessBuilder> {
   bool? get published => _$this._published;
   set published(bool? published) => _$this._published = published;
 
+  String? _handle;
+  String? get handle => _$this._handle;
+  set handle(String? handle) => _$this._handle = handle;
+
   BusinessBuilder() {
     Business._defaults(this);
   }
@@ -80,6 +93,7 @@ class BusinessBuilder implements Builder<Business, BusinessBuilder> {
       _id = $v.id;
       _name = $v.name;
       _published = $v.published;
+      _handle = $v.handle;
       _$v = null;
     }
     return this;
@@ -106,6 +120,7 @@ class BusinessBuilder implements Builder<Business, BusinessBuilder> {
               BuiltValueNullFieldError.checkNotNull(name, r'Business', 'name'),
           published: BuiltValueNullFieldError.checkNotNull(
               published, r'Business', 'published'),
+          handle: handle,
         );
     replace(_$result);
     return _$result;

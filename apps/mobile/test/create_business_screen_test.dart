@@ -149,6 +149,73 @@ void main() {
     },
   );
 
+  testWidgets(
+    'criterion 63 — a conflict says the account already has a business, and does '
+    'not blame the connection',
+    (WidgetTester tester) async {
+      final _StubRepository repository = _StubRepository(
+        conflictOnCreate: true,
+      );
+      await tester.pumpWidget(screenWith(repository: repository));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('create-business-name')),
+        'Vera’s Salon',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('create-business-submit')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('You already have a business on this account.'),
+        findsOneWidget,
+        reason:
+            'the owner is told what actually happened — the string the review '
+            'pass asked for, not a second generic one',
+      );
+
+      // The assertion that gives this test its point. Showing the right
+      // sentence somewhere while still showing the wrong one would pass a
+      // test that only looked for the new copy.
+      expect(
+        find.text('That did not save. Check your connection and try again.'),
+        findsNothing,
+        reason:
+            'an owner who already has a business must not be told to check '
+            'their connection — this is the defect K82 names',
+      );
+    },
+  );
+
+  testWidgets(
+    'criterion 63 — every other failure keeps the connection message',
+    (WidgetTester tester) async {
+      // The control. Without it, a screen that showed the conflict copy for
+      // EVERY failure would pass the test above.
+      final _StubRepository repository = _StubRepository(failCreate: true);
+      await tester.pumpWidget(screenWith(repository: repository));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('create-business-name')),
+        'Vera’s Salon',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('create-business-submit')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('That did not save. Check your connection and try again.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('You already have a business on this account.'),
+        findsNothing,
+      );
+    },
+  );
+
   testWidgets('criterion 61 — an owner with no business can reach sign-out', (
     WidgetTester tester,
   ) async {
@@ -192,7 +259,11 @@ void main() {
 }
 
 class _StubRepository implements BusinessRepository {
-  _StubRepository({this.createFuture, this.failCreate = false});
+  _StubRepository({
+    this.createFuture,
+    this.failCreate = false,
+    this.conflictOnCreate = false,
+  });
 
   /// Supplied only where the test needs to control WHEN the submission settles.
   final Future<OwnedBusiness>? createFuture;
@@ -202,11 +273,19 @@ class _StubRepository implements BusinessRepository {
   /// before the assertion under test runs.
   final bool failCreate;
 
+  /// The conflict, as the repository hands it to the screen — a typed model
+  /// error, never a `DioException`. A widget that could tell a 409 from a
+  /// timeout would have to import Dio, which ADR-028 forbids.
+  final bool conflictOnCreate;
+
   int createCalls = 0;
 
   @override
   Future<OwnedBusiness> create(String name) {
     createCalls += 1;
+    if (conflictOnCreate) {
+      return Future<OwnedBusiness>.error(const BusinessAlreadyExists());
+    }
     if (failCreate) {
       return Future<OwnedBusiness>.error(StateError('create failed'));
     }

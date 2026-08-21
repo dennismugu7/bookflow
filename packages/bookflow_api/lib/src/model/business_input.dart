@@ -14,6 +14,7 @@ part 'business_input.g.dart';
 /// * [id]
 /// * [name]
 /// * [published]
+/// * [handle]
 @BuiltValue()
 abstract class BusinessInput
     implements Built<BusinessInput, BusinessInputBuilder> {
@@ -25,6 +26,9 @@ abstract class BusinessInput
 
   @BuiltValueField(wireName: r'published')
   bool get published;
+
+  @BuiltValueField(wireName: r'handle')
+  String? get handle;
 
   BusinessInput._();
 
@@ -66,6 +70,13 @@ class _$BusinessInputSerializer implements PrimitiveSerializer<BusinessInput> {
       object.published,
       specifiedType: const FullType(bool),
     );
+    yield r'handle';
+    yield object.handle == null
+        ? null
+        : serializers.serialize(
+            object.handle,
+            specifiedType: const FullType.nullable(String),
+          );
   }
 
   @override
@@ -111,6 +122,14 @@ class _$BusinessInputSerializer implements PrimitiveSerializer<BusinessInput> {
             specifiedType: const FullType(bool),
           ) as bool;
           result.published = valueDes;
+          break;
+        case r'handle':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType.nullable(String),
+          ) as String?;
+          if (valueDes == null) continue;
+          result.handle = valueDes;
           break;
         default:
           unhandled.add(key);

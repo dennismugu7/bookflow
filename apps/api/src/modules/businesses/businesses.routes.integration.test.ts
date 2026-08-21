@@ -399,10 +399,15 @@ describe('GET /v1/me/business', () => {
       headers: bearer(),
     });
     expect(first.statusCode, 'the owner starts with a business').toBe(200);
+    // An EXACT body, so a field added to the response has to be added here
+    // deliberately — which is how `handle` came to be in this list rather than
+    // arriving unnoticed. The seed publishes this salon without giving it a
+    // handle, so null is the honest expectation and not a placeholder.
     expect(first.json()).toEqual({
       id: SEEDED_BUSINESS,
       name: SEEDED_NAME,
       published: SEEDED_PUBLISHED,
+      handle: null,
     });
 
     // 0 — take the membership away. Rolled back with the transaction.

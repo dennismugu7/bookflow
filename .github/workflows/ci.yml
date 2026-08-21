@@ -637,6 +637,315 @@ jobs:
           chmod 600 "$RUNNER_TEMP/e2e-defines.json"
           echo "path=$RUNNER_TEMP/e2e-defines.json" >> "$GITHUB_OUTPUT"
 
+          # ── The id the cleanup step will delete by ──────────────────────────
+          #
+          # Taken from THIS token's `sub` claim — the account the test will
+          # actually sign in as — rather than written as a literal. The delete
+          # then cannot target an account other than the one under test, and a
+          # garbage secret produces a failed grant above and no delete at all,
+          # instead of a successful delete on a row nobody meant to touch.
+          #
+          # A `sub` is a user id, not a secret: `docs/ENVIRONMENT.md` §3 prints
+          # both staging ids in full. It is NOT masked, deliberately — masking it
+          # would make the cleanup step's own output unreadable.
+          #
+          # base64url -> base64, padded, because JWT payloads are unpadded and
+          # `base64 -d` refuses them.
+          PAYLOAD="$(echo "$ACCESS_TOKEN" | cut -d. -f2 | tr '_-' '/+')"
+          case $(( ${#PAYLOAD} % 4 )) in
+            2) PAYLOAD="$PAYLOAD==" ;;
+            3) PAYLOAD="$PAYLOAD=" ;;
+          esac
+          E2E_USER_ID="$(echo "$PAYLOAD" | base64 -d 2>/dev/null | jq -r '.sub // empty')"
+          echo "user_id=$E2E_USER_ID" >> "$GITHUB_OUTPUT"
+
+      # ── The SECOND account, and why this is not one grant with two uses ────
+      #
+      # The two e2e tests run as DIFFERENT accounts and must:
+      #
+      #   profile_e2e_test.dart       e2e-owner@bookflow.test           9b5bdc22…
+      #   business_setup_e2e_test.dart  e2e-owner-business@bookflow.test  e508f672…
+      #
+      # **K78 forbids ever giving the first account a membership.** Running the
+      # business journey on its token would create one — which is exactly the
+      # rule the cleanup step's guard 2 exists to catch, and it did: wiring the
+      # business test to the existing defines file made that guard fail, because
+      # the `sub` in that token is 9b5bdc22 and the cleanup expects e508f672.
+      #
+      # So: a second grant, a second defines file, a second `sub`. Identical in
+      # shape to the step above, deliberately — the alternative was
+      # parameterising one step over two accounts, which couples the two tests
+      # in exactly the property that must differ between them.
+      - name: Mint the business account's session
+        id: business
+        env:
+          E2E_EMAIL: ${{ secrets.E2E_BUSINESS_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_BUSINESS_PASSWORD }}
+          SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+          API_BASE_URL: https://bookflow-api-staging-gabm.onrender.com
+        run: |
+          set -euo pipefail
+          for name in E2E_EMAIL E2E_PASSWORD SUPABASE_URL SUPABASE_ANON_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::secret $name is empty — see docs/ENVIRONMENT.md §3"
+              exit 1
+            fi
+          done
+
+          jq -n '{email: env.E2E_EMAIL, password: env.E2E_PASSWORD}' \
+            > "$RUNNER_TEMP/business-grant.json"
+          chmod 600 "$RUNNER_TEMP/business-grant.json"
+
+          curl -s -S --fail-with-body \
+            -X POST "$SUPABASE_URL/auth/v1/token?grant_type=password" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H 'content-type: application/json' \
+            --data-binary "@$RUNNER_TEMP/business-grant.json" \
+            -o "$RUNNER_TEMP/business-session.json"
+          rm -f "$RUNNER_TEMP/business-grant.json"
+
+          ACCESS_TOKEN="$(jq -r '.access_token // empty' "$RUNNER_TEMP/business-session.json")"
+          rm -f "$RUNNER_TEMP/business-session.json"
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "::error::the business account's password grant returned no access_token — rotate E2E_BUSINESS_PASSWORD (docs/ENVIRONMENT.md §3)"
+            exit 1
+          fi
+          echo "::add-mask::$ACCESS_TOKEN"
+
+          ACCESS_TOKEN="$ACCESS_TOKEN" jq -n '{
+            E2E_EMAIL: env.E2E_EMAIL,
+            E2E_ACCESS_TOKEN: env.ACCESS_TOKEN,
+            SUPABASE_URL: env.SUPABASE_URL,
+            SUPABASE_ANON_KEY: env.SUPABASE_ANON_KEY,
+            API_BASE_URL: env.API_BASE_URL
+          }' > "$RUNNER_TEMP/business-defines.json"
+          chmod 600 "$RUNNER_TEMP/business-defines.json"
+          echo "path=$RUNNER_TEMP/business-defines.json" >> "$GITHUB_OUTPUT"
+
+          PAYLOAD="$(echo "$ACCESS_TOKEN" | cut -d. -f2 | tr '_-' '/+')"
+          case $(( ${#PAYLOAD} % 4 )) in
+            2) PAYLOAD="$PAYLOAD==" ;;
+            3) PAYLOAD="$PAYLOAD=" ;;
+          esac
+          E2E_USER_ID="$(echo "$PAYLOAD" | base64 -d 2>/dev/null | jq -r '.sub // empty')"
+          echo "user_id=$E2E_USER_ID" >> "$GITHUB_OUTPUT"
+
+      # ── Clear this account's business, BEFORE the build ────────────────────
+      #
+      # `uq_memberships_one_owner_per_user` means creation succeeds exactly once
+      # per account, and the staging business account is permanent — E14 makes a
+      # per-run account impossible. Without this, run 1 asserts creation and run
+      # 2 silently asserts the 409 conflict path under a test name that says
+      # creation. A test whose MEANING changes between runs is worse than one
+      # that fails.
+      #
+      # BEFORE, not after: cleanup that runs after a failure does not run. A
+      # crashed, cancelled or timed-out run leaves its rows behind, and the next
+      # run then inherits them. Pre-cleanup makes the starting state a
+      # precondition rather than a hope. The test asserts the clean slate itself
+      # (`GET /v1/me/business` must answer 404) rather than trusting this step.
+      #
+      # STAGING_APP_DATABASE_URL — the `bookflow_api` application role, CRUD and
+      # no DDL (ADR-038). NOT the service-role key, which bypasses RLS and
+      # reaches `auth.users`: the account must survive and only its rows in
+      # `public` are cleared, so a credential whose reach exceeds the operation
+      # is how a scoped delete becomes an unscoped one after a later edit. NOT
+      # STAGING_DATABASE_URL either — that holds DDL and ADR-034 keeps it for
+      # `migrate-staging` alone.
+      #
+      # DO-NOT-VIBE: this deletes from the two tables the membership scoping rule
+      # traverses. The guards below are the reason it is safe, and they are
+      # conditions that fail the job, not comments asking for care.
+      - name: Clear the e2e business account's rows
+        env:
+          # Raw, under its own name. The translated value is derived in the
+          # script and never becomes an environment variable a later step could
+          # inherit and misread.
+          STAGING_APP_DATABASE_URL: ${{ secrets.STAGING_APP_DATABASE_URL }}
+          # `steps.business`, NOT `steps.defines` — the business account's token,
+          # not the profile account's. Pointing this at the wrong grant is the
+          # mistake guard 2 below caught when this test was first wired.
+          E2E_USER_ID: ${{ steps.business.outputs.user_id }}
+          EXPECTED_USER_ID: e508f672-dd11-4150-b686-cc06a525f749
+        run: |
+          set -euo pipefail
+
+          # GUARD 1 — a derived id that is empty or malformed stops the job
+          # before any SQL runs. Without it, the same edit that drops this guard
+          # is the edit likely to drop the WHERE clause too, and a bare
+          # `delete from public.businesses` clears every business on staging.
+          if [ -z "$E2E_USER_ID" ]; then
+            echo "::error::could not derive a user id from the access token — no SQL was run"
+            exit 1
+          fi
+          if ! echo "$E2E_USER_ID" \
+            | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'; then
+            echo "::error::derived id is not a uuid — no SQL was run"
+            exit 1
+          fi
+
+          # GUARD 2 — the derived id must be the account this workflow is meant
+          # to clear. Deriving from the token protects against a GARBAGE secret;
+          # this protects against a VALID secret pointing at a different
+          # account, where derivation alone would happily delete that account's
+          # rows and the test would go green having operated on the wrong one.
+          # The literal is an assertion, never the delete's target.
+          if [ "$E2E_USER_ID" != "$EXPECTED_USER_ID" ]; then
+            echo "::error::the session belongs to $E2E_USER_ID, not the e2e business account — no SQL was run. If the account was deliberately changed, update EXPECTED_USER_ID and docs/ENVIRONMENT.md §3 in the same commit."
+            exit 1
+          fi
+
+          if [ -z "$STAGING_APP_DATABASE_URL" ]; then
+            echo "::error::STAGING_APP_DATABASE_URL is empty — see docs/ENVIRONMENT.md §3"
+            exit 1
+          fi
+
+          # ── TWO PARSERS, ONE STRING: A TRANSLATION, NOT A RELAXATION ────────
+          #
+          # This secret is read by two libraries that do not agree on the
+          # vocabulary, and the reader who knows only one of them will read this
+          # substitution as weakening the connection. It is not.
+          #
+          #   node-postgres — `pg-connection-string` maps `require` to
+          #   VERIFY-FULL, so `apps/api` has to say `no-verify` to get
+          #   encrypt-without-verify against Supabase's pooler, whose chain is
+          #   self-signed. That is K76, and the secret is shaped for it.
+          #
+          #   libpq — `no-verify` IS NOT A VALUE. Its set is disable, allow,
+          #   prefer, require, verify-ca, verify-full, and `require` means
+          #   exactly encrypt-without-verify.
+          #
+          # So `no-verify` and `require` NAME THE SAME POSTURE in the two
+          # libraries: TLS on, certificate chain unverified. Substituting one for
+          # the other translates between vocabularies and changes nothing about
+          # what is negotiated on the wire.
+          #
+          # THIS IS THE SECOND COLLISION ON THIS ONE STRING. K76 records the
+          # first — `pg-connection-string` warns it will adopt libpq's weaker
+          # semantics for `require` in its next major, which is a reason not to
+          # write `require` on the node side. The string now has two consumers
+          # with different parsers, and K76's CA fix will have to satisfy both.
+          #
+          # Parameter expansion, deliberately: no `sed`, no subshell, no pipe —
+          # nothing that puts a credential on a command line or in a process
+          # table, and nothing that echoes it.
+          DB_URL="${STAGING_APP_DATABASE_URL/sslmode=no-verify/sslmode=require}"
+
+          # GUARD 4 — A SILENT NO-OP IS THE DANGEROUS CASE. The substitution
+          # above matches a literal. If the secret is ever rotated to a shape
+          # that does not carry `sslmode=no-verify` — a different spelling, the
+          # parameter dropped, a query string reordered — the expansion does
+          # nothing, quietly, and psql falls back to its DEFAULT of `prefer`.
+          # `prefer` accepts an unencrypted connection when the server offers
+          # one, so the failure mode is not an error but a downgrade, and the
+          # only signal would be that the job still passes.
+          #
+          # Asserting the POSITIVE — the translated value contains
+          # `sslmode=require` — rather than that the substitution changed
+          # something, so a secret already written in libpq's vocabulary passes
+          # here without a special case.
+          case "$DB_URL" in
+            *sslmode=require*) ;;
+            *)
+              echo "::error::the translated connection string does not carry sslmode=require. \
+          The substitution matched nothing, which means STAGING_APP_DATABASE_URL no longer \
+          contains sslmode=no-verify. psql would fall back to its default of 'prefer' and may \
+          connect UNENCRYPTED without saying so, which is why this fails instead. Update the \
+          substitution to the secret's new shape — see K76 and docs/ENVIRONMENT.md §3. No SQL \
+          was run."
+              exit 1
+              ;;
+          esac
+
+          # ORDER. `memberships` is the only thing tying a business to a user —
+          # a business row does not know who owns it (ADR-003). Deleting the
+          # membership first orphans the business beyond finding, so the ids are
+          # CAPTURED FIRST in a CTE and both deletes happen in one statement.
+          #
+          # Idempotent: a clean slate deletes zero rows and succeeds. That is a
+          # pass, not an error — the desired state is "no business", not "a
+          # business was removed".
+          #
+          # ── IF YOU ARE ABOUT TO REWRITE THIS AS `psql -c`, DO NOT ───────────
+          #
+          # **psql interpolates `:'uid'` from a script on STDIN and NOT from a
+          # `-c` argument.** Verified by running both against a real database,
+          # not assumed: the `-c` form fails with `syntax error at or near ":"`.
+          #
+          # That error is the good case. The dangerous case is the edit that
+          # "fixes" it by dropping the variable and inlining the id, or by
+          # removing the `where` clause that no longer has a value to compare —
+          # **at which point this statement stops being scoped and clears every
+          # business on staging.** The heredoc is not a style preference; it is
+          # what makes the scoping work at all.
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -v uid="$E2E_USER_ID" <<'SQL'
+          with owned as (
+            select business_id from public.memberships where user_id = :'uid'::uuid
+          ),
+          dropped_memberships as (
+            delete from public.memberships where user_id = :'uid'::uuid returning 1
+          )
+          delete from public.businesses
+           where id in (select business_id from owned);
+          SQL
+
+          echo "cleared any business owned by $E2E_USER_ID"
+
+      # ── K83, mitigation 1 ───────────────────────────────────────────────────
+      #
+      # The AVD's userdata partition needs 7372.80 MB. On run 32271223400 the
+      # runner had 6912.73 MB and the emulator died on
+      #   FATAL | Not enough space to create userdata partition.
+      # 460 MB short. The runner ships large tool caches this job never opens,
+      # and reclaiming them moves the margin from "one bad draw from red" to
+      # several gigabytes of headroom WITHOUT changing the device under test —
+      # which is why this mitigation was taken and a smaller AVD was not.
+      #
+      # `du` before `rm` so the log carries the real figure rather than an
+      # expectation, and `df` on both sides of the deletion so the number that
+      # matters — free space where the AVD is created — is the one reported.
+      # Every path is `-f`-tolerant: a runner image that stops shipping one of
+      # these must not fail the gate.
+      - name: Reclaim the disk the emulator needs
+        run: |
+          set -euo pipefail
+
+          echo "── before ──"
+          df -h /home/runner
+
+          for path in \
+            /usr/local/lib/android/sdk/ndk \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL
+          do
+            if [ -e "$path" ]; then
+              echo "removing $(du -sh "$path" 2>/dev/null | cut -f1) at $path"
+              sudo rm -rf "$path"
+            else
+              echo "absent, nothing to remove: $path"
+            fi
+          done
+
+          echo "── after ──"
+          df -h /home/runner
+
+          # The emulator reads this as free space at ~/.android/avd. Assert it
+          # here so the requirement is checked ONCE, cheaply, and named — rather
+          # than discovered by an emulator that dies and an action that spends
+          # the boot timeout polling for a device that will never appear.
+          mkdir -p "$HOME/.android"
+          avail_mb=$(( $(df -Pk "$HOME/.android" | awk 'NR==2 {print $4}') / 1024 ))
+          echo "free at $HOME/.android: ${avail_mb} MB (userdata needs 7373 MB)"
+          if [ "$avail_mb" -lt 9000 ]; then
+            echo "::error title=Not enough disk for the AVD::${avail_mb} MB free at \
+          $HOME/.android. The userdata partition alone needs 7373 MB and this is the \
+          condition that killed run 32271223400 (K83). Failing here, before the \
+          emulator, so the message names the disk rather than a boot timeout."
+            exit 1
+          fi
+
       # The emulator needs KVM, and the runner's default udev rules do not grant
       # it to the unprivileged user the action runs as.
       - name: Enable KVM
@@ -645,6 +954,100 @@ jobs:
             | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+
+      # ── K83, mitigation 4 — THE WATCHDOG, AS A FILE ─────────────────────────
+      #
+      # It lives in a file so the INTERPRETER IS GUARANTEED RATHER THAN HOPED
+      # FOR. Run 32282354373 is why: the same script inlined into
+      # `pre-emulator-launch-script` was executed by the action as
+      # `/usr/bin/sh -c …`, which on this image is dash, and dash answered
+      # `set: Illegal option -o pipefail` on line 1. The watchdog never started,
+      # the step went red on that alone while both e2e tests passed, and the
+      # reporter said "the watchdog wrote nothing" — true, and indistinguishable
+      # from a watchdog that ran and had nothing to say.
+      #
+      # A file also means `bash -n` can check it as the shell that will run it,
+      # rather than as the shell whoever wrote it happened to have.
+      - name: Write the emulator watchdog
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/emulator-watchdog.sh" <<'WATCHDOG'
+          set -uo pipefail
+
+          # ARMED MARKER, WRITTEN FIRST, BEFORE ANYTHING CAN GO WRONG.
+          # A guard that cannot tell "never ran" from "ran and was happy" is not
+          # a guard, and this file is the difference between the two.
+          : > "$RUNNER_TEMP/emulator-watchdog.armed"
+
+          # WHICH PROCESS TO KILL, RESOLVED BY WALKING UP RATHER THAN GUESSING.
+          # An earlier version took `ps -o ppid= -p $PPID`, on the belief that
+          # $PPID's parent is the action's node process. That was wrong by one
+          # level — $PPID IS the node process when the shell is exec'd — and it
+          # would have signalled the runner instead. So: walk the ancestry and
+          # take the first process whose command line names the action. If none
+          # matches, the watchdog still diagnoses and simply does not kill; a
+          # missed kill costs minutes, a wrong kill costs the job's meaning.
+          find_action_pid() {
+            pid=$$
+            for _ in 1 2 3 4 5 6; do
+              parent=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
+              [ -z "$parent" ] && return 1
+              if tr '\0' ' ' < "/proc/$parent/cmdline" 2>/dev/null \
+                | grep -q 'android-emulator-runner'; then
+                echo "$parent"
+                return 0
+              fi
+              pid=$parent
+            done
+            return 1
+          }
+          action_pid=$(find_action_pid || true)
+
+          (
+            echo "armed: watching for the emulator process (action pid: ${action_pid:-not found})"
+
+            # The emulator does not exist yet; the action launches it the moment
+            # this script returns. Wait for it to appear before concluding
+            # anything from its absence.
+            for _ in $(seq 1 90); do
+              [ -n "$(pgrep -f -- '-avd test' || true)" ] && break
+              sleep 1
+            done
+
+            while :; do
+              booted=$(adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)
+              if [ "$booted" = "1" ]; then
+                echo "stood down: the emulator booted"
+                exit 0
+              fi
+              if [ -z "$(pgrep -f -- '-avd test' || true)" ]; then
+                avail_mb=$(( $(df -Pk "$HOME/.android" | awk 'NR==2 {print $4}') / 1024 ))
+                {
+                  echo "FIRED"
+                  echo "### The emulator exited before boot"
+                  echo
+                  echo "The emulator process is gone and \`sys.boot_completed\` never"
+                  echo "returned 1. **This is not a boot timeout** — the emulator failed"
+                  echo "and said why. Read the \`FATAL\` line in the emulator step's log;"
+                  echo "ignore the \`adb ... device not found\` polling that follows it,"
+                  echo "which is this action interrogating a device that no longer exists."
+                  echo
+                  echo "Free at \`\$HOME/.android\`: **${avail_mb} MB**. The userdata"
+                  echo "partition alone needs **7373 MB** — the cause on record for"
+                  echo "run 32271223400 (K83)."
+                } | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
+                [ -n "$action_pid" ] && kill -TERM "$action_pid" 2>/dev/null
+                exit 1
+              fi
+              sleep 2
+            done
+          ) > "$RUNNER_TEMP/emulator-watchdog.log" 2>&1 &
+          WATCHDOG
+
+          # Checked with the shell that will run it, which is the whole point of
+          # the file existing.
+          bash -n "$RUNNER_TEMP/emulator-watchdog.sh"
+          echo "watchdog written and syntax-checked under bash"
 
       - name: Run the e2e gate on an emulator
         uses: reactivecircus/android-emulator-runner@v2
@@ -668,6 +1071,41 @@ jobs:
           emulator-options: >-
             -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
             -no-snapshot -camera-back none
+          # ── K83, mitigation 4 ─────────────────────────────────────────────
+          #
+          # The action's contract, from its own `action.yml`: this runs "after
+          # creating the AVD and before launching the emulator" — the only hook
+          # that exists between the two, and the reason a watchdog is possible
+          # at all.
+          #
+          # THE DEFECT THIS FIXES IS THE MESSAGE, NOT ONLY THE MINUTES. On run
+          # 32271223400 the emulator died 58 seconds in and the action then
+          # asked `adb ... getprop sys.boot_completed` every two seconds for the
+          # full 900-second timeout, each answer `device 'emulator-5554' not
+          # found`, and ended on "Timeout waiting for emulator to boot". That
+          # sentence is false: nothing timed out. A reader who trusts it goes
+          # looking at boot speed, at the runner's cores, at the API level —
+          # everywhere except the one line that said what happened.
+          #
+          # So the watchdog watches the PROCESS, not the port. If the emulator
+          # is gone before `sys.boot_completed`, it says so, prints the disk
+          # figures that are the known cause, points at the emulator's own FATAL
+          # in the log above, and terminates the action instead of letting it
+          # spend the remaining timeout interrogating a device that no longer
+          # exists. If boot succeeds it exits silently and costs nothing.
+          #
+          # THE REDIRECT INSIDE IT IS LOAD-BEARING, not tidiness. A backgrounded
+          # child inherits this step's stdout, and the action's exec of this
+          # script does not return until that descriptor closes — so a watchdog
+          # logging normally would deadlock: the action waiting to launch the
+          # emulator, the watchdog waiting for an emulator that was never
+          # launched. It writes to a file, the diagnosis also goes to the job
+          # summary, and the always-run reporter below reads both.
+          #
+          # `bash`, EXPLICITLY. The action runs this string with `sh -c`, and on
+          # the runner image `sh` is dash — see the step above for what that cost
+          # and how it hid.
+          pre-emulator-launch-script: bash "$RUNNER_TEMP/emulator-watchdog.sh"
           working-directory: apps/mobile
           # `timeout` because a FAILING run does not exit. Measured on run
           # 31902883567: the test reported "0 tests passed, 1 failed" and then
@@ -676,16 +1114,48 @@ jobs:
           # A gate that takes half an hour to say "red" is a gate people turn
           # off. `--preserve-status` keeps the test's own exit code when it does
           # finish, so this bounds the hang without inventing a result.
+          # Two tests, two defines files, two accounts — see the business grant
+          # step above. Sequential and `&&`-joined: a failure in the first stops
+          # the second, and the emulator is booted once for both.
           script: >-
             timeout --preserve-status --signal=KILL 12m
             flutter test integration_test/profile_e2e_test.dart
             --dart-define-from-file=${{ steps.defines.outputs.path }}
+            &&
+            timeout --preserve-status --signal=KILL 12m
+            flutter test integration_test/business_setup_e2e_test.dart
+            --dart-define-from-file=${{ steps.business.outputs.path }}
+
+      # The watchdog cannot write to the emulator step's log without deadlocking
+      # it (see the redirect above), so its file is emptied into the log here.
+      # `always()` because the case it exists for is the case where the step it
+      # watched was killed — and a diagnosis that only survives on the happy
+      # path is not a diagnosis.
+      - name: Say what the emulator watchdog saw
+        if: always()
+        run: |
+          # THREE STATES, BECAUSE TWO OF THEM WERE INDISTINGUISHABLE AND THAT
+          # COST A RUN. On 32282354373 this step printed "the watchdog wrote
+          # nothing", which was true and useless: the watchdog had not started at
+          # all, and the sentence read exactly like a watchdog that started and
+          # had nothing to report. The marker file is what separates them.
+          if [ ! -f "$RUNNER_TEMP/emulator-watchdog.armed" ]; then
+            echo "WATCHDOG: NEVER ARMED — the script did not reach its first line."
+            echo "K83 mitigation 4 did not run in this job, whatever else happened."
+            echo "Look at the 'Run pre emulator launch script' group for the reason."
+          elif grep -q '^FIRED' "$RUNNER_TEMP/emulator-watchdog.log" 2>/dev/null; then
+            echo "WATCHDOG: FIRED — it saw the emulator process exit before boot."
+            cat "$RUNNER_TEMP/emulator-watchdog.log"
+          else
+            echo "WATCHDOG: ARMED AND SILENT — it started and had nothing to report."
+            cat "$RUNNER_TEMP/emulator-watchdog.log" 2>/dev/null || true
+          fi
 
       # Runs whether the gate passed or failed. A credential left on a runner
       # image is not made safe by the job having succeeded.
-      - name: Remove the defines file
+      - name: Remove the defines files
         if: always()
-        run: rm -f "$RUNNER_TEMP/e2e-defines.json"
+        run: rm -f "$RUNNER_TEMP/e2e-defines.json" "$RUNNER_TEMP/business-defines.json"
 
       # ══ BEFORE ADDING AN ARTIFACT UPLOAD BELOW THIS LINE ════════════════════
       #

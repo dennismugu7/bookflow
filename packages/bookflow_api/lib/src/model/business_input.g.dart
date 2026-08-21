@@ -13,12 +13,17 @@ class _$BusinessInput extends BusinessInput {
   final String name;
   @override
   final bool published;
+  @override
+  final String? handle;
 
   factory _$BusinessInput([void Function(BusinessInputBuilder)? updates]) =>
       (BusinessInputBuilder()..update(updates))._build();
 
   _$BusinessInput._(
-      {required this.id, required this.name, required this.published})
+      {required this.id,
+      required this.name,
+      required this.published,
+      this.handle})
       : super._();
   @override
   BusinessInput rebuild(void Function(BusinessInputBuilder) updates) =>
@@ -33,7 +38,8 @@ class _$BusinessInput extends BusinessInput {
     return other is BusinessInput &&
         id == other.id &&
         name == other.name &&
-        published == other.published;
+        published == other.published &&
+        handle == other.handle;
   }
 
   @override
@@ -42,6 +48,7 @@ class _$BusinessInput extends BusinessInput {
     _$hash = $jc(_$hash, id.hashCode);
     _$hash = $jc(_$hash, name.hashCode);
     _$hash = $jc(_$hash, published.hashCode);
+    _$hash = $jc(_$hash, handle.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -51,7 +58,8 @@ class _$BusinessInput extends BusinessInput {
     return (newBuiltValueToStringHelper(r'BusinessInput')
           ..add('id', id)
           ..add('name', name)
-          ..add('published', published))
+          ..add('published', published)
+          ..add('handle', handle))
         .toString();
   }
 }
@@ -72,6 +80,10 @@ class BusinessInputBuilder
   bool? get published => _$this._published;
   set published(bool? published) => _$this._published = published;
 
+  String? _handle;
+  String? get handle => _$this._handle;
+  set handle(String? handle) => _$this._handle = handle;
+
   BusinessInputBuilder() {
     BusinessInput._defaults(this);
   }
@@ -82,6 +94,7 @@ class BusinessInputBuilder
       _id = $v.id;
       _name = $v.name;
       _published = $v.published;
+      _handle = $v.handle;
       _$v = null;
     }
     return this;
@@ -108,6 +121,7 @@ class BusinessInputBuilder
               name, r'BusinessInput', 'name'),
           published: BuiltValueNullFieldError.checkNotNull(
               published, r'BusinessInput', 'published'),
+          handle: handle,
         );
     replace(_$result);
     return _$result;

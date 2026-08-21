@@ -55,6 +55,7 @@ describe('migration 20260811164304_foundation_schema', () => {
   // would pass for a table nobody meant to create, which is the case this test
   // exists to catch.
   const EXPECTED_TABLES = [
+    'bookings',
     'businesses',
     'memberships',
     'opening_hours',

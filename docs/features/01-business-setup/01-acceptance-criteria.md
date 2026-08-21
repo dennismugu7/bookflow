@@ -34,8 +34,17 @@ appears here, deliberately.
 >
 > ```
 > grep -rhoE "'criterion [0-9]+(, [0-9]+)*" apps/api/src apps/api/test apps/mobile/test \
->   | grep -oE "[0-9]+" | sort -n | uniq
+>   apps/mobile/integration_test | grep -oE "[0-9]+" | sort -n | uniq
 > ```
+>
+> **`apps/mobile/integration_test` was added 2026-08-19, and the count did not move.** It is the
+> e2e layer, and until that day nothing in it named a criterion: `profile_e2e_test.dart` names
+> **zero**, because Phase 3 produced no acceptance criteria to name (ADR-040 §3.1, K77). So the
+> path had never been missed — there was nothing there to miss. `business_setup_e2e_test.dart`
+> names 1, 3, 25, 41 and 42, all of which are also claimed by unit or integration tests, so the
+> total stayed at **60 before and after**. **A third path that changes no number is still worth
+> adding**: the next e2e test to claim a criterion nothing else covers would otherwise be
+> invisible to the one command this project trusts.
 >
 > **Two details in that command are load-bearing, both found by running it.**
 >
@@ -228,6 +237,21 @@ appears here, deliberately.
     pins the same property one screen further in — #20 returning to #17 — and nothing pinned this
     leg**, which is the third gap of this shape after §5.3's unnamed rename surface and criterion
     55's unpinned reachability.
+
+### The conflict an owner can read (K82, PR 5b)
+
+63. An owner whose creation is refused **because the account already has a business** is told
+    that, and not told to check their connection. The screen branches on the problem document's
+    `type` — `/problems/business-already-exists` — and shows different copy from every other
+    failure, which keeps *"That did not save. Check your connection and try again."*
+
+    **This criterion originates in the owner's review pass** (PR #15, comment 5343743009) **and
+    K82, not in a test.** The pass named the string by quotation — *"An owner who already has a
+    business reads a message about their connection"* — and made fixing it a condition of 5b.
+    **It is appended before the test exists, and the commit order is the evidence**, because
+    ADR-040 §3.1 and K77 hold that a criterion written after its test is derived from that test
+    and proves nothing: criteria constrain tests, never the reverse. Criteria 31 and 32 already
+    fix what the API sends; nothing until now fixed what the owner reads when it arrives.
 
 ## Notes on individual criteria
 

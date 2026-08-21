@@ -7,8 +7,14 @@ part of 'serializers.dart';
 // **************************************************************************
 
 Serializers _$serializers = (Serializers().toBuilder()
+      ..add(Availability.serializer)
+      ..add(AvailabilityInput.serializer)
+      ..add(BookingReceipt.serializer)
+      ..add(BookingReceiptInput.serializer)
       ..add(Business.serializer)
       ..add(BusinessInput.serializer)
+      ..add(Contact.serializer)
+      ..add(ContactInput.serializer)
       ..add(CreateBusinessRequest.serializer)
       ..add(CreateBusinessRequestInput.serializer)
       ..add(CreateServiceRequest.serializer)
@@ -21,6 +27,10 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(HealthResponseStatusEnum.serializer)
       ..add(OpeningHoursEntry.serializer)
       ..add(OpeningHoursEntryInput.serializer)
+      ..add(OwnerBooking.serializer)
+      ..add(OwnerBookingInput.serializer)
+      ..add(OwnerBookingInputStatusEnum.serializer)
+      ..add(OwnerBookingStatusEnum.serializer)
       ..add(PortfolioImage.serializer)
       ..add(PortfolioImageInput.serializer)
       ..add(Profile.serializer)
@@ -87,6 +97,12 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(
               BuiltList, const [const FullType(PublicOpeningHoursInput)]),
           () => ListBuilder<PublicOpeningHoursInput>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(String)]),
+          () => ListBuilder<String>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(String)]),
           () => ListBuilder<String>()))

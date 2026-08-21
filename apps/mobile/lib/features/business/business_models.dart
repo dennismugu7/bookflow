@@ -9,6 +9,7 @@ class OwnedBusiness {
     required this.id,
     required this.name,
     required this.published,
+    this.handle,
   });
 
   final String id;
@@ -17,6 +18,21 @@ class OwnedBusiness {
   /// ADR-004: private until explicitly published. The dashboard's checklist and
   /// its published state are both keyed on this.
   final bool published;
+
+  /// The public booking address, or null until the salon is published.
+  ///
+  /// ── THIS ARRIVED LATE, AND THE WORKAROUND IT REPLACED IS GONE ────────────
+  ///
+  /// `GET /v1/me/business` used to return `{id, name, published}` only, so the
+  /// dashboard learned its own handle by calling the idempotent publish
+  /// endpoint — safe, because that endpoint is idempotent by design, and still
+  /// a POST on a read path with one edge it could not cover: a published salon
+  /// whose services had all been deleted failed the requirements check and got
+  /// a 409 instead of its handle.
+  ///
+  /// The API now returns it. `publishedSalonProvider` and its extra round trip
+  /// are deleted.
+  final String? handle;
 }
 
 /// Publishing was refused because the salon is not ready.
@@ -68,4 +84,27 @@ final class HasBusiness extends BusinessStatus {
   const HasBusiness(this.business);
 
   final OwnedBusiness business;
+}
+
+/// Creation was refused because the account already has a business (K82,
+/// criterion 63).
+///
+/// ── WHY A TYPE AND NOT A STATUS CODE THE SCREEN READS ───────────────────────
+///
+/// ADR-014 fixes that the client branches on the problem document's `type` slug
+/// and never on a message — and a screen cannot read either, because ADR-028
+/// forbids it importing `package:bookflow_api` or Dio at all. So the mapping
+/// from `/problems/business-already-exists` to something a widget can branch on
+/// happens in the repository, which is the only file allowed to know what a
+/// problem document is, and this is what comes out.
+///
+/// **The status code is deliberately not the discriminator.** 409 is the
+/// conflict's transport, not its meaning; a future conflict on this endpoint
+/// would share the code and mean something else entirely, and a screen keyed on
+/// `409` would confidently show the wrong sentence.
+class BusinessAlreadyExists implements Exception {
+  const BusinessAlreadyExists();
+
+  @override
+  String toString() => 'BusinessAlreadyExists';
 }

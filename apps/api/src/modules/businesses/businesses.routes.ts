@@ -27,6 +27,21 @@ export const businessSchema = z
     id: z.uuid(),
     name: z.string(),
     published: z.boolean(),
+    /**
+     * ── ADDED BECAUSE ITS ABSENCE SHAPED TWO CLIENT FEATURES ────────────────
+     *
+     * The handle used to be returned only by `POST /v1/me/business/publish`, so
+     * an owner reopening the app on an already-published salon had no way to
+     * find their own booking address. The Flutter side worked around it by
+     * calling the publish endpoint — which is idempotent by design, so it was
+     * safe, and it was still a POST on a read path with one edge it could not
+     * cover: a published salon whose services were all deleted answers 409 and
+     * hands back no handle.
+     *
+     * Null until the salon is published, and permanent from that moment
+     * (ADR-021: a rename retires a handle, nothing reassigns one).
+     */
+    handle: z.string().nullable(),
   })
   .describe('A business the caller is a member of.')
   .meta({ id: 'Business' });
