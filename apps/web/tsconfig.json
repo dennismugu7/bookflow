@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+
+    // ── THE SAME STRICTNESS AS apps/api, DELIBERATELY ────────────────────────
+    //
+    // Copied rather than shared through a base config, and that is a real
+    // trade-off: two files can drift. But the two projects compile under
+    // genuinely different assumptions — the API runs under Node's native type
+    // stripping (`erasableSyntaxOnly`, `allowImportingTsExtensions`), and this
+    // one is bundled by Vite and resolves without extensions. A shared base
+    // would carry those API-only settings into a project that must not have
+    // them, or would be so thin that it only held the strictness flags anyway.
+    //
+    // What matters is that the STRICTNESS matches, and it does. In particular
+    // `noUncheckedIndexedAccess` — this app indexes into arrays constantly (the
+    // date strip, the slot list, the day-of-week lookup) and it is exactly the
+    // flag that catches an off-by-one there rather than at runtime.
+    "strict": true,
+    "noImplicitAny": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "exactOptionalPropertyTypes": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"]
+}

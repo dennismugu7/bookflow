@@ -38,23 +38,32 @@ class AppConfig {
     );
   }
 
-  /// ══ THE CLIENT WEB APP DOES NOT EXIST YET, AND THIS SAYS SO ══════════════
+  /// ══ THE CLIENT WEB APP EXISTS NOW, AND THIS POINTS AT IT ═════════════════
   ///
-  /// ADR-001 builds it last, and `CLAUDE.md` forbids creating `apps/web/` until
-  /// the owner app can configure a real salon. So a booking link built from
-  /// this points nowhere — **on purpose, and visibly.**
+  /// **This was `https://bookflow-staging-web.invalid` until `apps/web` was
+  /// built.** `.invalid` is reserved by RFC 2606 and never resolves, which was
+  /// deliberate: while there was no site, an owner tapping their own booking
+  /// link got an immediate unambiguous failure rather than somebody else's
+  /// parked domain, and nobody could register it out from under us.
   ///
-  /// `.invalid` is reserved by RFC 2606 and is guaranteed never to resolve.
-  /// That is the whole reason it was chosen over a plausible-looking
-  /// placeholder: an owner who taps this link gets an immediate, unambiguous
-  /// failure rather than somebody else's parked domain, and nobody can register
-  /// it out from under us.
+  /// The comment above it promised "one constant to change when the web app
+  /// deploys". This is that change, and it is the whole of it — every booking
+  /// link in the app is built from this plus the salon's handle (ADR-021).
   ///
-  /// **One constant to change when the web app deploys**, and it is
-  /// overridable by `--dart-define=WEB_BASE_URL=...` in the meantime so a
-  /// staging build can point at a real host without a code change.
+  /// ── CONFIRM THIS AGAINST THE DEPLOYED ORIGIN BEFORE TRUSTING IT ─────────
+  ///
+  /// Render appends a suffix to a service's hostname when the name is not
+  /// globally unique — the staging API is `bookflow-api-staging-gabm`, not
+  /// `bookflow-api-staging`. **If the same happens to the web service, this
+  /// value is wrong and the link an owner shares 404s.** `docs/ENVIRONMENT.md`
+  /// carries that as an owed verification step with the command that settles
+  /// it.
+  ///
+  /// Still overridable by `--dart-define=WEB_BASE_URL=...`, which is how a
+  /// build points at a different host — or at a real production domain — with
+  /// no code change.
   static const String defaultWebBaseUrl =
-      'https://bookflow-staging-web.invalid';
+      'https://bookflow-staging-web.onrender.com';
 
   /// GoTrue's origin. Used by `supabase_flutter` for authentication ONLY —
   /// see `auth_gateway.dart` for why this is not also the API origin.

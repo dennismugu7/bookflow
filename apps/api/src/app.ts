@@ -1,3 +1,7 @@
+import fastifyCors, {
+  type FastifyCorsOptions,
+  type FastifyCorsOptionsDelegate,
+} from '@fastify/cors';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyRateLimit from '@fastify/rate-limit';
 import fastifySwagger from '@fastify/swagger';
@@ -164,6 +168,73 @@ export async function buildApp(
   // plugin throws a 429 into whatever error handler is installed — but the
   // handler is what makes the response RFC 9457, so the two belong together.
   await app.register(fastifyRateLimit, { global: false });
+
+  // ══ CORS, AND ONLY ON THE PUBLIC SURFACE ══════════════════════════════════
+  //
+  // `apps/web` is a static site on its own origin; the browser will not let it
+  // read a cross-origin response without these headers. Two decisions here, and
+  // both are the security-relevant half.
+  //
+  // ── ANY ORIGIN, FOR `/v1/public/*` AND NOTHING ELSE ──────────────────────
+  //
+  // A published salon page is public data by construction (ADR-004, ADR-020:
+  // the `business_public` allowlist projection). Restricting it to one origin
+  // would protect nothing — anyone can `curl` it — while breaking the salon's
+  // own page the day it is served from a custom domain.
+  //
+  // **Every other route stays CORS-closed**, which is not a formality. The
+  // authenticated surface is owner data, and CORS is what stops a page the
+  // owner happens to have open from reading it with their session. This API's
+  // tokens are Bearer rather than cookies, so the exposure is narrower than the
+  // classic CSRF case — and `origin: false` outside `/v1/public/` means no
+  // browser will make the attempt at all, rather than relying on that.
+  //
+  // ── THE CHECK IS ON THE PATH, WHICH `@fastify/cors` MAKES AWKWARD ────────
+  //
+  // The `origin` callback receives the origin, not the request. So the plugin
+  // is registered with a `hook: 'onRequest'` delegator: it is handed the
+  // request, decides from `req.url`, and returns `origin: false` for anything
+  // outside the public prefix. Written this way rather than registering the
+  // plugin twice under two prefixes, because a prefix registration would also
+  // have to duplicate the preflight handling.
+  const corsDelegate: FastifyCorsOptionsDelegate = () => {
+    return (
+      req: { url?: string },
+      callback: (error: Error | null, options: FastifyCorsOptions) => void,
+    ): void => {
+      // `req.url` carries the query string; the prefix test must not.
+      const path = (req.url ?? '').split('?')[0] ?? '';
+      const isPublic = path.startsWith('/v1/public/');
+
+      if (!isPublic) {
+        // No `access-control-allow-origin` header at all, which is what makes
+        // a browser refuse to hand the body to script.
+        callback(null, { origin: false });
+        return;
+      }
+
+      callback(null, {
+        origin: true,
+        // GET reads the salon and its availability; POST makes the booking.
+        // Nothing else on this surface exists, and listing only what exists
+        // means a future PATCH here has to be considered rather than inherited.
+        methods: ['GET', 'POST', 'OPTIONS'],
+        // `content-type` covers both the JSON reads and the multipart booking.
+        // **No `authorization`**: a public route never reads one, and allowing
+        // the header would invite a client to send a token to an endpoint that
+        // ignores it — which is how a token ends up in an access log it has no
+        // business being in.
+        allowedHeaders: ['content-type'],
+        // No credentials. There is no cookie or session on this surface, and
+        // `credentials: true` alongside a wildcard origin is the combination
+        // browsers refuse anyway.
+        credentials: false,
+        maxAge: 3600,
+      });
+    };
+  };
+
+  await app.register(fastifyCors, corsDelegate);
 
   // ── THE SIZE CAP LIVES HERE, AT THE STREAM ────────────────────────────────
   //

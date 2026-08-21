@@ -34,6 +34,47 @@ export default tseslint.config(
     },
   },
   {
+    // ── THE WEB APP, WITH THE SAME TYPE-AWARE RULES ─────────────────────────
+    //
+    // `projectService` resolves each file to whichever tsconfig includes it, so
+    // `apps/web/tsconfig.json` supplies the program here exactly as the API's
+    // does there. Listed separately rather than widening the block above
+    // because the globs differ — this project has `.tsx`.
+    files: ['apps/web/src/**/*.{ts,tsx}', 'apps/web/vite.config.ts'],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+      globals: {
+        // The browser globals this app actually uses. Declared explicitly for
+        // the reason the scripts block below gives: naming the handful in use
+        // beats pulling in `globals` for a list nobody reads, and an
+        // undeclared global is a typo the linter should catch.
+        document: 'readonly',
+        window: 'readonly',
+        fetch: 'readonly',
+        FormData: 'readonly',
+        File: 'readonly',
+        Response: 'readonly',
+        URLSearchParams: 'readonly',
+        IntersectionObserver: 'readonly',
+        HTMLElement: 'readonly',
+        HTMLInputElement: 'readonly',
+      },
+    },
+    rules: {
+      // React components are `PascalCase` functions returning JSX; the rule
+      // that flags a promise passed to a JSX attribute does not understand
+      // event handlers declared `async`, and every one of those here is
+      // deliberately fire-and-forget with its own catch.
+      '@typescript-eslint/no-misused-promises': [
+        'error',
+        { checksVoidReturn: { attributes: false } },
+      ],
+    },
+  },
+  {
     // Config files at the root are plain ESM and are not part of any tsconfig.
     files: ['*.js', '*.config.js', '*.config.ts', 'scripts/**/*.mjs'],
     ...tseslint.configs.disableTypeChecked,

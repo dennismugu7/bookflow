@@ -1,0 +1,783 @@
+/*
+ * Bookflow web — the whole stylesheet.
+ *
+ * ══ ONE FILE, AND NO UI FRAMEWORK ═══════════════════════════════════════════
+ *
+ * Plain CSS with custom properties. Every colour, radius and spacing value is a
+ * token declared once in `:root` and referenced by name — the same rule
+ * `apps/mobile` enforces with a test, held here by there being exactly one
+ * place a literal could go.
+ *
+ * The palette is deliberately NOT copied from the mobile app's `tokens.dart`.
+ * Those values are measured from the Generation A screenshots of the OWNER app
+ * (ADR-039); this is a different product surface with its own reference
+ * screenshots, and the web spec describes its own language — accent-bordered
+ * selection, pill CTAs, a price colour distinct from body text.
+ *
+ * ── MOBILE-FIRST, AND IT NEVER STOPS BEING SO ──────────────────────────────
+ *
+ * The spec targets "a max-width mobile viewport, ~420–480px, centered on larger
+ * screens". There is no desktop layout: this page is opened from a WhatsApp
+ * message on a phone. On a wide screen it is the same column, centred, which is
+ * the honest rendering rather than a second design nobody specified.
+ */
+
+:root {
+  /* Ink */
+  --ink: #1a1a1a;
+  --ink-muted: #6b7280;
+  --ink-faint: #9ca3af;
+  --ink-inverse: #ffffff;
+
+  /* Surfaces */
+  --surface: #ffffff;
+  --surface-sunken: #f4f5f7;
+  --surface-flow: #f7f8fa;
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+
+  /* Accent — selection borders, links, the active tab underline */
+  --accent: #0278ff;
+  --accent-soft: #e8f2ff;
+
+  /*
+   * Price gets its own treatment. The spec is explicit and repeats it on every
+   * screen: price "uses a distinct semantic 'price' color treatment
+   * differentiating it from the black name/gray duration text (a green-family
+   * accent)". It is the one value a visitor scans for.
+   */
+  --price: #1e9e5a;
+
+  --danger: #b3261e;
+
+  /* Radii */
+  --radius-card: 16px;
+  --radius-sheet: 28px;
+  --radius-input: 12px;
+  --radius-pill: 999px;
+
+  /* Spacing ramp */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-xxl: 48px;
+
+  /* The column. Everything is centred inside it. */
+  --content-width: 480px;
+
+  --shadow-cta: 0 6px 18px rgb(0 0 0 / 18%);
+  --shadow-bar: 0 -2px 12px rgb(0 0 0 / 8%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+/* The centred column every screen lives in. */
+.shell {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  min-height: 100dvh;
+  background: var(--surface);
+  position: relative;
+}
+
+.shell--flow {
+  background: var(--surface-flow);
+}
+
+.pad {
+  padding-inline: var(--space-lg);
+}
+
+/* ── Typography ──────────────────────────────────────────────────────────── */
+
+.page-title {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.section-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 var(--space-md);
+}
+
+.muted {
+  color: var(--ink-muted);
+}
+
+.price {
+  color: var(--price);
+  font-weight: 700;
+}
+
+.linkish {
+  color: var(--accent);
+  font-weight: 700;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+/* ── Hero ────────────────────────────────────────────────────────────────── */
+
+.hero {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: linear-gradient(140deg, #231973, #3d2c8f);
+  overflow: hidden;
+}
+
+.hero__track {
+  display: flex;
+  height: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.hero__track::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * The "peek" carousel the spec describes: each slide is slightly narrower than
+ * the viewport so the neighbours bleed in at the edges, which is the cue that
+ * there is more to swipe to. `scroll-snap-align: center` keeps the current one
+ * centred rather than left-aligned, which is what makes both edges peek.
+ */
+.hero__slide {
+  flex: 0 0 88%;
+  height: 100%;
+  scroll-snap-align: center;
+  padding: var(--space-sm);
+}
+
+.hero__slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-card);
+  display: block;
+}
+
+.hero__counter {
+  position: absolute;
+  right: var(--space-md);
+  bottom: var(--space-md);
+  background: rgb(0 0 0 / 55%);
+  color: var(--ink-inverse);
+  border-radius: var(--radius-pill);
+  padding: var(--space-xs) var(--space-md);
+  font-size: 14px;
+  backdrop-filter: blur(4px);
+}
+
+.hero__banner {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* The content sheet overlapping the hero — the spec's defining pattern. */
+.sheet {
+  position: relative;
+  margin-top: -28px;
+  background: var(--surface);
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  padding-top: var(--space-lg);
+}
+
+/* ── Anchor tabs ─────────────────────────────────────────────────────────── */
+
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  gap: var(--space-lg);
+  background: var(--surface);
+  padding: var(--space-md) var(--space-lg);
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  background: none;
+  border: 0;
+  padding: 0 0 var(--space-sm);
+  color: var(--ink-muted);
+  font-weight: 400;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+}
+
+/* The underline is scoped to the label's own width, per the spec. */
+.tab[aria-current='true'] {
+  color: var(--ink);
+  font-weight: 700;
+  border-bottom-color: var(--ink);
+}
+
+/* ── Salon page blocks ───────────────────────────────────────────────────── */
+
+.salon-name {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 0;
+}
+
+/*
+ * The spec asks for "an italic script/handwriting-style font ... a distinct font
+ * family from the rest of the UI". No webfont is loaded — one more network
+ * request before first paint, on a page opened over mobile data, for a
+ * decorative face. Italic in a serif stack carries the same "distinct from
+ * everything else" intent at no cost. Recorded as a deliberate departure.
+ */
+.salon-tagline {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 22px;
+  color: var(--ink);
+  margin: var(--space-sm) 0 0;
+}
+
+.salon-category {
+  color: var(--ink-muted);
+  font-size: 18px;
+  margin: var(--space-sm) 0 0;
+}
+
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+  font-size: 15px;
+}
+
+.status-line__word {
+  font-weight: 700;
+}
+
+.status-line__word--open {
+  color: var(--price);
+}
+
+.status-line__word--closed {
+  color: var(--ink-muted);
+}
+
+.divider {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: var(--space-xl) 0;
+}
+
+.about__body {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/*
+ * Four lines, then "Read more". `-webkit-line-clamp` is the only cross-browser
+ * way to clamp by LINE rather than by height, and it is supported everywhere
+ * this app runs despite the vendor prefix.
+ */
+.about__body--clamped {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  overflow: hidden;
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: var(--space-md);
+}
+
+.card + .card {
+  margin-top: var(--space-md);
+}
+
+/*
+ * The selection language the spec establishes once and reuses on every step: a
+ * bold accent border round the whole card. Two pixels rather than one so it
+ * reads as chosen rather than as hovered, and an inset shadow instead of a
+ * width change so the card does not shift when it is picked.
+ */
+.card--selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.service {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+}
+
+.service__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.service__name {
+  font-weight: 700;
+  margin: 0;
+}
+
+.service__meta {
+  color: var(--ink-muted);
+  font-size: 14px;
+  margin: var(--space-xs) 0;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+.btn {
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  padding: 12px var(--space-lg);
+  font-weight: 700;
+}
+
+.btn--solid {
+  background: var(--ink);
+  color: var(--ink-inverse);
+  box-shadow: var(--shadow-cta);
+}
+
+.btn--solid:disabled {
+  background: var(--border-strong);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.btn--outline {
+  background: transparent;
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+
+.btn--block {
+  display: block;
+  width: 100%;
+}
+
+.btn--cta {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* The +/check control on a selectable card. One control, two states. */
+.pick {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+.pick--on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink-inverse);
+}
+
+/* ── Team ────────────────────────────────────────────────────────────────── */
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+}
+
+.team-member {
+  text-align: center;
+  min-width: 0;
+}
+
+.avatar {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+  background: var(--surface-sunken);
+}
+
+.avatar--initials {
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 22px;
+}
+
+.team-member__name {
+  font-weight: 700;
+  font-size: 14px;
+  margin: var(--space-sm) 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-member__role {
+  color: var(--ink-muted);
+  font-size: 13px;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Portfolio ───────────────────────────────────────────────────────────── */
+
+.portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-xs);
+}
+
+.portfolio-grid button {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.portfolio-grid img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-input);
+  display: block;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgb(0 0 0 / 92%);
+  display: grid;
+  place-items: center;
+  padding: var(--space-lg);
+}
+
+.lightbox img {
+  max-width: 100%;
+  max-height: 80dvh;
+  object-fit: contain;
+}
+
+.lightbox__close {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  background: none;
+  border: 0;
+  color: var(--ink-inverse);
+  font-size: 28px;
+  line-height: 1;
+}
+
+.lightbox__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgb(255 255 255 / 15%);
+  border: 0;
+  color: var(--ink-inverse);
+  font-size: 28px;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-pill);
+}
+
+/* ── Opening hours ───────────────────────────────────────────────────────── */
+
+.hours-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) 0;
+}
+
+.hours-row__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--price);
+  flex: 0 0 auto;
+}
+
+.hours-row__dot--closed {
+  background: var(--border-strong);
+}
+
+.hours-row__day {
+  flex: 1;
+}
+
+.hours-row--today {
+  font-weight: 700;
+}
+
+.hours-row--closed {
+  color: var(--ink-faint);
+}
+
+/* ── Sticky footers ──────────────────────────────────────────────────────── */
+
+/*
+ * The spec flags this as a decision and recommends it: the BOOK NOW block is
+ * "persistent" and is "the primary conversion action", so it is fixed rather
+ * than inline at the foot of a long scroll.
+ *
+ * It is positioned inside the centred column rather than across the viewport,
+ * so on a wide screen it sits under the content instead of spanning the page.
+ */
+.sticky-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: var(--shadow-bar);
+  padding: var(--space-md) var(--space-lg);
+  padding-bottom: calc(var(--space-md) + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.sticky-footer__text {
+  flex: 1;
+  min-width: 0;
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.summary-bar__from {
+  font-size: 14px;
+}
+
+.summary-bar__meta {
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+/* ── Booking flow ────────────────────────────────────────────────────────── */
+
+.flow-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+}
+
+.flow-bar button {
+  background: none;
+  border: 0;
+  font-size: 22px;
+  line-height: 1;
+  padding: var(--space-sm);
+  color: var(--ink);
+}
+
+.date-strip {
+  display: flex;
+  gap: var(--space-sm);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  padding-bottom: var(--space-sm);
+  scrollbar-width: none;
+}
+
+.date-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.date-card {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  width: 72px;
+  border-radius: var(--radius-input);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: var(--space-sm) var(--space-xs);
+  text-align: center;
+  color: var(--ink);
+}
+
+.date-card--selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink-inverse);
+}
+
+.date-card__weekday,
+.date-card__month {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.date-card--selected .date-card__weekday,
+.date-card--selected .date-card__month {
+  color: var(--ink-inverse);
+}
+
+.date-card__day {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.slot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  padding: var(--space-md);
+  color: var(--ink);
+}
+
+.slot-row + .slot-row {
+  margin-top: var(--space-sm);
+}
+
+.slot-row--selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.slot-row__time {
+  font-weight: 700;
+}
+
+.review-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.review-total {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.field {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-input);
+  padding: 14px var(--space-md);
+  font: inherit;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.field + .field {
+  margin-top: var(--space-md);
+}
+
+.field:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.error-text {
+  color: var(--danger);
+  font-size: 14px;
+}
+
+.center {
+  text-align: center;
+}
+
+.stack > * + * {
+  margin-top: var(--space-md);
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  margin: var(--space-xxl) auto;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Motion is decoration here; the spinner is the only thing that moves. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 3s;
+  }
+}
