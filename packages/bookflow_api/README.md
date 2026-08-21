@@ -68,6 +68,7 @@ Class | Method | HTTP request | Description
 [*AuthApi*](doc/AuthApi.md) | [**signUp**](doc/AuthApi.md#signup) | **POST** /v1/auth/signup | Create an owner account
 [*BookingsApi*](doc/BookingsApi.md) | [**cancelBooking**](doc/BookingsApi.md#cancelbooking) | **POST** /v1/me/business/bookings/{bookingId}/cancel | Cancel a booking
 [*BookingsApi*](doc/BookingsApi.md) | [**confirmBooking**](doc/BookingsApi.md#confirmbooking) | **POST** /v1/me/business/bookings/{bookingId}/confirm | Confirm a booking
+[*BookingsApi*](doc/BookingsApi.md) | [**getBookingPaymentProof**](doc/BookingsApi.md#getbookingpaymentproof) | **GET** /v1/me/business/bookings/{bookingId}/payment-proof | A short-lived link to a booking’s payment proof
 [*BookingsApi*](doc/BookingsApi.md) | [**listMyBookings**](doc/BookingsApi.md#listmybookings) | **GET** /v1/me/business/bookings | The salon&#39;s bookings
 [*BookingsApi*](doc/BookingsApi.md) | [**listMyContacts**](doc/BookingsApi.md#listmycontacts) | **GET** /v1/me/business/contacts | The salon&#39;s clients
 [*BookingsApi*](doc/BookingsApi.md) | [**reinstateBooking**](doc/BookingsApi.md#reinstatebooking) | **POST** /v1/me/business/bookings/{bookingId}/reinstate | Reinstate a booking
@@ -118,6 +119,8 @@ Class | Method | HTTP request | Description
  - [OpeningHoursEntryInput](doc/OpeningHoursEntryInput.md)
  - [OwnerBooking](doc/OwnerBooking.md)
  - [OwnerBookingInput](doc/OwnerBookingInput.md)
+ - [PaymentProof](doc/PaymentProof.md)
+ - [PaymentProofInput](doc/PaymentProofInput.md)
  - [PortfolioImage](doc/PortfolioImage.md)
  - [PortfolioImageInput](doc/PortfolioImageInput.md)
  - [Profile](doc/Profile.md)

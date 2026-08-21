@@ -34,6 +34,8 @@ import 'package:bookflow_api/src/model/opening_hours_entry.dart';
 import 'package:bookflow_api/src/model/opening_hours_entry_input.dart';
 import 'package:bookflow_api/src/model/owner_booking.dart';
 import 'package:bookflow_api/src/model/owner_booking_input.dart';
+import 'package:bookflow_api/src/model/payment_proof.dart';
+import 'package:bookflow_api/src/model/payment_proof_input.dart';
 import 'package:bookflow_api/src/model/portfolio_image.dart';
 import 'package:bookflow_api/src/model/portfolio_image_input.dart';
 import 'package:bookflow_api/src/model/profile.dart';
@@ -90,6 +92,8 @@ part 'serializers.g.dart';
   OpeningHoursEntryInput,
   OwnerBooking,
   OwnerBookingInput,
+  PaymentProof,
+  PaymentProofInput,
   PortfolioImage,
   PortfolioImageInput,
   Profile,

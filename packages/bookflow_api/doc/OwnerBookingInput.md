@@ -20,7 +20,7 @@ Name | Type | Description | Notes
 **clientPhone** | **String** |  | 
 **startsAt** | **String** |  | 
 **status** | **String** |  | 
-**paymentProofUrl** | **String** |  | 
+**hasPaymentProof** | **bool** |  | 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

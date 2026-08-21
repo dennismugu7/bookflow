@@ -24,6 +24,15 @@ void main() {
       // TODO
     });
 
+    // A short-lived link to a booking’s payment proof
+    //
+    // Returns a signed URL valid for about five minutes. The object lives in a PRIVATE bucket and is unreachable any other way (ADR-011) — the booking list carries only hasPaymentProof. Answers 404 for a booking that is not this owner’s, does not exist, has no proof, or whose object is missing: the four are deliberately indistinguishable, since a caller who may not read the proof may not learn whether there is one. Do not cache the URL; request another.
+    //
+    //Future<PaymentProof> getBookingPaymentProof(String bookingId) async
+    test('test getBookingPaymentProof', () async {
+      // TODO
+    });
+
     // The salon's bookings
     //
     // Newest start time first, optionally filtered by status. Carries the snapshot and the client’s details, which is what the salon needs to serve the appointment.

@@ -211,7 +211,8 @@ export async function insertBooking(
     readonly clientEmail: string;
     readonly clientPhone: string;
     readonly startsAt: string;
-    readonly paymentProofUrl: string | undefined;
+    /** An object key in the private bucket. Never a URL — see the migration. */
+    readonly paymentProofKey: string | undefined;
   },
 ): Promise<InsertedBookingRow | undefined> {
   const result = await sql<InsertedBookingRow>`
@@ -219,7 +220,7 @@ export async function insertBooking(
       business_id, service_id, team_member_id,
       service_name, duration_minutes, price_kes,
       client_name, client_email, client_phone,
-      starts_at, ends_at, payment_proof_url
+      starts_at, ends_at, payment_proof_key
     ) values (
       ${input.businessId}::uuid,
       ${input.serviceId}::uuid,
@@ -236,7 +237,7 @@ export async function insertBooking(
       -- future reader who deletes the trigger gets a zero-length range rather
       -- than a null-constraint violation they might "fix" by widening it.
       ${input.startsAt}::timestamptz,
-      ${input.paymentProofUrl ?? null}::text
+      ${input.paymentProofKey ?? null}::text
     )
     returning
       id,
@@ -276,7 +277,7 @@ export interface OwnerBookingRow {
   readonly clientPhone: string;
   readonly startsAt: string;
   readonly status: BookingStatus;
-  readonly paymentProofUrl: string | null;
+  readonly hasPaymentProof: boolean;
 }
 
 const OWNER_COLUMNS = sql`
@@ -292,7 +293,16 @@ const OWNER_COLUMNS = sql`
   b.client_phone as "clientPhone",
   to_char(b.starts_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as "startsAt",
   b.status,
-  b.payment_proof_url as "paymentProofUrl"
+  -- ── THE KEY IS REDUCED TO A BOOLEAN *IN SQL*, WHICH IS THE POINT ──────────
+  --
+  -- Not selected and mapped in TypeScript. If the column travelled as far as a
+  -- row object, the next person to add a field to OwnerBookingRow would find it
+  -- sitting there looking harmless — and a private object key in a response is
+  -- an information leak even though it is not a URL, because it is the exact
+  -- string the signing endpoint takes.
+  --
+  -- Here there is nothing to leak: the value never leaves PostgreSQL.
+  (b.payment_proof_key is not null) as "hasPaymentProof"
 `;
 
 export async function listBookings(
@@ -323,6 +333,41 @@ export async function findBookingStatus(
 ): Promise<{ readonly status: BookingStatus } | undefined> {
   const result = await sql<{ status: BookingStatus }>`
     select status from public.bookings
+     where id = ${bookingId}::uuid
+       and business_id = ${ownedBusinessOf(scope.userId)}
+  `.execute(executor);
+
+  return result.rows[0];
+}
+
+/**
+ * The private object key for one booking's payment proof.
+ *
+ * ══ THE ONLY READ THAT RETURNS THE KEY, AND IT IS SCOPED LIKE EVERY OTHER ════
+ *
+ * **DO-NOT-VIBE: the payment-proof access path (`CLAUDE.md` §6).**
+ *
+ * `ownedBusinessOf(scope.userId)` is in the `where`, not in a check around it —
+ * so a booking id belonging to another salon matches no row and the caller
+ * learns nothing about whether it exists. That is the same conflation
+ * `findBusinessForUser` makes and for the same reason: a distinguishable
+ * response turns a booking id into an oracle.
+ *
+ * **Two absences are returned separately and they are not the same thing.**
+ * `undefined` means no such booking FOR THIS OWNER. A row with a null key means
+ * the booking is theirs and simply has no proof attached. The route answers 404
+ * to both — deliberately identical to the client — but the service needs to tell
+ * them apart to log honestly, and folding them here would throw that away at the
+ * only point it is known.
+ */
+export async function findPaymentProofKey(
+  executor: Executor,
+  scope: OwnerScope,
+  bookingId: string,
+): Promise<{ readonly key: string | null } | undefined> {
+  const result = await sql<{ key: string | null }>`
+    select payment_proof_key as key
+      from public.bookings
      where id = ${bookingId}::uuid
        and business_id = ${ownedBusinessOf(scope.userId)}
   `.execute(executor);

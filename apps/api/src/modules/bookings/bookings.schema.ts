@@ -114,15 +114,42 @@ export const ownerBookingSchema = z
     startsAt: z.string(),
     status: z.enum(bookingStatuses),
     /**
-     * ADR-011: the object is in the PRIVATE bucket and this value confers no
-     * access. Serving it needs an authorizing endpoint returning a short-lived
-     * signed URL, which does not exist yet — so a client that renders this as
-     * an `<img src>` will get nothing.
+     * ── A BOOLEAN, WHERE THERE USED TO BE A URL ─────────────────────────────
+     *
+     * `paymentProofUrl` was here and is gone. It pointed into the PUBLIC bucket,
+     * which meant a client's financial document was permanently readable by
+     * anyone who ever saw the string — in a log, a screenshot, a database dump.
+     *
+     * **The list has no business carrying an address for it.** What a diary
+     * needs to know is whether there is something to look at, so the owner's UI
+     * can offer the link; the address is minted on demand by
+     * `GET /v1/me/business/bookings/{id}/payment-proof`, expires in five
+     * minutes, and exists only for the request that asked (ADR-011).
+     *
+     * The stored value is now an object KEY and never leaves the server.
      */
-    paymentProofUrl: z.string().nullable(),
+    hasPaymentProof: z.boolean(),
   })
   .describe('A booking, as the salon owner sees it.')
   .meta({ id: 'OwnerBooking' });
+
+/**
+ * A short-lived link to one booking's payment proof.
+ *
+ * An object rather than a bare string, so the response can grow an expiry or a
+ * content type without becoming a different shape — and because a JSON string
+ * at the top level is a thing clients handle inconsistently.
+ */
+export const paymentProofSchema = z
+  .object({
+    url: z
+      .string()
+      .describe(
+        'A signed URL valid for about five minutes. Do not store it — request another.',
+      ),
+  })
+  .describe('Temporary access to a booking’s payment proof.')
+  .meta({ id: 'PaymentProof' });
 
 export const ownerBookingsSchema = z
   .array(ownerBookingSchema)

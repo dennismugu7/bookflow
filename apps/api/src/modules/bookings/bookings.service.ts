@@ -1,6 +1,7 @@
 import type { Executor } from '../../platform/db.ts';
 import { ProblemError } from '../../platform/problem.ts';
 import { MailError, type Mail, type Mailer } from '../../platform/resend.ts';
+import { StorageError, type StorageClient } from '../../platform/storage.ts';
 import type { OwnerScope } from '../scope.ts';
 import {
   availableSlots,
@@ -18,6 +19,7 @@ import {
   findBookingStatus,
   findOccupiedRanges,
   findOpeningWindows,
+  findPaymentProofKey,
   findPublishedSalonId,
   findServiceForBusiness,
   insertBooking,
@@ -40,6 +42,8 @@ import {
 
 export interface BookingLogger {
   warn(payload: Record<string, unknown>, message: string): void;
+  /** For the proof-miss events, which are refusals rather than faults. */
+  info(payload: Record<string, unknown>, message: string): void;
 }
 
 /**
@@ -223,7 +227,12 @@ export async function createBooking(
     readonly clientEmail: string;
     readonly clientPhone: string;
     readonly startsAt: string;
-    readonly paymentProofUrl: string | undefined;
+    /**
+     * A key in the PRIVATE bucket, not a URL. The route uploads before calling
+     * this, so by the time it arrives the object exists and this is its address
+     * — an address that grants nothing without the signing endpoint.
+     */
+    readonly paymentProofKey: string | undefined;
   },
 ): Promise<InsertedBookingRow> {
   const salon = await requireSalon(db, input.handle);
@@ -258,7 +267,7 @@ export async function createBooking(
       clientEmail: input.clientEmail,
       clientPhone: input.clientPhone,
       startsAt: input.startsAt,
-      paymentProofUrl: input.paymentProofUrl,
+      paymentProofKey: input.paymentProofKey,
     });
   } catch (error) {
     if (isSlotTaken(error)) {
@@ -286,6 +295,95 @@ export async function getContacts(
   scope: OwnerScope,
 ): Promise<ContactRow[]> {
   return await listContacts(db, scope);
+}
+
+/**
+ * A short-lived link to one booking's payment proof.
+ *
+ * ══ DO-NOT-VIBE: THE PAYMENT-PROOF ACCESS PATH (`CLAUDE.md` §6) ══════════════
+ *
+ * This is the only way the object is reachable, and every part of that sentence
+ * is load-bearing.
+ *
+ * ── THE KEY COMES FROM A SCOPED READ, NEVER FROM THE REQUEST ────────────────
+ *
+ * The caller supplies a BOOKING ID and never a key. If the endpoint took a key
+ * it would be a signing oracle: any authenticated owner could mint a URL for any
+ * object in the bucket, including other salons' clients' documents. The booking
+ * id is resolved through `user → membership → business` and the key is read from
+ * the row that traversal reached.
+ *
+ * ── THREE FAILURES, ONE RESPONSE ───────────────────────────────────────────
+ *
+ * Not this owner's booking, no such booking, and a booking with no proof all
+ * answer **404 `not-found`, identically**. Separating them would say whether a
+ * booking id exists and whether it has a proof, to a caller who by construction
+ * has no business knowing either. The three ARE distinguished in the log, where
+ * they cost the caller nothing and tell an operator whether something is wrong.
+ *
+ * ── A MISSING OBJECT IS ALSO A 404, AND THAT IS NOT DEFENSIVE ──────────────
+ *
+ * A row can outlive its object. Every proof written before this feature landed
+ * is exactly that case: its key is a stale public URL that names nothing in the
+ * private bucket. Answering 404 says "the proof is not there", which is true.
+ */
+export async function getPaymentProof(
+  deps: {
+    readonly db: Executor;
+    readonly storage: StorageClient;
+    readonly log: BookingLogger;
+  },
+  scope: OwnerScope,
+  bookingId: string,
+): Promise<{ readonly url: string }> {
+  const { db, storage, log } = deps;
+
+  const row = await findPaymentProofKey(db, scope, bookingId);
+
+  if (row === undefined) {
+    log.info(
+      { event: 'booking.proof_miss', outcome: 'no-such-booking', bookingId },
+      'payment proof: no booking for this owner',
+    );
+    throw new ProblemError('not-found', 'no such booking for this user');
+  }
+
+  if (row.key === null) {
+    log.info(
+      { event: 'booking.proof_miss', outcome: 'no-proof', bookingId },
+      'payment proof: the booking has none',
+    );
+    throw new ProblemError('not-found', 'this booking has no payment proof');
+  }
+
+  try {
+    return await storage.signedUrl(row.key);
+  } catch (error) {
+    if (!(error instanceof StorageError)) throw error;
+
+    if (error.failure === 'not-found') {
+      // The row points at an object that is not there. Logged at WARN rather
+      // than info, because unlike the two above this is an inconsistency
+      // between the database and storage rather than an ordinary miss.
+      log.warn(
+        { event: 'booking.proof_miss', outcome: 'object-gone', bookingId },
+        'payment proof: the row has a key but storage does not have the object',
+      );
+      throw new ProblemError('not-found', 'the payment proof is not available');
+    }
+
+    // The provider's own message never travels to the client — it can name
+    // internal paths and, for a signing failure, occasionally the request that
+    // carried the key.
+    log.warn(
+      { failure: error.failure, detail: error.message, bookingId },
+      'payment proof: storage could not sign',
+    );
+    throw new ProblemError(
+      'storage-unavailable',
+      'the payment proof could not be prepared',
+    );
+  }
 }
 
 /** Which statuses each action may move a booking out of. */

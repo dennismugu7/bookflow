@@ -248,15 +248,8 @@
               "cancelled"
             ]
           },
-          "paymentProofUrl": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "hasPaymentProof": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -272,9 +265,22 @@
           "clientPhone",
           "startsAt",
           "status",
-          "paymentProofUrl"
+          "hasPaymentProof"
         ],
         "description": "A booking, as the salon owner sees it."
+      },
+      "PaymentProofInput": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "A signed URL valid for about five minutes. Do not store it — request another."
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "description": "Temporary access to a booking’s payment proof."
       },
       "ContactInput": {
         "type": "object",
@@ -1256,15 +1262,8 @@
               "cancelled"
             ]
           },
-          "paymentProofUrl": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "hasPaymentProof": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -1280,10 +1279,24 @@
           "clientPhone",
           "startsAt",
           "status",
-          "paymentProofUrl"
+          "hasPaymentProof"
         ],
         "additionalProperties": false,
         "description": "A booking, as the salon owner sees it."
+      },
+      "PaymentProof": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "A signed URL valid for about five minutes. Do not store it — request another."
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "additionalProperties": false,
+        "description": "Temporary access to a booking’s payment proof."
       },
       "Contact": {
         "type": "object",
@@ -2890,6 +2903,40 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OwnerBooking"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/business/bookings/{bookingId}/payment-proof": {
+      "get": {
+        "operationId": "getBookingPaymentProof",
+        "summary": "A short-lived link to a booking’s payment proof",
+        "tags": [
+          "bookings"
+        ],
+        "description": "Returns a signed URL valid for about five minutes. The object lives in a PRIVATE bucket and is unreachable any other way (ADR-011) — the booking list carries only hasPaymentProof. Answers 404 for a booking that is not this owner’s, does not exist, has no proof, or whose object is missing: the four are deliberately indistinguishable, since a caller who may not read the proof may not learn whether there is one. Do not cache the URL; request another.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "bookingId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentProof"
                 }
               }
             }

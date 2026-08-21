@@ -67,8 +67,8 @@ void main() {
       // TODO
     });
 
-    // String paymentProofUrl
-    test('to test the property `paymentProofUrl`', () async {
+    // bool hasPaymentProof
+    test('to test the property `hasPaymentProof`', () async {
       // TODO
     });
   });
