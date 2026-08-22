@@ -1,3 +1,4 @@
+import 'package:bookflow/theme/system_chrome.dart';
 import 'package:bookflow/theme/tokens.dart';
 import 'package:flutter/material.dart';
 
@@ -148,6 +149,21 @@ abstract final class BookflowTheme {
         elevation: 0,
         centerTitle: true,
         titleTextStyle: textTheme.titleLarge,
+        // ── THE LIGHT CHROME, FOR EVERY SCREEN THAT HAS AN APP BAR ──────────
+        //
+        // Material applies this per-AppBar, which makes it scoped and
+        // reverting in the same way `AnnotatedRegion` is — and unlike a
+        // `SystemChrome.setSystemUIOverlayStyle` call, which is global and does
+        // not undo itself when a screen is popped.
+        //
+        // Declared here rather than repeated on the fifteen screens that would
+        // otherwise all say the same thing: it is the DEFAULT, and the two
+        // screens that differ are the ones that annotate. Those two —
+        // `startup_screen` and `signed_out_screen` — are full-bleed gradient
+        // and have no AppBar to carry this, which is why they use
+        // `AnnotatedRegion` explicitly. `unavailable_screen` does the same for
+        // the light style, being the one ordinary screen with no AppBar.
+        systemOverlayStyle: BookflowSystemChrome.light,
       ),
     );
   }

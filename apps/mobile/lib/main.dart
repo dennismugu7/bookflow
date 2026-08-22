@@ -3,6 +3,7 @@ import 'package:bookflow/platform/auth_gateway.dart';
 import 'package:bookflow/platform/config.dart';
 import 'package:bookflow/platform/providers.dart';
 import 'package:bookflow/platform/secure_session_store.dart';
+import 'package:bookflow/platform/warmup.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -42,6 +43,18 @@ Future<void> main() async {
     // refresh token in SharedPreferences, which is not encrypted.
     authOptions: FlutterAuthClientOptions(localStorage: SecureSessionStore()),
   );
+
+  // ── FIRED HERE, AWAITED NOWHERE ──────────────────────────────────────────
+  //
+  // The staging API sleeps on Render's free plan and takes ~23s to wake. Doing
+  // this at launch means the wake overlaps with the welcome screen instead of
+  // with somebody's first sign-up. See `warmup.dart` for the whole contract —
+  // the short version is that nothing waits for it and every failure is
+  // ignored, so it cannot delay the first frame or fail the app.
+  //
+  // BEFORE `runApp`, so the request is in flight while the engine builds the
+  // first frame rather than after it.
+  startApiWarmUp(config);
 
   runApp(
     ProviderScope(

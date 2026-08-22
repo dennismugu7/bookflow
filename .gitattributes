@@ -19,6 +19,11 @@
 *.tsx       text eol=lf
 *.css       text eol=lf
 *.html      text eol=lf
+# Android resources, written by flutter_launcher_icons and
+# flutter_native_splash. They emit LF; a CRLF working copy would make every
+# regeneration show a whole-file diff that is nothing but line endings, which
+# is exactly how a real change gets lost in the noise.
+*.xml       text eol=lf
 *.js        text eol=lf
 *.mjs       text eol=lf
 *.cjs       text eol=lf

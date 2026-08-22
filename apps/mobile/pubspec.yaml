@@ -78,6 +78,17 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
 
+  # ── BUILD-TIME GENERATORS, NOT RUNTIME DEPENDENCIES ──────────────────────
+  #
+  # Both write native project files (Android resources, manifests, styles) and
+  # are never imported by Dart. `dev_dependencies` is where they belong: they
+  # must not ship in the app, and nothing at runtime can call them.
+  #
+  # Their OUTPUT is committed — see the `flutter_launcher_icons` and
+  # `flutter_native_splash` sections at the foot of this file for why.
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.6
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -119,3 +130,69 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# ══ LAUNCHER ICON ═══════════════════════════════════════════════════════════
+#
+# ANDROID ONLY. ADR-043 removed the iOS build entirely — there is no `ios/`
+# target to generate into, and asking for one produces a directory nobody
+# builds.
+#
+# ── ADAPTIVE, WITH A LEGACY FALLBACK ───────────────────────────────────────
+#
+# Android 8+ composes an adaptive icon from a foreground layer over a
+# background, and masks the result to whatever shape the launcher uses — circle,
+# squircle, teardrop. The foreground art must therefore survive being cropped:
+# `adaptive_foreground_monogram.png` is the monogram with the margin that
+# expects, which is why it is a different file from the square icon below.
+#
+# `image_path` is that square icon and is the fallback for launchers and Android
+# versions that do not do adaptive. Dropping it would leave those with nothing.
+#
+# The background is flat #372D87 rather than the hero gradient: an adaptive
+# background is a single drawable that the launcher may parallax independently
+# of the foreground, and a gradient sliding under a static monogram looks like a
+# rendering fault.
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/branding/icon_monogram_1024.png
+  adaptive_icon_background: "#372D87"
+  adaptive_icon_foreground: assets/branding/adaptive_foreground_monogram.png
+
+# ══ NATIVE SPLASH ═══════════════════════════════════════════════════════════
+#
+# ══ IT EXISTS TO MAKE THE HANDOVER INVISIBLE ════════════════════════════════
+#
+# `startup_screen.dart` is a Dart splash and CANNOT appear until the Flutter
+# engine has booted. Before this, the gap was filled by the platform default —
+# a white screen. So a cold launch was: white, then a sudden indigo gradient.
+# That flash reads as a bug in the app rather than as the engine starting.
+#
+# The native splash paints #372D87 with the same mark, so the two are visually
+# continuous and the moment the engine takes over is not a visible event.
+#
+# ── WHY A FLAT COLOUR WHERE THE DART SPLASH HAS A GRADIENT ─────────────────
+#
+# A native splash background is a single colour on Android; it cannot be a
+# gradient without shipping a drawable that then has to be kept in step with
+# `BookflowTheme.heroGradient` by hand. #372D87 sits between the gradient's two
+# stops (#231973 → #3D2C8F), so the transition is a shift in shading rather than
+# a change of colour.
+#
+# ── ANDROID 12 NEEDS ITS OWN ENTRY, AND IGNORING IT IS VISIBLE ─────────────
+#
+# Android 12 replaced the old splash mechanism with a system one that masks the
+# icon into a circle and draws it at a fixed size. A logo drawn for the old
+# behaviour gets cropped by that mask, which is why
+# `splash_android12_logo.png` is a separate, more generously-margined file. The
+# background is repeated here because the android_12 block does not inherit it.
+flutter_native_splash:
+  color: "#372D87"
+  image: assets/branding/splash_logo.png
+  android: true
+  ios: false
+  web: false
+
+  android_12:
+    color: "#372D87"
+    image: assets/branding/splash_android12_logo.png
