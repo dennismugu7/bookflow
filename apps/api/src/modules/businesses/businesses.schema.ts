@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { isSafeHttpUrl } from '../../platform/url.ts';
+
 /**
  * The business contract. One declaration, validated at runtime and emitted into
  * the OpenAPI document the Dart client is generated from (ADR-014, ADR-025).
@@ -75,29 +77,37 @@ const MAPS_URL_MAX_LENGTH = 2000;
 /**
  * A map link, or `''` to clear it.
  *
- * ── IT WAS `z.url()`, AND THE EMPTY CASE IS WHY IT IS NOT ANY MORE ──────────
+ * ── THE SCHEME IS CHECKED, WHICH `z.url()` DOES NOT DO ─────────────────────
  *
- * A URL and nothing more, because the link is rendered by the client web app
- * and parsed by nothing — validating it against one provider's shape would
- * reject a perfectly good link to another. That reasoning is unchanged.
+ * This refinement used to be `z.url().safeParse(value).success`, and **that
+ * accepted `javascript:alert(1)`** — a syntactically valid URL, stored, and
+ * later rendered by the client web app as the "Get directions" link. Not
+ * exploitable today only because React refuses such an href, which is precisely
+ * the "the library handles it" reasoning `jwt.ts` refuses.
  *
- * What changed is that **the form can now clear a field**, and `''` is the clear
- * signal every field carries (see `renameBusinessRequestSchema`). `z.url()`
- * rejects `''`, so the one field with real validation would have been the one
- * field that could not be cleared — an owner who deleted a wrong link would get
- * a 400 and no way to remove it.
+ * `isSafeHttpUrl` in `platform/url.ts` is the allowlist, shared with
+ * `team.schema.ts`'s photo URL. See it for why an allowlist rather than a
+ * denylist.
  *
- * Written as a refinement rather than `z.union([z.url(), z.literal('')])`
- * deliberately: a union emits `anyOf` into the spec, and openapi-generator turns
- * `anyOf` into a wrapper CLASS per field. Five of them appeared in the Dart
- * client the first time this was tried. A refined string stays a `String?`.
+ * ── THE EMPTY CASE, WHICH IS WHY THIS IS STILL A REFINEMENT ────────────────
+ *
+ * `''` is the clear signal every field on this form carries (see
+ * `renameBusinessRequestSchema`), and a URL validator rejects it — so the one
+ * field with real validation would otherwise be the one field that could not be
+ * cleared. An owner who pasted a wrong link could replace it and never remove
+ * it.
+ *
+ * Written as a refinement rather than `z.union([...])` deliberately: a union
+ * emits `anyOf` into the spec, and openapi-generator turns `anyOf` into a
+ * wrapper CLASS per field. Five appeared in the Dart client the first time this
+ * was tried. A refined string stays a `String?`.
  */
 const mapsUrl = z
   .string()
   .trim()
   .max(MAPS_URL_MAX_LENGTH)
-  .refine((value) => value === '' || z.url().safeParse(value).success, {
-    message: 'must be a URL, or empty to clear it',
+  .refine((value) => value === '' || isSafeHttpUrl(value), {
+    message: 'must be an http or https URL, or empty to clear it',
   });
 
 /**

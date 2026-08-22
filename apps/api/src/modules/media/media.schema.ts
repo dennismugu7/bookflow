@@ -59,6 +59,78 @@ export const ACCEPTED_IMAGE_TYPES: ReadonlyMap<string, string> = new Map([
 ]);
 
 /**
+ * What the bytes actually are, or `undefined` for anything else.
+ *
+ * ══ THE CLIENT'S `Content-Type` IS A CLAIM, NOT A FACT ══════════════════════
+ *
+ * Both upload paths used to take the stored extension straight from
+ * `part.mimetype` — a header the caller writes. So a caller could send
+ * `content-type: image/png` with an HTML document, an SVG carrying a script, or
+ * a polyglot, and the object would be stored as `.png` and served from the
+ * public bucket with whatever content type Storage inferred from the extension
+ * we chose on their say-so.
+ *
+ * **This is the same instinct as the `Content-Length` note in `app.ts`**, one
+ * field over: the size cap lives at the stream because "checking
+ * `Content-Length` instead would trust a header the client writes". The type
+ * was still being trusted from exactly such a header.
+ *
+ * ── THE EXTENSION IS DERIVED FROM WHAT WAS FOUND, NOT WHAT WAS CLAIMED ─────
+ *
+ * That is the half that matters. Verifying the magic bytes and then still
+ * storing `part.mimetype`'s extension would leave the mismatch in place; the
+ * point is that the two can disagree, and the bytes win.
+ *
+ * ── WHY A PREFIX CHECK IS ENOUGH HERE ──────────────────────────────────────
+ *
+ * This is not a decoder and does not try to be. It answers "do these bytes
+ * begin the way a JPEG or a PNG begins", which is what decides how a browser
+ * sniffs them and what Storage records. A file that passes this and is still a
+ * corrupt JPEG is a broken image, not a script — and `nosniff` plus the CSP on
+ * the web app cover what is left.
+ */
+export type ImageFormat = 'jpg' | 'png';
+
+export function detectImageFormat(bytes: Buffer): ImageFormat | undefined {
+  // PNG: the 8-byte signature. The `\r\n` and `\x1a` in it are there to catch
+  // exactly the line-ending mangling that would otherwise corrupt a transfer,
+  // so all eight are checked rather than the first four.
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  ) {
+    return 'png';
+  }
+
+  // JPEG: SOI marker `FF D8`, followed by the start of any marker segment
+  // `FF`. Two bytes alone would accept a file that merely begins `FF D8`; the
+  // third is what every real JPEG has and most accidents do not.
+  if (
+    bytes.length >= 3 &&
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8 &&
+    bytes[2] === 0xff
+  ) {
+    return 'jpg';
+  }
+
+  return undefined;
+}
+
+/** The content type to STORE for a verified format — ours, not the caller's. */
+export const CONTENT_TYPE_FOR: Readonly<Record<ImageFormat, string>> = {
+  jpg: 'image/jpeg',
+  png: 'image/png',
+};
+
+/**
  * 5 MB.
  *
  * Enforced by `@fastify/multipart` at the stream, so an oversized body is

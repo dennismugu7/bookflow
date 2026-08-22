@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { httpUrl } from '../../platform/url.ts';
+
 /**
  * The team contract (ADR-014, ADR-025).
  *
@@ -39,7 +41,30 @@ const memberRole = z
   .describe('Job title, e.g. "Senior stylist". NOT an authorization role.');
 
 const about = z.string().trim().max(ABOUT_MAX_LENGTH);
-const photoUrl = z.url().max(2000);
+
+const PHOTO_URL_MAX_LENGTH = 2000;
+
+/**
+ * The team member's photograph.
+ *
+ * ── IT WAS `z.url()`, WHICH ACCEPTS `javascript:` ──────────────────────────
+ *
+ * The client web app renders this as an `<img src>` on the salon's public team
+ * section. `z.url()` validates syntax and says nothing about the scheme, so
+ * `javascript:` and `data:text/html` both passed — stored, and handed to
+ * whatever renders it next.
+ *
+ * The allowlist lives in `platform/url.ts` and is shared with `mapsUrl`. See it
+ * for why the check belongs at the boundary where the value ENTERS rather than
+ * at every place it might leave.
+ *
+ * **In practice this URL is one we produced**: the upload endpoint returns it
+ * and the client hands it straight back. But this route accepts it as input
+ * from an authenticated owner, so it is caller-supplied whatever the happy path
+ * does — and "the client only ever sends what we gave it" is a property of the
+ * client, not of the endpoint.
+ */
+const photoUrl = httpUrl(PHOTO_URL_MAX_LENGTH);
 const position = z.int().min(0);
 
 export const teamMemberSchema = z

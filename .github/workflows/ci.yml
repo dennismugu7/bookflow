@@ -14,6 +14,40 @@ name: CI
 # Still missing from ADR-024: the contract drift check, which needs ADR-025's
 # generation pipeline, and the Fly.io deploy, which belongs after there is
 # something worth deploying.
+#
+# ══ THIRD-PARTY ACTIONS ARE PINNED TO COMMIT SHAs ═══════════════════════════
+#
+# `@v2` is a tag, and a tag is a pointer its owner can move. `supabase/setup-cli@v1`
+# is not even a tag — it is a BRANCH, which is more mutable still.
+#
+# **This runner holds the staging database credentials.** `migrate-staging` is
+# handed `STAGING_DATABASE_URL`, the privileged `postgres` connection with DDL
+# rights over the whole schema (ADR-038). An action that silently changed under
+# a tag would be running with that in its environment, and the diff a reviewer
+# sees would be empty — because nothing in this repository changed.
+#
+# So every third-party action names a full commit SHA, with the version in a
+# trailing comment so a human can still read what it is. Dependabot understands
+# this form and will propose SHA bumps with the comment updated.
+#
+# ── `actions/*` STAY ON TAGS, AND THAT IS A DECISION ───────────────────────
+#
+# `actions/checkout`, `actions/setup-node` and `actions/setup-java` are
+# published by GitHub. Pinning them would protect against nothing that is not
+# already lost: **GitHub is the trust root for the whole run regardless** — it
+# supplies the runner image, stores the secrets, serves this workflow file, and
+# executes it. An attacker who can move `actions/checkout@v4` can equally serve
+# a modified runner or read the secrets directly, and a SHA in this file stops
+# none of that.
+#
+# The third-party actions are different in exactly the way that matters: they
+# are separate trust roots, each an independent account whose compromise is
+# survivable-in-principle and would otherwise reach our credentials.
+#
+# Pinning them too would cost real upkeep — a `checkout` security patch would
+# wait for somebody to notice — for a threat model where the loss has already
+# happened. Stated rather than left implicit, so the asymmetry reads as a
+# choice and not as an oversight.
 
 on:
   push:
@@ -59,7 +93,9 @@ jobs:
         run: npm ci
 
       - name: Set up Supabase CLI
-        uses: supabase/setup-cli@v1
+        # Pinned to a commit — see the note at the top of this file. `v1` here
+        # is a BRANCH, not a tag, which is the most mutable form of all.
+        uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
         with:
           version: 2.113.0
 
@@ -184,7 +220,8 @@ jobs:
       # the Supabase CLI is pinned above: CI and local should disagree because
       # someone changed a number, not because a channel moved.
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+        # Pinned to a commit — see the note at the top of this file.
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: 3.44.8
           channel: stable
@@ -322,7 +359,8 @@ jobs:
         run: npm ci
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+        # Pinned to a commit — see the note at the top of this file.
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           flutter-version: 3.44.8
           channel: stable
@@ -371,7 +409,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Supabase CLI
-        uses: supabase/setup-cli@v1
+        # Pinned to a commit — see the note at the top of this file. `v1` here
+        # is a BRANCH, not a tag, which is the most mutable form of all.
+        uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
         with:
           version: 2.113.0
 
@@ -599,7 +639,8 @@ jobs:
           java-version: '17'
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+        # Pinned to a commit — see the note at the top of this file.
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           channel: stable
           cache: true
@@ -1098,7 +1139,10 @@ jobs:
           echo "watchdog written and syntax-checked under bash"
 
       - name: Run the e2e gate on an emulator
-        uses: reactivecircus/android-emulator-runner@v2
+        # Pinned to a commit — see the note at the top of this file. This one
+        # matters most: it runs an emulator and arbitrary scripts in the same
+        # job that holds the staging database credentials.
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           # API 30 on the `default` image, chosen by measurement rather than by
           # picking the newest. The first attempt — API 34, `google_apis` —

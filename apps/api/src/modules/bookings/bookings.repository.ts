@@ -399,7 +399,26 @@ export async function transitionBooking(
          set status = ${next}
        where id = ${bookingId}::uuid
          and business_id = ${ownedBusinessOf(scope.userId)}
-         and status = any(${sql.raw(`array[${from.map((s) => `'${s}'`).join(',')}]::text[]`)})
+         -- PARAMETERISED, WHERE THIS USED TO BUILD SQL BY HAND. It was an
+         -- sql.raw() wrapping an array literal assembled by mapping each status
+         -- into single quotes and joining on commas.
+         --
+         -- Not a live vulnerability: "from" comes from the TRANSITIONS map in
+         -- the service and is never caller-supplied, so nothing hostile can
+         -- reach the quoting. But it was a hand-rolled escape in a file that
+         -- parameterises everything else, and hand-rolled escapes are how the
+         -- next person concludes this is the house style.
+         --
+         -- The parameterised form is also shorter. pg sends a text[] as one
+         -- bound parameter, so the quoting is the driver's problem and stops
+         -- being anybody's.
+         --
+         -- (This comment carried the original expression verbatim for one
+         -- draft. It contains backticks, and backticks inside a JS template
+         -- literal end the literal -- twelve TS1005 parse errors. CLAUDE.md
+         -- warns about exactly this and it still happened; the shape is
+         -- described in prose instead.)
+         and status = any(${[...from]}::text[])
       returning *
     )
     select ${OWNER_COLUMNS}
