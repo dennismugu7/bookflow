@@ -97,6 +97,44 @@ class UnauthenticatedInterceptor extends Interceptor {
 /// a dead network shows a spinner forever, which is the worst of the three
 /// `AsyncValue` states to be stuck in.
 ///
+/// ══ 60 SECONDS, AND THE NUMBER CAME FROM A MEASUREMENT ══════════════════════
+///
+/// They were 10s connect and 20s receive, which are sensible figures for a
+/// server that is awake. **The staging API is on Render's free plan and sleeps
+/// after inactivity**: a device test measured `GET /health` returning HTTP 200
+/// in **23.2 seconds** from cold.
+///
+/// So the old receive timeout abandoned the request while the server was still
+/// booting. Every first sign-up after an idle period failed — and failed as the
+/// UNCLASSIFIED error, "Something went wrong. Check your connection and try
+/// again", because the client genuinely could not tell a cold start from a dead
+/// network. The string was not wrong; the app was unusable.
+///
+/// 60s is roughly 2.5× the measured wake with headroom for a slow mobile
+/// connection on top. It is deliberately generous rather than tight to the
+/// measurement: a cold start that takes 30s on a bad day must not fail, and the
+/// cost of the higher ceiling is bounded by the two things below.
+///
+/// ── WHAT MAKES A 60-SECOND CEILING TOLERABLE ───────────────────────────────
+///
+/// On its own it would be worse than the bug: a minute of silent spinner reads
+/// as a hang, and a user force-quits at fifteen seconds. Two other changes carry
+/// it:
+///
+///   * `warmup.dart` fires `GET /health` at launch, so the wake overlaps with
+///     the welcome screen rather than with somebody's first submit.
+///   * The auth sheets say so after ~8 seconds — see `PendingNotice`.
+///
+/// **This is a compensating control for a platform choice, not a fix.** A paid
+/// Render instance does not sleep and these could go back to 10/20;
+/// `docs/ENVIRONMENT.md` records that.
+///
+/// ── GOTRUE IS UNAFFECTED AND MUST NOT BE CHANGED ───────────────────────────
+///
+/// Supabase Auth is a hosted service that does not sleep. Login, verification
+/// and password reset go through `supabase_flutter`'s own client, never this
+/// one, and none of them was ever slow. Only calls to OUR API are.
+///
 /// **`validateStatus` is left at Dio's default (2xx only), deliberately.** An
 /// earlier version accepted everything below 500 so that a repository could read
 /// the RFC 9457 problem document off a normal response. That was wrong twice
@@ -117,8 +155,9 @@ BookflowApi createApiClient({
       Dio(
         BaseOptions(
           baseUrl: baseUrl,
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 20),
+          // Both 60s. See the measured cold start above before lowering either.
+          connectTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 60),
         ),
       );
 

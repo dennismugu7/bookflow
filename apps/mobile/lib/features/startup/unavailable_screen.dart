@@ -1,6 +1,8 @@
 import 'package:bookflow/platform/providers.dart';
+import 'package:bookflow/theme/system_chrome.dart';
 import 'package:bookflow/ui/async_value_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Signed in, and we could not determine whether there is a business.
@@ -20,11 +22,18 @@ class UnavailableScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      body: SafeArea(
-        child: ErrorView(
-          message: "We couldn't load your account.",
-          onRetry: () => ref.invalidate(membershipStatusProvider),
+    // The one ordinary screen with no AppBar to carry the theme's overlay
+    // style, so it declares the light chrome itself. Without this it inherits
+    // whatever the previous screen set — which, coming from the splash, is the
+    // brand's white icons on this screen's white surface.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: BookflowSystemChrome.light,
+      child: Scaffold(
+        body: SafeArea(
+          child: ErrorView(
+            message: "We couldn't load your account.",
+            onRetry: () => ref.invalidate(membershipStatusProvider),
+          ),
         ),
       ),
     );

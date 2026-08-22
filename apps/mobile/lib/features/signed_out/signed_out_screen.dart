@@ -1,7 +1,9 @@
 import 'package:bookflow/features/auth/auth_flow.dart';
 import 'package:bookflow/theme/app_theme.dart';
+import 'package:bookflow/theme/system_chrome.dart';
 import 'package:bookflow/theme/tokens.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// The welcome / authentication gateway — screen #2, `native-01`.
 ///
@@ -25,48 +27,56 @@ class SignedOutScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
 
-    return Scaffold(
-      body: DecoratedBox(
-        decoration: const BoxDecoration(gradient: BookflowTheme.heroGradient),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: BookflowSpacing.lg),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Text(
-                  'Bookflow',
-                  style: theme.textTheme.displayLarge?.copyWith(
-                    color: BookflowColors.textOnBrand,
+    // Brand chrome, matching the splash this screen takes over from — the two
+    // are one continuous moment in the design, and bars that changed colour
+    // between them would be the seam the native splash exists to remove.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: BookflowSystemChrome.brand,
+      child: Scaffold(
+        body: DecoratedBox(
+          decoration: const BoxDecoration(gradient: BookflowTheme.heroGradient),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: BookflowSpacing.lg,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Text(
+                    'Bookflow',
+                    style: theme.textTheme.displayLarge?.copyWith(
+                      color: BookflowColors.textOnBrand,
+                    ),
                   ),
-                ),
-                const SizedBox(height: BookflowSpacing.sm),
-                Text(
-                  'Ready, set, book',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: BookflowColors.textOnBrand,
-                    fontStyle: FontStyle.italic,
+                  const SizedBox(height: BookflowSpacing.sm),
+                  Text(
+                    'Ready, set, book',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: BookflowColors.textOnBrand,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
-                ),
-                const SizedBox(height: BookflowSpacing.xxl),
-                FilledButton(
-                  key: const Key('welcome-create-account'),
-                  // The one place the green is allowed (§2: "should stay rare
-                  // and reserved for primary conversion actions").
-                  style: BookflowTheme.heroCtaStyle(context),
-                  onPressed: () => showSignupFlow(context),
-                  child: const Text('Create for free'),
-                ),
-                const SizedBox(height: BookflowSpacing.md),
-                TextButton(
-                  key: const Key('welcome-sign-in'),
-                  onPressed: () => showLoginFlow(context),
-                  style: TextButton.styleFrom(
-                    foregroundColor: BookflowColors.textOnBrand,
+                  const SizedBox(height: BookflowSpacing.xxl),
+                  FilledButton(
+                    key: const Key('welcome-create-account'),
+                    // The one place the green is allowed (§2: "should stay rare
+                    // and reserved for primary conversion actions").
+                    style: BookflowTheme.heroCtaStyle(context),
+                    onPressed: () => showSignupFlow(context),
+                    child: const Text('Create for free'),
                   ),
-                  child: const Text('Sign in'),
-                ),
-              ],
+                  const SizedBox(height: BookflowSpacing.md),
+                  TextButton(
+                    key: const Key('welcome-sign-in'),
+                    onPressed: () => showLoginFlow(context),
+                    style: TextButton.styleFrom(
+                      foregroundColor: BookflowColors.textOnBrand,
+                    ),
+                    child: const Text('Sign in'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

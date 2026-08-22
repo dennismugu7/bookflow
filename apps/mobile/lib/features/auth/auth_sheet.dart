@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bookflow/theme/tokens.dart';
 import 'package:flutter/material.dart';
 
@@ -152,7 +154,18 @@ class AuthErrorText extends StatelessWidget {
 /// The spinner replaces the label rather than sitting beside it, so the button
 /// does not change width mid-submission, and `BookflowSizes.inlineSpinner` is
 /// sized to fit Material's button height without changing it.
-class AuthSubmitButton extends StatelessWidget {
+///
+/// ── IT ALSO EXPLAINS A LONG WAIT, AND THAT IS NOT COSMETIC ─────────────────
+///
+/// `api_client.dart` allows 60 seconds because the staging API sleeps on
+/// Render's free plan and takes ~23s to wake. **A minute of silent spinner
+/// reads as a hang** — people force-quit at about fifteen seconds — so the
+/// higher ceiling without this would be worse than the failure it replaced.
+///
+/// The notice is here rather than in each sheet because every sheet submits
+/// through this button, and putting it in four places is three chances to leave
+/// it out of the one somebody hits first.
+class AuthSubmitButton extends StatefulWidget {
   const AuthSubmitButton({
     required this.label,
     required this.inFlight,
@@ -165,17 +178,85 @@ class AuthSubmitButton extends StatelessWidget {
   final VoidCallback? onPressed;
 
   @override
+  State<AuthSubmitButton> createState() => _AuthSubmitButtonState();
+}
+
+class _AuthSubmitButtonState extends State<AuthSubmitButton> {
+  /// How long a request may run before it is worth explaining.
+  ///
+  /// Long enough that an ordinary submit against a warm server never shows it —
+  /// which matters, because a notice that appears every time stops being read.
+  /// Short enough to arrive well before somebody gives up.
+  static const Duration _explainAfter = Duration(seconds: 8);
+
+  Timer? _timer;
+  bool _slow = false;
+
+  @override
+  void didUpdateWidget(AuthSubmitButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.inFlight == oldWidget.inFlight) return;
+
+    if (widget.inFlight) {
+      // Restarted on every new submission, so a retry gets its own eight
+      // seconds rather than inheriting the last attempt's elapsed time.
+      _slow = false;
+      _timer?.cancel();
+      _timer = Timer(_explainAfter, () {
+        if (mounted) setState(() => _slow = true);
+      });
+    } else {
+      _timer?.cancel();
+      _timer = null;
+      // Cleared as soon as the request settles: the notice explaining a wait
+      // must not outlive the wait, or it becomes a claim about a request that
+      // has already finished.
+      if (_slow) setState(() => _slow = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    // A timer that fires after the sheet is gone calls `setState` on a dead
+    // element. Cancelled here rather than relying on the `mounted` check above,
+    // which is the second line of defence rather than the first.
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return FilledButton(
-      onPressed: inFlight ? null : onPressed,
-      child: inFlight
-          ? const SizedBox(
-              key: Key('auth-submit-loading'),
-              width: BookflowSizes.inlineSpinner,
-              height: BookflowSizes.inlineSpinner,
-              child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-            )
-          : Text(label),
+    final ThemeData theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        FilledButton(
+          onPressed: widget.inFlight ? null : widget.onPressed,
+          child: widget.inFlight
+              ? const SizedBox(
+                  key: Key('auth-submit-loading'),
+                  width: BookflowSizes.inlineSpinner,
+                  height: BookflowSizes.inlineSpinner,
+                  child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+                )
+              : Text(widget.label),
+        ),
+        if (widget.inFlight && _slow)
+          Padding(
+            padding: const EdgeInsets.only(top: BookflowSpacing.sm),
+            child: Text(
+              // Says what is happening and how long it might last. "Please
+              // wait" would be true and useless; a duration is what stops
+              // somebody deciding the app is broken.
+              'Still working — the server may be waking up. This can take up '
+              'to a minute.',
+              key: const Key('auth-submit-slow'),
+              style: theme.textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
+          ),
+      ],
     );
   }
 }
