@@ -1,5 +1,6 @@
 import 'package:bookflow/features/account/account_menu_screen.dart'
     show supportEmailAddress;
+import 'package:bookflow/features/profile/profile_models.dart';
 import 'package:bookflow/features/profile/profile_providers.dart';
 import 'package:bookflow/platform/providers.dart';
 import 'package:bookflow/theme/tokens.dart';
@@ -48,11 +49,13 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
   _Step _step = _Step.survey;
   _Reason? _reason;
   final TextEditingController _detail = TextEditingController();
+  final TextEditingController _password = TextEditingController();
   bool _understood = false;
 
   @override
   void dispose() {
     _detail.dispose();
+    _password.dispose();
     super.dispose();
   }
 
@@ -77,7 +80,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
   Future<void> _delete() async {
     await ref
         .read(deleteAccountControllerProvider.notifier)
-        .delete(reason: _reasonText);
+        .delete(password: _password.text, reason: _reasonText);
 
     if (!mounted) return;
     // Only on success. A failure leaves the owner on the confirmation step with
@@ -130,9 +133,14 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen> {
           ),
           _Step.confirm => _Confirm(
             understood: _understood,
+            password: _password,
             busy: deletion.isLoading,
+            // A wrong password reads differently from everything else, and is
+            // the only failure with a field to point at.
+            wrongPassword: deletion.error is ReauthenticationFailed,
             failed: deletion.hasError,
             onToggle: (bool value) => setState(() => _understood = value),
+            onPasswordChanged: () => setState(() {}),
             onDelete: _delete,
           ),
           _Step.done => const _Done(),
@@ -244,20 +252,46 @@ class _Survey extends StatelessWidget {
   }
 }
 
-/// Screen #26 — the final confirmation, gated on a checkbox.
+/// Screen #26 — the final confirmation, gated on a password AND a checkbox.
+///
+/// ══ THE PASSWORD FIELD IS A DELIBERATE DESIGN DEVIATION ═════════════════════
+///
+/// **The design draws no password here.** It gates on the checkbox alone, which
+/// is a reasonable pattern for a destructive action and is not enough for this
+/// one.
+///
+/// A bearer token is valid for up to an hour with no denylist (ADR-017) — a
+/// sound trade for reading a diary and an indefensible one for erasing it. A
+/// phone left unlocked on a salon counter, or a token lifted from a log, is
+/// otherwise a complete and irreversible erasure of every client's appointment
+/// record in a single tap. The checkbox stops a mistake; it does nothing
+/// whatsoever about somebody else holding the phone.
+///
+/// **Irreversible destruction of other people's data justifies the extra
+/// friction**, and the server enforces it regardless (`me.service.ts`), so
+/// omitting the field here would only produce a screen that always fails.
+///
+/// The checkbox stays. It answers a different question — "do you understand
+/// what you lose" — and the password answers "are you the owner". Both.
 class _Confirm extends StatelessWidget {
   const _Confirm({
     required this.understood,
+    required this.password,
     required this.busy,
+    required this.wrongPassword,
     required this.failed,
     required this.onToggle,
+    required this.onPasswordChanged,
     required this.onDelete,
   });
 
   final bool understood;
+  final TextEditingController password;
   final bool busy;
+  final bool wrongPassword;
   final bool failed;
   final ValueChanged<bool> onToggle;
+  final VoidCallback onPasswordChanged;
   final Future<void> Function() onDelete;
 
   @override
@@ -282,6 +316,22 @@ class _Confirm extends StatelessWidget {
           style: theme.textTheme.bodyMedium,
         ),
         const SizedBox(height: BookflowSpacing.lg),
+        // Above the checkbox, per the sequence the flow reads in: prove who you
+        // are, then confirm you know what you lose.
+        TextField(
+          key: const Key('delete-password'),
+          controller: password,
+          obscureText: true,
+          enabled: !busy,
+          autocorrect: false,
+          enableSuggestions: false,
+          onChanged: (_) => onPasswordChanged(),
+          decoration: InputDecoration(
+            labelText: 'Enter your password to confirm',
+            errorText: wrongPassword ? 'That password is incorrect.' : null,
+          ),
+        ),
+        const SizedBox(height: BookflowSpacing.lg),
         CheckboxListTile(
           key: const Key('delete-confirm-gate'),
           value: understood,
@@ -297,7 +347,10 @@ class _Confirm extends StatelessWidget {
         const Divider(),
         const SizedBox(height: BookflowSpacing.lg),
 
-        if (failed)
+        // A wrong password already has its message on the field, so the general
+        // one is suppressed for it — two errors for one cause reads as two
+        // problems, and sends somebody looking for a second thing to fix.
+        if (failed && !wrongPassword)
           Padding(
             padding: const EdgeInsets.only(bottom: BookflowSpacing.md),
             child: Text(
@@ -321,7 +374,12 @@ class _Confirm extends StatelessWidget {
           // re-entering a password or typing 'DELETE'". The checkbox names the
           // specific consequence — the client bookings — which is the thing an
           // owner would actually regret, and reading it is the friction.
-          onPressed: (!understood || busy) ? null : () async => onDelete(),
+          // BOTH gates. An empty password is refused here rather than sent to
+          // be refused by the server — and the button staying dark until the
+          // field has something in it is what makes the requirement visible.
+          onPressed: (!understood || busy || password.text.isEmpty)
+              ? null
+              : () async => onDelete(),
           child: busy
               ? const SizedBox(
                   key: Key('delete-loading'),

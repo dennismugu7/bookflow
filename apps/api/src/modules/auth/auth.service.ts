@@ -153,7 +153,11 @@ export async function signUp(
       // SAME body as a real sign-up, and nothing was created. See the note on
       // `creationProblem` for why this is a security property and not copy.
       deps.log.info(
-        { providerCode: error.providerCode },
+        // Slugged like every other security event. This one is the ONLY record
+        // that a duplicate-address probe happened at all — the response is
+        // byte-identical to a real sign-up on purpose, so the log is the only
+        // place the difference exists.
+        { event: 'signup.duplicate_address', providerCode: error.providerCode },
         'signup: address already registered; answering exactly as success',
       );
       return;
@@ -171,7 +175,7 @@ export async function signUp(
     });
   } catch (error) {
     deps.log.warn(
-      { userId, err: error },
+      { event: 'signup.profile_insert_failed', userId, err: error },
       'signup: profile insert failed; compensating before any mail is sent',
     );
     await compensate(deps, userId, 'profile-insert-failed');
@@ -195,14 +199,20 @@ export async function signUp(
     // account exists, can never be confirmed, and can therefore never be used
     // — so it must not be left behind.
     deps.log.warn(
-      { userId, err: error },
+      { event: 'signup.confirmation_send_failed', userId, err: error },
       'signup: confirmation send failed; compensating',
     );
     await compensate(deps, userId, 'confirmation-send-failed');
     throw sendProblem(error);
   }
 
-  deps.log.info({ userId }, 'signup: account created, confirmation dispatched');
+  // The happy path, slugged too. An account being created is the event every
+  // other signup event is measured against — without it, a spike in
+  // `signup.duplicate_address` cannot be told from a spike in traffic.
+  deps.log.info(
+    { event: 'signup.created', userId },
+    'signup: account created, confirmation dispatched',
+  );
 }
 
 /**
@@ -247,7 +257,7 @@ async function compensate(
     // Non-fatal on its own: the cascade below will take it. Worth a line,
     // because if this is failing the database is in a state worth knowing about.
     deps.log.warn(
-      { userId, cause, err: error },
+      { event: 'signup.compensation_partial', userId, cause, err: error },
       'signup: compensating profile delete failed; relying on the cascade',
     );
   }

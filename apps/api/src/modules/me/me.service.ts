@@ -42,7 +42,7 @@ export async function renameMe(
 
 export interface DeleteAccountDeps {
   readonly db: Executor;
-  readonly gotrue: Pick<GoTrueClient, 'deleteUser'>;
+  readonly gotrue: Pick<GoTrueClient, 'deleteUser' | 'verifyPassword'>;
   readonly storage: Pick<StorageClient, 'remove' | 'publicUrl'>;
   readonly log: AccountLogger;
 }
@@ -90,9 +90,71 @@ export interface DeleteAccountDeps {
 export async function deleteMyAccount(
   deps: DeleteAccountDeps,
   scope: { readonly userId: string },
-  reason: string | undefined,
+  input: { readonly password: string; readonly reason: string | undefined },
 ): Promise<void> {
   const { db, gotrue, storage, log } = deps;
+  const { reason } = input;
+
+  // ══ RE-AUTHENTICATION, BEFORE ANYTHING IS READ OR WRITTEN ═════════════════
+  //
+  // **DO-NOT-VIBE ADJACENT: this gate is the only thing standing between a
+  // stolen bearer token and a salon's entire booking history.**
+  //
+  // ADR-017 keeps no token denylist and bounds exposure at one hour, which is a
+  // sound trade for reading a diary and an indefensible one for erasing it. A
+  // phone left unlocked on a counter, or a token lifted from a log or a crash
+  // report, is otherwise a complete and irreversible erasure in one request.
+  //
+  // ── THE ACCOUNT IS NAMED BY ID, AND THERE IS NO EMAIL PARAMETER ──────────
+  //
+  // `verifyPassword` takes the user id and resolves the address itself, so this
+  // cannot become a password-guessing oracle against another account even by
+  // mistake — there is no field to fill in wrongly. See its interface comment.
+  //
+  // ── FIRST, NOT ANYWHERE ELSE IN THE SEQUENCE ─────────────────────────────
+  //
+  // Before the media read, before the cascade. A check that ran after even one
+  // destructive step would be a check that arrives too late to prevent the
+  // damage it exists to prevent.
+  let verified: boolean;
+  try {
+    verified = await gotrue.verifyPassword({
+      userId: scope.userId,
+      password: input.password,
+    });
+  } catch (error) {
+    // The provider is down, so we do not KNOW whether the password was right.
+    // Reported as unavailable rather than as a rejection: telling an owner
+    // their own password is wrong because GoTrue is having an outage is a
+    // worse answer than telling them to try later. `verifyPassword` draws the
+    // same line and explains it.
+    // The provider's own message goes to the log and never to the caller —
+    // it can name internal paths and, for an auth failure, the request that
+    // carried a credential.
+    log.warn(
+      {
+        event: 'account.reauth_unavailable',
+        userId: scope.userId,
+        detail: error instanceof Error ? error.message : 'unknown error',
+      },
+      'account deletion: could not verify the password; refusing',
+    );
+    throw new ProblemError('auth-unavailable', 'could not verify the password');
+  }
+
+  if (!verified) {
+    // Logged, because a burst of these on one account is somebody working
+    // through a stolen token — which is exactly the event this gate exists to
+    // make visible as well as to stop.
+    log.warn(
+      { event: 'account.reauth_failed', userId: scope.userId },
+      'account deletion: password rejected; nothing deleted',
+    );
+    throw new ProblemError(
+      'reauthentication-failed',
+      'the password did not match',
+    );
+  }
 
   // ── THE REASON IS LOGGED FIRST, AND ONLY HERE ────────────────────────────
   //

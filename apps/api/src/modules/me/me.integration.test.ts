@@ -7,6 +7,8 @@ import {
   unrelatedAccountWithBusiness,
 } from '../../../test/integration/accounts.ts';
 import { useTransaction } from '../../../test/integration/harness.ts';
+import { GoTrueError, type GoTrueClient } from '../../platform/gotrue.ts';
+import { ProblemError } from '../../platform/problem.ts';
 import { StorageError, type StorageClient } from '../../platform/storage.ts';
 import { addService } from '../services/services.service.ts';
 import { setOpeningHours } from '../hours/hours.service.ts';
@@ -38,10 +40,21 @@ const ctx = useTransaction();
 
 const testLog = { info: (): void => {}, warn: (): void => {} };
 
+/** The password every fixture account "knows". */
+const RIGHT_PASSWORD = 'correct horse battery staple';
+
 /** Records what happened, in order, and can be told to fail. */
-function recorder(options: { storageFails?: boolean } = {}): {
+function recorder(
+  options: {
+    storageFails?: boolean;
+    /** Make the re-authentication reject, as a wrong password would. */
+    passwordWrong?: boolean;
+    /** Make it throw, as a GoTrue outage would. */
+    authUnavailable?: boolean;
+  } = {},
+): {
   readonly steps: string[];
-  readonly gotrue: { deleteUser: (userId: string) => Promise<void> };
+  readonly gotrue: Pick<GoTrueClient, 'deleteUser' | 'verifyPassword'>;
   readonly storage: Pick<StorageClient, 'remove' | 'publicUrl'>;
 } {
   const steps: string[] = [];
@@ -52,6 +65,16 @@ function recorder(options: { storageFails?: boolean } = {}): {
       deleteUser: (userId: string) => {
         steps.push(`gotrue:${userId}`);
         return Promise.resolve();
+      },
+      verifyPassword: ({ password }: { userId: string; password: string }) => {
+        steps.push('verify');
+        if (options.authUnavailable === true) {
+          return Promise.reject(
+            new GoTrueError('unavailable', 'auth provider unreachable'),
+          );
+        }
+        if (options.passwordWrong === true) return Promise.resolve(false);
+        return Promise.resolve(password === RIGHT_PASSWORD);
       },
     },
     storage: {
@@ -118,7 +141,10 @@ describe('deleting an account that owns a business', () => {
     await deleteMyAccount(
       { db: ctx.db, gotrue: fake.gotrue, storage: fake.storage, log: testLog },
       scope,
-      'I created this account by accident.',
+      {
+        password: RIGHT_PASSWORD,
+        reason: 'I created this account by accident.',
+      },
     );
 
     expect(await countFor('services', mine.businessId)).toBe(0);
@@ -168,7 +194,7 @@ describe('deleting an account that owns a business', () => {
     await deleteMyAccount(
       { db: ctx.db, gotrue: fake.gotrue, storage: fake.storage, log: testLog },
       scope,
-      undefined,
+      { password: RIGHT_PASSWORD, reason: undefined },
     );
 
     // The URL was read BEFORE the row was deleted — which is the only order
@@ -203,12 +229,104 @@ describe('deleting an account that owns a business', () => {
           log: testLog,
         },
         scope,
-        undefined,
+        { password: RIGHT_PASSWORD, reason: undefined },
       ),
     ).resolves.toBeUndefined();
 
     expect(await findProfileByUserId(ctx.db, scope)).toBeUndefined();
     expect(fake.steps.at(-1)).toBe(`gotrue:${mine.userId}`);
+  });
+});
+
+/**
+ * ══ THE RE-AUTHENTICATION GATE ══════════════════════════════════════════════
+ *
+ * This route destroys a salon's entire booking history, and ADR-017 keeps no
+ * token denylist — a stolen bearer token is valid for up to an hour. The gate is
+ * the only thing between that token and an irreversible erasure.
+ *
+ * **What has to be driven is that nothing happens when it fails.** A version
+ * that checked the password and then deleted anyway, or that checked it after
+ * the first destructive step, would pass any test asserting only the throw.
+ */
+describe('the re-authentication gate', () => {
+  it('refuses a wrong password and deletes NOTHING', async () => {
+    const mine = await accountWithBusiness(ctx, 'Protected Salon');
+    const scope = { userId: mine.userId };
+
+    await addService(ctx.db, scope, {
+      name: 'Silk press',
+      durationMinutes: 60,
+      priceKes: 2500,
+      position: undefined,
+    });
+
+    const fake = recorder({ passwordWrong: true });
+    const error = await deleteMyAccount(
+      { db: ctx.db, gotrue: fake.gotrue, storage: fake.storage, log: testLog },
+      scope,
+      { password: 'not the password', reason: undefined },
+    ).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(ProblemError);
+    expect((error as ProblemError).slug).toBe('reauthentication-failed');
+
+    // ── THE ASSERTIONS THAT MATTER MORE THAN THE THROW ────────────────────
+    //
+    // Everything still there. A gate that rejected the password AFTER reading
+    // the media or running the cascade would satisfy the throw above while
+    // having already destroyed the thing it exists to protect.
+    expect(await countFor('services', mine.businessId)).toBe(1);
+    expect(await findProfileByUserId(ctx.db, scope)).toBeDefined();
+
+    const business = await sql<{ n: number }>`
+      select count(*)::int as n from public.businesses
+       where id = ${mine.businessId}::uuid
+    `.execute(ctx.db);
+    expect(business.rows[0]?.n).toBe(1);
+
+    // And GoTrue was asked to verify and NOT to delete. Asserted as the exact
+    // sequence: "delete was not called" would also pass for a version that
+    // never verified either.
+    expect(fake.steps).toEqual(['verify']);
+  });
+
+  it('verifies BEFORE anything is read or written', async () => {
+    const mine = await accountWithBusiness(ctx, 'Ordered Salon');
+    const scope = { userId: mine.userId };
+
+    const fake = recorder();
+    await deleteMyAccount(
+      { db: ctx.db, gotrue: fake.gotrue, storage: fake.storage, log: testLog },
+      scope,
+      { password: RIGHT_PASSWORD, reason: undefined },
+    );
+
+    // First step, last step. A check anywhere else in the sequence arrives too
+    // late to prevent the damage it exists to prevent.
+    expect(fake.steps[0]).toBe('verify');
+    expect(fake.steps.at(-1)).toBe(`gotrue:${mine.userId}`);
+  });
+
+  it('refuses with auth-unavailable when the provider is down, not with a rejection', async () => {
+    const mine = await accountWithBusiness(ctx, 'Unlucky Salon');
+    const scope = { userId: mine.userId };
+
+    const fake = recorder({ authUnavailable: true });
+    const error = await deleteMyAccount(
+      { db: ctx.db, gotrue: fake.gotrue, storage: fake.storage, log: testLog },
+      scope,
+      { password: RIGHT_PASSWORD, reason: undefined },
+    ).catch((caught: unknown) => caught);
+
+    // ── AN OUTAGE IS NOT A WRONG PASSWORD ────────────────────────────────
+    //
+    // Failing closed by answering `reauthentication-failed` sounds safe and
+    // tells an owner their own password is wrong because GoTrue is having a
+    // bad day. Nothing is deleted either way; only the sentence differs, and
+    // only one of the two is true.
+    expect((error as ProblemError).slug).toBe('auth-unavailable');
+    expect(await findProfileByUserId(ctx.db, scope)).toBeDefined();
   });
 });
 
@@ -232,7 +350,7 @@ describe('deleting an account that owns nothing', () => {
           log: testLog,
         },
         scope,
-        undefined,
+        { password: RIGHT_PASSWORD, reason: undefined },
       ),
     ).resolves.toBeUndefined();
 
@@ -240,7 +358,10 @@ describe('deleting an account that owns nothing', () => {
     // business" would leave the profile and the auth user behind — an account
     // the visitor believes is deleted and can still sign in to.
     expect(await findProfileByUserId(ctx.db, scope)).toBeUndefined();
-    expect(fake.steps).toEqual([`gotrue:${account.userId}`]);
+    // Verify, then delete — and nothing in between, because there was nothing
+    // to delete. The exact sequence rather than a `contains`: it is what shows
+    // the gate ran even on the path with no business.
+    expect(fake.steps).toEqual(['verify', `gotrue:${account.userId}`]);
 
     const survivor = await sql<{ n: number }>`
       select count(*)::int as n from public.businesses

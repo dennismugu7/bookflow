@@ -59,6 +59,25 @@ const DELETE_REASON_MAX_LENGTH = 500;
  */
 export const deleteAccountRequestSchema = z
   .object({
+    /**
+     * ══ REQUIRED, AND THE TOKEN ALONE IS NOT ENOUGH ═════════════════════════
+     *
+     * This endpoint destroys a salon's entire booking history, irreversibly.
+     * ADR-017 keeps no token denylist — "exposure is bounded at one hour by
+     * design" — which is a reasonable trade for reading a diary and an
+     * indefensible one for erasing it. A phone left unlocked, or a token lifted
+     * from a log, would otherwise be a complete erasure with no second step.
+     *
+     * **Verified server-side against the session's own email**, so a client
+     * cannot skip it by calling the API directly. No `.min()`: a length rule
+     * here would say what the password is not, and every wrong value gets the
+     * same answer regardless.
+     */
+    password: z
+      .string()
+      .describe(
+        'The caller’s current password. Verified before anything is deleted.',
+      ),
     reason: z
       .string()
       .trim()
@@ -66,5 +85,5 @@ export const deleteAccountRequestSchema = z
       .optional()
       .describe('Free text from the exit survey. Logged, never stored.'),
   })
-  .describe('Optional feedback accompanying an account deletion.')
+  .describe('Confirmation and optional feedback for an account deletion.')
   .meta({ id: 'DeleteAccountRequest' });

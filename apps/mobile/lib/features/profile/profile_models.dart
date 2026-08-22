@@ -6,6 +6,25 @@
 /// regenerated wholesale on every schema change (ADR-025), so anything derived
 /// hanging off it would be deleted by the next generation. This is the shape
 /// this feature owns.
+/// The account deletion was refused because the password did not match.
+///
+/// ── A TYPE, SO THE SCREEN CAN TELL IT FROM A DEAD SESSION ──────────────────
+///
+/// Both arrive as 401. `invalid-token` means the session is over and the 401
+/// interceptor has already ended it; **this one means the session is fine and
+/// somebody mistyped**, and the remedy is to retype on the screen they are
+/// already on rather than to be thrown back to the welcome page.
+///
+/// The API answers a distinct `reauthentication-failed` slug precisely so the
+/// two are separable, and `profile_repository.dart` is the only file allowed to
+/// know what a problem document is (ADR-028).
+class ReauthenticationFailed implements Exception {
+  const ReauthenticationFailed();
+
+  @override
+  String toString() => 'ReauthenticationFailed';
+}
+
 class OwnerProfile {
   const OwnerProfile({
     required this.id,

@@ -376,7 +376,12 @@ export async function getPaymentProof(
     // internal paths and, for a signing failure, occasionally the request that
     // carried the key.
     log.warn(
-      { failure: error.failure, detail: error.message, bookingId },
+      {
+        event: 'booking.proof_sign_failed',
+        failure: error.failure,
+        detail: error.message,
+        bookingId,
+      },
       'payment proof: storage could not sign',
     );
     throw new ProblemError(
@@ -499,6 +504,7 @@ async function notify(
     // BODY is not: it carries a named person's appointment.
     deps.log.warn(
       {
+        event: 'booking.mail_failed',
         bookingId: booking.id,
         action,
         failure: error instanceof MailError ? error.failure : 'unknown',

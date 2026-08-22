@@ -8,13 +8,15 @@ part of 'delete_account_request.dart';
 
 class _$DeleteAccountRequest extends DeleteAccountRequest {
   @override
+  final String password;
+  @override
   final String? reason;
 
   factory _$DeleteAccountRequest(
           [void Function(DeleteAccountRequestBuilder)? updates]) =>
       (DeleteAccountRequestBuilder()..update(updates))._build();
 
-  _$DeleteAccountRequest._({this.reason}) : super._();
+  _$DeleteAccountRequest._({required this.password, this.reason}) : super._();
   @override
   DeleteAccountRequest rebuild(
           void Function(DeleteAccountRequestBuilder) updates) =>
@@ -27,12 +29,15 @@ class _$DeleteAccountRequest extends DeleteAccountRequest {
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
-    return other is DeleteAccountRequest && reason == other.reason;
+    return other is DeleteAccountRequest &&
+        password == other.password &&
+        reason == other.reason;
   }
 
   @override
   int get hashCode {
     var _$hash = 0;
+    _$hash = $jc(_$hash, password.hashCode);
     _$hash = $jc(_$hash, reason.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -41,6 +46,7 @@ class _$DeleteAccountRequest extends DeleteAccountRequest {
   @override
   String toString() {
     return (newBuiltValueToStringHelper(r'DeleteAccountRequest')
+          ..add('password', password)
           ..add('reason', reason))
         .toString();
   }
@@ -49,6 +55,10 @@ class _$DeleteAccountRequest extends DeleteAccountRequest {
 class DeleteAccountRequestBuilder
     implements Builder<DeleteAccountRequest, DeleteAccountRequestBuilder> {
   _$DeleteAccountRequest? _$v;
+
+  String? _password;
+  String? get password => _$this._password;
+  set password(String? password) => _$this._password = password;
 
   String? _reason;
   String? get reason => _$this._reason;
@@ -61,6 +71,7 @@ class DeleteAccountRequestBuilder
   DeleteAccountRequestBuilder get _$this {
     final $v = _$v;
     if ($v != null) {
+      _password = $v.password;
       _reason = $v.reason;
       _$v = null;
     }
@@ -83,6 +94,8 @@ class DeleteAccountRequestBuilder
   _$DeleteAccountRequest _build() {
     final _$result = _$v ??
         _$DeleteAccountRequest._(
+          password: BuiltValueNullFieldError.checkNotNull(
+              password, r'DeleteAccountRequest', 'password'),
           reason: reason,
         );
     replace(_$result);

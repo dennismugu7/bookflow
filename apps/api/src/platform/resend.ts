@@ -163,7 +163,7 @@ export function createNoopMailer(log: {
       // The recipient and subject only. Never the body: it carries a client's
       // name and appointment.
       log.info(
-        { to: mail.to, subject: mail.subject },
+        { event: 'mail.not_configured', to: mail.to, subject: mail.subject },
         'mail not sent: no provider configured',
       );
       return Promise.resolve();

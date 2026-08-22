@@ -184,8 +184,10 @@ class _GoldenProfile implements ProfileRepository {
   }) => throw UnimplementedError('the golden never edits');
 
   @override
-  Future<void> deleteAccount({required String? reason}) =>
-      throw UnimplementedError('the golden never deletes');
+  Future<void> deleteAccount({
+    required String password,
+    required String? reason,
+  }) => throw UnimplementedError('the golden never deletes');
 }
 
 /// The demo salon, so the artefact shows the section populated rather than

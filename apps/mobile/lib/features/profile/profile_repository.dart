@@ -42,7 +42,21 @@ abstract interface class ProfileRepository {
   /// repository's.
   ///
   /// [reason] is the exit survey's answer. It reaches a log and no table.
-  Future<void> deleteAccount({required String? reason});
+  ///
+  /// ── [password] IS REQUIRED, AND THE SERVER IS WHAT ENFORCES IT ───────────
+  ///
+  /// A bearer token is valid for up to an hour with no denylist (ADR-017), and
+  /// this request erases a salon's entire booking history. The API verifies the
+  /// password before deleting anything, so the check cannot be skipped by
+  /// calling the endpoint directly — this parameter is how the app participates
+  /// in it, not where it is enforced.
+  ///
+  /// Throws [ReauthenticationFailed] when the password is wrong. Nothing is
+  /// deleted in that case.
+  Future<void> deleteAccount({
+    required String password,
+    required String? reason,
+  });
 }
 
 class ApiProfileRepository implements ProfileRepository {
@@ -97,16 +111,52 @@ class ApiProfileRepository implements ProfileRepository {
   }
 
   @override
-  Future<void> deleteAccount({required String? reason}) async {
-    await _api.getMeApi().deleteMe(
-      deleteAccountRequestInput: DeleteAccountRequestInput((
-        DeleteAccountRequestInputBuilder b,
-      ) {
-        // Sent only when there is one. An empty string would be a survey answer
-        // of "" in the log, which is noise where absence is information.
-        if (reason != null && reason.isNotEmpty) b.reason = reason;
-      }),
-    );
+  Future<void> deleteAccount({
+    required String password,
+    required String? reason,
+  }) async {
+    try {
+      await _api.getMeApi().deleteMe(
+        deleteAccountRequestInput: DeleteAccountRequestInput((
+          DeleteAccountRequestInputBuilder b,
+        ) {
+          b.password = password;
+          // Sent only when there is one. An empty string would be a survey
+          // answer of "" in the log, which is noise where absence is
+          // information.
+          if (reason != null && reason.isNotEmpty) b.reason = reason;
+        }),
+      );
+    } on DioException catch (error) {
+      // ── TRANSLATED, AND THE SLUG IS WHY THIS IS SAFE TO CATCH ────────────
+      //
+      // A 401 normally ends the session — `platform/api_client.dart`'s
+      // interceptor sees it first and signs the user out. **That is exactly
+      // wrong here**: the session is fine, the password was mistyped, and
+      // ejecting somebody to the welcome screen for a typo would be baffling.
+      //
+      // The API answers a DISTINCT slug for this reason: `invalid-token` means
+      // the session is bad, `reauthentication-failed` means the person could
+      // not prove they own the account. Branching on the slug rather than the
+      // status is ADR-014's rule and is what keeps the two apart.
+      if (_slugOf(error) == '/problems/reauthentication-failed') {
+        throw const ReauthenticationFailed();
+      }
+      rethrow;
+    }
+  }
+
+  /// The problem document's `type`, or null when the body is not one.
+  ///
+  /// Defensive by construction, like `business_repository.dart`'s: a transport
+  /// failure has no response, a gateway error page is not a map, a truncated
+  /// body has no `type`. Every one yields null and the caller rethrows — the
+  /// failure mode is "behave exactly as before", never "claim a wrong password".
+  static String? _slugOf(DioException error) {
+    final Object? body = error.response?.data;
+    if (body is! Map<String, dynamic>) return null;
+    final Object? type = body['type'];
+    return type is String ? type : null;
   }
 
   static OwnerProfile _toModel(Profile profile) => OwnerProfile(

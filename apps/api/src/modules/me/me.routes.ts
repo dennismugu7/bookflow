@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 
@@ -30,7 +30,7 @@ export function registerMeRoutes(
   app: FastifyInstance,
   db: () => Executor,
   deps: {
-    readonly gotrue: Pick<GoTrueClient, 'deleteUser'>;
+    readonly gotrue: Pick<GoTrueClient, 'deleteUser' | 'verifyPassword'>;
     readonly storage: Pick<StorageClient, 'remove' | 'publicUrl'>;
   },
 ): void {
@@ -114,11 +114,51 @@ export function registerMeRoutes(
   app.withTypeProvider<ZodTypeProvider>().delete(
     '/v1/me',
     {
+      // ── RATE LIMITED PER USER, NOT PER IP ──────────────────────────────────
+      //
+      // The route now takes a password, which makes it a guessing target: an
+      // attacker with a stolen token has an authenticated channel and needs
+      // only the password to erase everything. Unthrottled, that is an offline
+      // attack conducted online.
+      //
+      // **Keyed on the authenticated user id**, unlike sign-up's per-IP limit.
+      // Sign-up has no principal to key on and settles for IP with a recorded
+      // CGNAT caveat; here there IS one, and it is the right key — an attacker
+      // rotating IPs must not get a fresh allowance against the same account,
+      // and two owners behind one office NAT must not exhaust each other's.
+      //
+      // Five an hour. Deliberately tight: this is not a login screen somebody
+      // fumbles through. A real owner deleting their own account types their
+      // password once, maybe twice.
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: '1 hour',
+          keyGenerator: (request: FastifyRequest): string =>
+            // `principalOf` throws if authentication has not run. It has: the
+            // `onRequest` auth hook is registered before the limiter's own
+            // hook, so by here the principal exists on every request that
+            // reaches this route.
+            `delete-account:${principalOf(request).userId}`,
+          onExceeded: (request: FastifyRequest, key: string): void => {
+            // Reaching this IS the attack signal. A real owner cannot get here.
+            request.log.warn(
+              {
+                event: 'account.delete_rate_limited',
+                key,
+                ip: request.ip,
+                userAgent: (request.headers['user-agent'] ?? '').slice(0, 120),
+              },
+              'account deletion: per-user rate limit exceeded',
+            );
+          },
+        },
+      },
       schema: {
         operationId: 'deleteMe',
         summary: 'Delete the authenticated owner’s account',
         description:
-          'Irreversible. Deletes the caller’s business and everything it owns in one transaction, then its storage objects (best-effort — a storage failure is logged and does not stop the deletion), then the profile, then the Supabase Auth user LAST so that a partial failure leaves an account that can retry rather than one that cannot sign in. An optional reason is written to the structured log and is never stored. Answers 204.',
+          'Irreversible, and requires the caller’s password in addition to a valid token — a bearer token alone is not sufficient, because ADR-017 keeps no denylist and a stolen one would otherwise erase a salon’s entire booking history. A wrong password answers 401 reauthentication-failed and deletes nothing. Rate limited to a few attempts per hour per USER. On success: deletes the business and everything it owns in one transaction, then its storage objects (best-effort — a storage failure is logged and does not stop the deletion), then the profile, then the Supabase Auth user LAST so that a partial failure leaves an account that can retry rather than one that cannot sign in. An optional reason is written to the structured log and is never stored. Answers 204.',
         tags: ['me'],
         body: deleteAccountRequestSchema,
         response: { 204: z.null() },
@@ -137,7 +177,7 @@ export function registerMeRoutes(
           log: request.log,
         },
         { userId },
-        request.body.reason,
+        { password: request.body.password, reason: request.body.reason },
       );
 
       // `send(null)` rather than `send()`: the response schema is `z.null()`,

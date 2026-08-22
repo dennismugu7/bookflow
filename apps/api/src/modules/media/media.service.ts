@@ -168,7 +168,7 @@ export async function removePortfolioImage(
     // The URL does not point into our bucket, so it is not ours to delete —
     // see `keyFromPublicUrl`. The row is gone either way.
     deps.log.warn(
-      { imageId },
+      { event: 'media.object_not_ours', imageId },
       'portfolio image url is not a public-media object; row removed, nothing deleted',
     );
     return;
@@ -187,6 +187,9 @@ async function removeQuietly(
   } catch (error) {
     deps.log.warn(
       {
+        // Same slug as the account-deletion sweep uses for the same condition,
+        // so one search finds every orphaned object however it was orphaned.
+        event: 'media.object_orphaned',
         key,
         // The failure slug and provider message, never the key material —
         // `StorageError` is built so neither carries one.

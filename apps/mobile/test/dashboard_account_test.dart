@@ -507,8 +507,10 @@ class _StubProfile implements ProfileRepository {
   }) => throw UnimplementedError('these tests never edit the profile');
 
   @override
-  Future<void> deleteAccount({required String? reason}) =>
-      throw UnimplementedError('these tests never delete the account');
+  Future<void> deleteAccount({
+    required String password,
+    required String? reason,
+  }) => throw UnimplementedError('these tests never delete the account');
 }
 
 class _FakeGateway implements AuthGateway {

@@ -1,3 +1,4 @@
+import fastifyHelmet from '@fastify/helmet';
 import fastifyCors, {
   type FastifyCorsOptions,
   type FastifyCorsOptionsDelegate,
@@ -130,10 +131,20 @@ export async function buildApp(
 ): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
-      // Verbose locally, quiet in the environments where request volume is
-      // real. ADR-023's three environments, applied to the one thing this
-      // skeleton actually has.
-      level: config.APP_ENV === 'local' ? 'info' : 'warn',
+      // ── `info` EVERYWHERE NOW, AND THE OLD LINE WAS A SECURITY DEFECT ─────
+      //
+      // This read `config.APP_ENV === 'local' ? 'info' : 'warn'`, explained as
+      // "quiet in the environments where request volume is real".
+      //
+      // **The audit trail is entirely `log.info`.** Account deletion, the
+      // cross-tenant probe signal, payment-proof misses, sign-up conflicts —
+      // every security-relevant event in this codebase was being written at a
+      // level the two environments that matter discarded. The events existed,
+      // the calls ran, and nothing was recorded.
+      //
+      // See `LOG_LEVEL` in `config.ts` for why they were not promoted to `warn`
+      // instead, and for how to turn this down on purpose.
+      level: config.LOG_LEVEL,
       ...(options.logStream === undefined ? {} : { stream: options.logStream }),
     },
   }).withTypeProvider<ZodTypeProvider>();
@@ -167,6 +178,61 @@ export async function buildApp(
   // Registered BEFORE the problem handler is irrelevant to correctness — the
   // plugin throws a 429 into whatever error handler is installed — but the
   // handler is what makes the response RFC 9457, so the two belong together.
+  // ══ SECURITY HEADERS ════════════════════════════════════════════════════════
+  //
+  // Registered first, so every response carries them — including the ones the
+  // error handler produces, which is where a header is most easily forgotten.
+  //
+  // ── CSP IS OFF, DELIBERATELY, AND THAT IS NOT THE LAZY OPTION ─────────────
+  //
+  // A Content-Security-Policy governs what a DOCUMENT may load. This service
+  // answers `application/json` and `application/problem+json` to a Flutter app
+  // and a static site; it renders no HTML, so there is no document for a policy
+  // to constrain and nothing a browser would enforce it against.
+  //
+  // Shipping one anyway would be a policy nobody enforces: it would look like a
+  // control in a review, cost a real one nothing, and be the first thing widened
+  // when Swagger UI or anything else HTML-shaped is eventually served. **The
+  // web app's CSP-equivalent headers live where they can act** — `render.yaml`.
+  //
+  // ── WHAT IS ON, AND WHY EACH ONE MATTERS FOR A JSON API ───────────────────
+  //
+  // `nosniff`      a JSON body that a browser is allowed to sniff as HTML is an
+  //                XSS vector; an error document echoing anything makes it live.
+  // `frame-deny`   nothing here should ever be framed. Cheap, and closes
+  //                clickjacking against any future HTML on this origin.
+  // HSTS           the API is HTTPS-only in staging and production. Without it
+  //                the first request of a session can be downgraded, and this
+  //                one carries a bearer token.
+  // referrer       `no-referrer` rather than the default: a URL here can carry a
+  //                salon handle and a booking id, and neither belongs in the
+  //                `Referer` of whatever a client navigates to next.
+  await app.register(fastifyHelmet, {
+    contentSecurityPolicy: false,
+    // `crossOriginResourcePolicy` would default to `same-origin`, which sets a
+    // header that BLOCKS the cross-origin reads the public surface exists to
+    // serve. CORS is what governs those (see below), and two mechanisms
+    // disagreeing would surface as a browser refusing a salon page with no
+    // error the client could report.
+    crossOriginResourcePolicy: false,
+    crossOriginEmbedderPolicy: false,
+    // `deny`, not helmet's `SAMEORIGIN` default. Nothing on this origin should
+    // ever be framed, including by itself — there is no HTML here to frame, so
+    // `sameorigin` permits a case that does not exist while `deny` closes the
+    // one that might arrive with a future Swagger UI.
+    frameguard: { action: 'deny' },
+    referrerPolicy: { policy: 'no-referrer' },
+    hsts: {
+      maxAge: 31_536_000,
+      includeSubDomains: true,
+      // NOT `preload`. Preloading is close to irreversible — removal takes
+      // months to propagate — and it is a commitment about a DOMAIN, which this
+      // service does not own: it is on `onrender.com`. Setting it would be
+      // asserting something about somebody else's apex.
+      preload: false,
+    },
+  });
+
   await app.register(fastifyRateLimit, { global: false });
 
   // ══ CORS, AND ONLY ON THE PUBLIC SURFACE ══════════════════════════════════

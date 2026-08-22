@@ -32,3 +32,4 @@ coverage/
 Thumbs.db
 *.swp
 .tmp/
+env.json
