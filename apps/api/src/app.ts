@@ -368,6 +368,10 @@ export async function buildApp(
       baseUrl: config.SUPABASE_URL,
       serviceRoleKey: config.SUPABASE_SERVICE_ROLE_KEY,
       anonKey: config.SUPABASE_ANON_KEY,
+      // The app logger rather than a request logger: this client outlives any
+      // one request, and the only thing it reports is a failed session revoke
+      // — an operational event, not a per-request one.
+      log: app.log,
     });
 
   const storage =

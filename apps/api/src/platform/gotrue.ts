@@ -98,8 +98,19 @@ export interface GoTrueClient {
    * minting them.
    *
    * The grant DOES create a session server-side as a side effect — that is
-   * unavoidable with a password grant — and it is simply not returned. An hour
-   * from now it expires unused.
+   * unavoidable with a password grant — **and this revokes it immediately.**
+   *
+   * This paragraph used to say the session "expires unused" in an hour. That
+   * was true of the access token and wrong about the grant: a password grant
+   * also returns a REFRESH token, which outlives the access token considerably
+   * and can be exchanged for fresh access tokens the whole time. Every check —
+   * passing or failing — was minting a durable credential nobody held and
+   * nobody could revoke, on the one operation that exists to be harder to abuse
+   * than a bearer token.
+   *
+   * The revoke is best-effort and scoped to the session it created, never
+   * global: a global logout would sign the owner out of their own phone as a
+   * side effect of proving their password.
    *
    * ── IT TAKES A USER ID, NOT AN EMAIL, AND THAT IS THE SAFETY ──────────────
    *
@@ -132,6 +143,16 @@ export interface GoTrueClientOptions {
   readonly serviceRoleKey: string;
   readonly anonKey: string;
   readonly timeoutMs?: number;
+
+  /**
+   * Where a failed session revoke is reported. Optional, and structural so
+   * `FastifyBaseLogger` satisfies it without this module knowing about Fastify.
+   *
+   * Optional because the revoke is best-effort: a client built without one
+   * still revokes, it just does so silently. Every production construction
+   * passes one.
+   */
+  readonly log?: { warn(context: object, message: string): void };
 }
 
 interface ErrorBody {
@@ -176,13 +197,34 @@ function providerCodeOf(body: unknown): string | undefined {
   return undefined;
 }
 
+/** The access token from a grant response, or `undefined` if it is not there. */
+function readAccessToken(body: unknown): string | undefined {
+  if (typeof body !== 'object' || body === null) return undefined;
+  const token = (body as { access_token?: unknown }).access_token;
+  return typeof token === 'string' && token !== '' ? token : undefined;
+}
+
 export function createGoTrueClient(options: GoTrueClientOptions): GoTrueClient {
   const authBase = `${options.baseUrl.replace(/\/+$/, '')}/auth/v1`;
   const timeoutMs = options.timeoutMs ?? GOTRUE_TIMEOUT_MS;
 
   async function call(
     path: string,
-    init: { method: string; key: string; body?: unknown },
+    init: {
+      method: string;
+      key: string;
+      body?: unknown;
+      /**
+       * A bearer distinct from the apikey.
+       *
+       * Every other call here authenticates AS a key — the anon key or the
+       * service-role key — so the two headers carry the same value. `/logout`
+       * is the exception: GoTrue identifies the SESSION to end from the bearer,
+       * and the apikey only admits the request. Passing the key as both would
+       * ask GoTrue to end the anon key's session, which is not a thing.
+       */
+      bearer?: string;
+    },
   ): Promise<{ status: number; body: unknown }> {
     // Built up rather than declared inline: `exactOptionalPropertyTypes` means
     // `body: undefined` is not the same as no `body` at all, and a DELETE with
@@ -191,7 +233,7 @@ export function createGoTrueClient(options: GoTrueClientOptions): GoTrueClient {
       method: init.method,
       headers: {
         apikey: init.key,
-        authorization: `Bearer ${init.key}`,
+        authorization: `Bearer ${init.bearer ?? init.key}`,
         'content-type': 'application/json',
       },
       signal: AbortSignal.timeout(timeoutMs),
@@ -224,6 +266,55 @@ export function createGoTrueClient(options: GoTrueClientOptions): GoTrueClient {
     }
 
     return { status: response.status, body };
+  }
+
+  /**
+   * Ends the session a password grant just created. Never throws.
+   *
+   * ── BEST-EFFORT, AND THE ASYMMETRY IS THE POINT ────────────────────────────
+   *
+   * Its one caller has already decided the password was correct. A failed
+   * revoke leaves a token alive for its natural lifetime — bad, and logged —
+   * whereas throwing would fail an account deletion over housekeeping, which is
+   * refusing somebody their own erasure for a reason that has nothing to do
+   * with them.
+   *
+   * A missing token is not an error either: `readAccessToken` returns undefined
+   * only if GoTrue answered 200 with no `access_token`, which the contract says
+   * cannot happen. There would be nothing to revoke in that case anyway.
+   */
+  async function revokeSession(accessToken: string | undefined): Promise<void> {
+    if (accessToken === undefined) return;
+
+    try {
+      // `scope: global` ends every session for the user, not merely this one.
+      // NOT used: this must revoke only what it created. A global logout would
+      // sign the owner out of their phone as a side effect of proving their
+      // password — on the screen where they are about to be told the deletion
+      // failed, if it does.
+      const { status } = await call('/logout?scope=local', {
+        method: 'POST',
+        key: options.anonKey,
+        bearer: accessToken,
+      });
+
+      // 204 is the success. 401 means the token is already invalid, which is
+      // the state this call exists to reach.
+      if (status === 204 || status === 200 || status === 401) return;
+
+      options.log?.warn(
+        { event: 'gotrue.revoke_failed', status },
+        'reauthentication session not revoked; it will expire on its own',
+      );
+    } catch (error) {
+      options.log?.warn(
+        {
+          event: 'gotrue.revoke_failed',
+          detail: error instanceof Error ? error.message : 'unknown error',
+        },
+        'reauthentication session not revoked; it will expire on its own',
+      );
+    }
   }
 
   return {
@@ -333,7 +424,29 @@ export function createGoTrueClient(options: GoTrueClientOptions): GoTrueClient {
         body: { email, password },
       });
 
-      if (status === 200) return true;
+      if (status === 200) {
+        // ══ THE SESSION THIS JUST MINTED IS REVOKED IMMEDIATELY ══════════════
+        //
+        // **This used to be left alone**, with a comment saying it "expires
+        // unused" in an hour. That was true of the ACCESS token and wrong about
+        // the grant: a password grant also returns a REFRESH token, which
+        // outlives the access token by a long way and can be exchanged for new
+        // access tokens the whole time.
+        //
+        // So every re-authentication check — for an operation whose entire
+        // purpose is to be harder to abuse than a bearer token — was minting a
+        // durable credential that nobody holds, nobody uses, and nobody can
+        // revoke. It never left this process, which is why it was not an
+        // incident; it was still a credential in a log or a heap dump away from
+        // being one.
+        //
+        // `/logout` ends the session the bearer identifies. Best-effort: the
+        // password check has ALREADY succeeded on its own terms, and failing
+        // the account deletion because a cleanup call did not land would be
+        // refusing somebody their own erasure over housekeeping.
+        await revokeSession(readAccessToken(body));
+        return true;
+      }
 
       // ── A WRONG PASSWORD IS `false`, AND AN OUTAGE IS A THROW ────────────
       //

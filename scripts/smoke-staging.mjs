@@ -15,13 +15,18 @@
  * one. See `docs/analysis/09-phase3-close.md` for why the e2e box does not tick
  * in Phase 3.
  *
- * ══ NO CREDENTIALS ══════════════════════════════════════════════════════════
+ * ══ NO PRIVILEGED CREDENTIALS ═══════════════════════════════════════════════
  *
- * Every assertion below uses PUBLIC endpoints. That is deliberate: giving CI a
- * staging `service_role` key — which bypasses RLS entirely (spike 001/C7) — to
- * make a smoke test slightly richer would be a poor trade, and the public
- * surface turns out to be enough to prove the database is reachable (see the
- * last assertion).
+ * Every assertion below uses PUBLIC endpoints, plus — in section 5 — the
+ * staging ANON key, which is a published client credential: it ships inside the
+ * Flutter app and inside the browser bundle, and holding it grants exactly what
+ * any user of the product already has.
+ *
+ * What this script still refuses is a staging `service_role` key, which
+ * bypasses RLS entirely (spike 001/C7). Making a smoke test slightly richer is
+ * not worth putting that in CI, and the surface reachable without it turns out
+ * to be enough — to prove the database is reachable (section 4) and to prove
+ * both storage buckets exist with the right visibility (section 5).
  */
 
 const BASE =
@@ -194,6 +199,199 @@ if (signup.status === 202) {
     'a real sign-up reaches the database and compensates',
     `HTTP ${signup.status} type=${String(signup.json?.type)} — 500 would mean the DATABASE failed rather than the mailer, and a 503 without our problem document means the SERVICE is down`,
   );
+}
+
+// ── 5. ADR-011's buckets exist on the deployed environment ──────────────────
+//
+// ══ WHY THIS SECTION EXISTS ═════════════════════════════════════════════════
+//
+// Every image path was broken on staging from the day the media endpoints
+// merged until a human opened the Supabase dashboard — because the buckets had
+// never been created there. **Eight green jobs certified a dead feature.** CI
+// excluded `storage-api` from the local stack, every storage test used a fake,
+// and a fake is exactly as green when the real bucket does not exist.
+//
+// `apps/api/src/platform/storage.integration.test.ts` now round-trips real
+// bytes and closes that hole for the LOCAL stack. This closes it for the
+// DEPLOYED one, which is a different environment configured by a different
+// hand: `supabase/config.toml` provisions local, and staging is still
+// configured in the dashboard (docs/ENVIRONMENT.md). Nothing but this section
+// compares the two.
+//
+// ── WHAT THIS IS NOT, STATED PLAINLY ───────────────────────────────────────
+//
+// **It is not a byte round-trip.** A write to either bucket needs a
+// `service_role` key, which the header above refuses to put in CI, or an owner
+// session with a business — and staging's e2e account is deliberately cleared
+// of its business before every run, so a smoke test depending on one would be
+// asserting another job's leftovers.
+//
+// What it does instead is separate the four ways a bucket can be wrong, using
+// only the anon key. The distinction Storage hands us is precise, and it is
+// worth writing down because it is not obvious and it is what these assertions
+// key on. **Every one of these is HTTP 400** — Storage puts the real status in
+// the body — so the `code` field is the signal and the status is not:
+//
+//   with the anon key, GET /object/{bucket}/{key}   → bucket exists?
+//        NoSuchKey    the bucket is there, that object is not  ✅
+//        NoSuchBucket the bucket is not there                  ❌
+//
+//   with NO credential, GET /object/public/{bucket}/{key}  → bucket is public?
+//        NoSuchKey    the bucket is public
+//        NoSuchBucket the bucket is private *or absent*
+//
+// The second probe alone cannot tell private from missing, which is exactly why
+// both run: existence comes from the first, visibility from the second.
+const SUPABASE_URL = process.env.STAGING_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.STAGING_SUPABASE_ANON_KEY;
+
+// ── MISSING CONFIGURATION FAILS; IT DOES NOT SKIP ──────────────────────────
+//
+// A skip here would reproduce the original defect in a new place: the job would
+// stay green while proving nothing, and the reason would be invisible. The
+// general rule this whole change enforces — an exclusion justified by "not
+// exercised yet" needs something that fails when that stops being true — is
+// worth nothing if the check quietly opts itself out.
+if (
+  SUPABASE_URL === undefined ||
+  SUPABASE_URL === '' ||
+  SUPABASE_ANON_KEY === undefined ||
+  SUPABASE_ANON_KEY === ''
+) {
+  check(
+    false,
+    'the storage probe is configured',
+    'STAGING_SUPABASE_URL and STAGING_SUPABASE_ANON_KEY must both be set — ' +
+      'see docs/ENVIRONMENT.md §3. This assertion FAILS rather than skipping ' +
+      'on purpose: an unconfigured storage check that reports green is the ' +
+      'exact failure this section was added to end',
+  );
+} else {
+  /** One probe: the `code` Storage returns, or a description of why not. */
+  async function probeOnce(path, headers) {
+    // A key nobody will ever have uploaded, so the answer is always about the
+    // BUCKET rather than about an object. Nothing is written by any of this.
+    const response = await fetch(`${SUPABASE_URL}/storage/v1${path}`, {
+      headers,
+      signal: AbortSignal.timeout(30_000),
+    });
+    const text = await response.text();
+    try {
+      return String(JSON.parse(text).code ?? '(none)');
+    } catch {
+      return `(unparseable: HTTP ${response.status})`;
+    }
+  }
+
+  // ── WHY THREE PROBES THAT MUST AGREE ───────────────────────────────────────
+  //
+  // Measured while writing this, against the self-hosted `storage-api` image
+  // the CI stack runs: on the `/object/public/…` path, over 20 rounds, a
+  // PRIVATE bucket answered `NoSuchKey` 5 times out of 20, and a bucket that
+  // did not exist at all answered `NoSuchKey` 3 times out of 20. The same
+  // request, back to back, returns different codes — there is a bucket-metadata
+  // cache in there that a neighbouring request can pollute.
+  //
+  // The hosted Storage this script actually talks to did NOT reproduce it:
+  // 12 rounds, three buckets, 36/36 consistent. So this could be written as a
+  // single fetch and would pass.
+  //
+  // It is not, because the assertion below decides whether clients' payment
+  // screenshots are world-readable, and one cache race between that question
+  // and its answer is too thin a margin. Three probes, and they must AGREE:
+  // disagreement is reported as its own failure naming the cache rather than
+  // the bucket, so if hosted Storage ever starts behaving like the local image
+  // the message says so instead of blaming a bucket that is fine.
+  async function storageCode(path, headers) {
+    const seen = new Set();
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      seen.add(await probeOnce(path, headers));
+    }
+    return seen.size === 1
+      ? [...seen][0]
+      : `INCONSISTENT(${[...seen].sort().join('|')})`;
+  }
+
+  /**
+   * What a failing code means. Disagreement between probes is its own cause and
+   * must not be reported as the bucket being wrong.
+   */
+  function because(code, meaning) {
+    return code.startsWith('INCONSISTENT')
+      ? `${code} — Storage gave DIFFERENT answers to the same probe. That is the bucket-metadata cache, not the bucket; see the note above this check`
+      : `${code} — ${meaning}`;
+  }
+
+  const probeKey = `smoke/${crypto.randomUUID()}.png`;
+  const withAnon = {
+    apikey: SUPABASE_ANON_KEY,
+    authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  };
+
+  for (const bucket of ['public-media', 'private-media']) {
+    const code = await storageCode(`/object/${bucket}/${probeKey}`, withAnon);
+    check(
+      code === 'NoSuchKey',
+      `the ${bucket} bucket exists on staging`,
+      because(code, 'NoSuchBucket means it was never created there (ADR-011)'),
+    );
+  }
+
+  // A banner is fetched by a stranger's browser with no token at all. If this
+  // is not public, every image on every published booking page is a 400.
+  const publicVisibility = await storageCode(
+    `/object/public/public-media/${probeKey}`,
+    undefined,
+  );
+  check(
+    publicVisibility === 'NoSuchKey',
+    'public-media serves anonymously',
+    because(
+      publicVisibility,
+      'NoSuchBucket here means it is private or absent, and every image on every published booking page is a 400',
+    ),
+  );
+
+  // ══ THE ONE THAT WOULD BE A BREACH ═════════════════════════════════════════
+  //
+  // `private-media` holds clients' M-Pesa screenshots. Public is one toggle in
+  // the dashboard, and if it were flipped every proof would be world-readable
+  // at a guessable path, the API would keep signing URLs that work, and **every
+  // other assertion in this file would still pass.**
+  const privateVisibility = await storageCode(
+    `/object/public/private-media/${probeKey}`,
+    undefined,
+  );
+  check(
+    privateVisibility === 'NoSuchBucket',
+    'private-media does NOT serve anonymously',
+    because(
+      privateVisibility,
+      'NoSuchKey means the bucket is PUBLIC and every payment proof on staging is readable by anyone (ADR-011)',
+    ),
+  );
+
+  // Writes come through our API or not at all. The anon key is in the Flutter
+  // app and in every browser that loads a booking page; a storage policy that
+  // let it write would let any visitor put objects in either bucket.
+  for (const bucket of ['public-media', 'private-media']) {
+    const response = await fetch(
+      `${SUPABASE_URL}/storage/v1/object/${bucket}/${probeKey}`,
+      {
+        method: 'POST',
+        headers: { ...withAnon, 'content-type': 'image/png' },
+        // Eight bytes that begin as a PNG does, so a rejection is about the
+        // credential and not about the content.
+        body: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        signal: AbortSignal.timeout(30_000),
+      },
+    );
+    check(
+      response.status >= 400,
+      `an anonymous client cannot write to ${bucket}`,
+      `HTTP ${response.status} — a 200 means this run just uploaded ${probeKey} and anyone can do the same`,
+    );
+  }
 }
 
 console.log('');
