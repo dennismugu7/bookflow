@@ -211,6 +211,121 @@ describe('a caller with no membership writes nothing', () => {
   });
 });
 
+/**
+ * ══ THE CROSS-TENANT CASE, WHICH IS THE ONE THAT HAPPENS ════════════════════
+ *
+ * The tests above use a caller with NO membership. That is the easy half: the
+ * scoping subquery is `null` for them, and null compares false against
+ * everything, so a great many wrong implementations still pass.
+ *
+ * **This is the case the rule actually exists for.** Owner B is authenticated,
+ * holds a perfectly good owner membership, and their scoping subquery resolves
+ * to a real business id. Every read and write they make is a legitimate query
+ * with a non-null scope — and it must reach nothing of owner A's.
+ *
+ * A predicate that filtered on "has any membership" rather than on WHICH
+ * business would pass every test above and fail every one of these. So would
+ * one that resolved the id once and then forgot to filter by it.
+ */
+describe('one owner reaches nothing belonging to another', () => {
+  it('reads only their own rows, in every guarded table', async () => {
+    const alice = await accountWithBusiness(ctx, 'Alice’s Salon');
+    await populate(alice.businessId);
+
+    const bob = await accountWithBusiness(ctx, 'Bob’s Salon');
+    await populate(bob.businessId);
+
+    for (const table of GUARDED_TABLES) {
+      // ── EXACTLY ONE, NOT "AT LEAST ONE" AND NOT ZERO ────────────────────
+      //
+      // Both salons have a row in every table. `toBe(1)` is what distinguishes
+      // "scoped correctly" from "sees everything": a rule that dropped its
+      // business filter would return 2 here and still satisfy any assertion
+      // phrased as "can see their own".
+      expect(
+        await countVisibleTo(table, alice.userId),
+        `${table}: Alice does not see exactly her own row`,
+      ).toBe(1);
+
+      expect(
+        await countVisibleTo(table, bob.userId),
+        `${table}: Bob does not see exactly his own row`,
+      ).toBe(1);
+    }
+  });
+
+  it('reads their OWN row and not the other salon’s, by id', async () => {
+    const alice = await accountWithBusiness(ctx, 'Alice’s Salon');
+    await populate(alice.businessId);
+    const bob = await accountWithBusiness(ctx, 'Bob’s Salon');
+    await populate(bob.businessId);
+
+    // Counting is not quite enough: two salons with one row each would also
+    // give 1/1 to an implementation that returned the WRONG one. This asserts
+    // which business the visible row belongs to.
+    const seen = await sql<{ businessId: string }>`
+      select business_id as "businessId" from public.services
+       where business_id = ${ownedBusinessOf(bob.userId)}
+    `.execute(ctx.db);
+
+    expect(seen.rows).toHaveLength(1);
+    expect(seen.rows[0]?.businessId).toBe(bob.businessId);
+    expect(seen.rows[0]?.businessId).not.toBe(alice.businessId);
+  });
+
+  it('cannot update another owner’s rows', async () => {
+    const alice = await accountWithBusiness(ctx, 'Alice’s Salon');
+    await populate(alice.businessId);
+    const bob = await accountWithBusiness(ctx, 'Bob’s Salon');
+    await populate(bob.businessId);
+
+    // Bob's own update succeeds — the control. Without it, "Alice's row is
+    // unchanged" would also pass for a rule that updates nothing at all.
+    const mine = await sql<{ id: string }>`
+      update public.services set name = 'Bob renamed his own'
+       where business_id = ${ownedBusinessOf(bob.userId)}
+      returning id
+    `.execute(ctx.db);
+    expect(mine.rows).toHaveLength(1);
+
+    // And Alice's is untouched by it.
+    const hers = await sql<{ name: string }>`
+      select name from public.services where business_id = ${alice.businessId}::uuid
+    `.execute(ctx.db);
+    expect(
+      hers.rows[0]?.name,
+      'one owner’s update reached another owner’s row',
+    ).toBe('Silk press');
+  });
+
+  it('cannot delete another owner’s rows, in any guarded table', async () => {
+    const alice = await accountWithBusiness(ctx, 'Alice’s Salon');
+    await populate(alice.businessId);
+    const bob = await accountWithBusiness(ctx, 'Bob’s Salon');
+    await populate(bob.businessId);
+
+    for (const table of GUARDED_TABLES) {
+      const deleted = await sql<{ id: string }>`
+        delete from ${sql.raw(`public.${table}`)}
+         where business_id = ${ownedBusinessOf(bob.userId)}
+        returning id
+      `.execute(ctx.db);
+
+      // Bob deletes exactly his own — one row, not two.
+      expect(
+        deleted.rows,
+        `${table}: Bob's delete did not remove exactly his own row`,
+      ).toHaveLength(1);
+
+      // Alice's survives.
+      expect(
+        await countVisibleTo(table, alice.userId),
+        `${table}: one owner's delete reached another owner's rows`,
+      ).toBe(1);
+    }
+  });
+});
+
 describe('the rule filters on the owner role, not merely on membership', () => {
   it('ignores a membership whose role is not owner', async () => {
     const owner = await accountWithBusiness(ctx, 'Role Salon');

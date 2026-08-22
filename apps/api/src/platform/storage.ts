@@ -166,6 +166,51 @@ export interface StorageClientOptions {
   readonly timeoutMs?: number;
 }
 
+/**
+ * Whether a Storage error body means "that object is not there".
+ *
+ * ══ THE HTTP STATUS IS NOT 404, AND THAT COST TWO REAL BUGS ═════════════════
+ *
+ * Supabase Storage answers a missing object with **HTTP 400** and a body of
+ * `{"statusCode":"404","error":"not_found","code":"NoSuchKey"}`. The status line
+ * and the body disagree, and the body is the one telling the truth.
+ *
+ * Every `status === 404` check in this file was therefore dead against the real
+ * service. Both were written against a fake that returned a tidy 404, and both
+ * were wrong in a way no fake could show:
+ *
+ *   * **`signedUrl`** classified a missing object as `rejected`, so
+ *     `getPaymentProof` answered 503 `storage-unavailable` — telling an owner to
+ *     try again for an object that will never exist — instead of the 404 its own
+ *     comment promises.
+ *   * **`remove` / `removePrivate`** did not treat it as success, so the
+ *     idempotence the account-deletion sweep relies on was not there. A retry
+ *     after a partial failure would log an orphan warning for every object the
+ *     first attempt had already removed.
+ *
+ * Found by `storage.integration.test.ts` on its first run against a real
+ * Storage, which is the entire argument for that file existing.
+ *
+ * Matched on the body's own fields rather than on the message text: `code` and
+ * `error` are stable identifiers, and a message is prose that changes between
+ * releases.
+ */
+function isMissingObject(body: unknown): boolean {
+  if (typeof body !== 'object' || body === null) return false;
+  const candidate = body as {
+    statusCode?: unknown;
+    error?: unknown;
+    code?: unknown;
+  };
+
+  return (
+    candidate.code === 'NoSuchKey' ||
+    candidate.error === 'not_found' ||
+    candidate.statusCode === '404' ||
+    candidate.statusCode === 404
+  );
+}
+
 function providerMessageOf(body: unknown): string | undefined {
   if (typeof body !== 'object' || body === null) return undefined;
   const candidate = body as { message?: unknown; error?: unknown };
@@ -261,11 +306,15 @@ export function createStorageClient(
         );
       }
 
-      // 404 means the object is already gone, which is the state this call
-      // exists to reach. Same reasoning as `gotrue.deleteUser`.
       if (response.status === 200 || response.status === 404) return;
 
-      const providerMessage = providerMessageOf(await readJson(response));
+      // An already-gone object is success — the state this call exists to reach
+      // — and Storage reports it as HTTP 400 with a 404 in the body. See
+      // `isMissingObject`; the status check above is not enough on its own.
+      const body = await readJson(response);
+      if (isMissingObject(body)) return;
+
+      const providerMessage = providerMessageOf(body);
       throw new StorageError(
         response.status >= 500 ? 'unavailable' : 'rejected',
         `object storage refused the delete (HTTP ${String(response.status)})`,
@@ -339,10 +388,14 @@ export function createStorageClient(
         );
       }
 
-      // 404 is success: the state this call exists to reach is "not there".
       if (response.status === 200 || response.status === 404) return;
 
-      const providerMessage = providerMessageOf(await readJson(response));
+      // Same as `remove`: an already-gone object is success, and Storage says so
+      // with a 400 carrying a 404. See `isMissingObject`.
+      const body = await readJson(response);
+      if (isMissingObject(body)) return;
+
+      const providerMessage = providerMessageOf(body);
       throw new StorageError(
         response.status >= 500 ? 'unavailable' : 'rejected',
         `object storage refused the private delete (HTTP ${String(response.status)})`,
@@ -374,18 +427,27 @@ export function createStorageClient(
         );
       }
 
-      if (response.status === 404) {
+      if (response.status !== 200) {
+        const body = await readJson(response);
+
+        // ── A MISSING OBJECT IS `not-found`, AND IT ARRIVES AS A 400 ───────
+        //
         // Distinguished from `rejected` because the CALLER can act on it: a
         // booking whose object is gone answers 404 to the owner rather than
         // 503, and those mean different things to whoever is looking at it.
-        throw new StorageError(
-          'not-found',
-          'no such object in private storage',
-        );
-      }
+        //
+        // This used to test `response.status === 404`, which real Storage never
+        // sends — it answers 400 with a 404 in the BODY, so the branch was dead
+        // and every missing proof surfaced as "try again later" for something
+        // that will never be there. See `isMissingObject`.
+        if (isMissingObject(body)) {
+          throw new StorageError(
+            'not-found',
+            'no such object in private storage',
+          );
+        }
 
-      if (response.status !== 200) {
-        const providerMessage = providerMessageOf(await readJson(response));
+        const providerMessage = providerMessageOf(body);
         throw new StorageError(
           response.status >= 500 ? 'unavailable' : 'rejected',
           `object storage refused to sign (HTTP ${String(response.status)})`,

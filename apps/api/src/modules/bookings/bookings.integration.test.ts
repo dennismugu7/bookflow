@@ -10,7 +10,11 @@ import { buildApp } from '../../app.ts';
 import { getConfig } from '../../platform/config.ts';
 import { ProblemError } from '../../platform/problem.ts';
 import type { Mail, Mailer } from '../../platform/resend.ts';
-import { StorageError, type StorageClient } from '../../platform/storage.ts';
+import {
+  createStorageClient,
+  StorageError,
+  type StorageClient,
+} from '../../platform/storage.ts';
 import { setOpeningHours } from '../hours/hours.service.ts';
 import { addService } from '../services/services.service.ts';
 import { publishMyBusiness } from '../publishing/publishing.service.ts';
@@ -680,30 +684,67 @@ describe('a failed booking does not leave its payment proof behind', () => {
     0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
   ]);
 
-  /** Records what was uploaded and what was removed, in order. */
-  function fakeStorage(): StorageClient & {
+  /**
+   * The REAL storage client, wrapped so a test can see which keys it touched.
+   *
+   * ══ NOT A FAKE, AND THAT IS THE WHOLE POINT OF THIS BLOCK ══════════════════
+   *
+   * These tests used a fake `uploadPrivate`/`removePrivate` pair. That proved
+   * the route called the right method with the right argument, which is worth
+   * something — and it could not prove the object was ever gone, because
+   * nothing was ever there.
+   *
+   * The reviewer's finding was that the orphaned-proof fix "has never executed
+   * against a working store". It does now: the calls go to the local
+   * `storage-api`, and the assertions below ask STORAGE whether the object
+   * exists rather than asking a recorder whether a method was called.
+   *
+   * The wrapper records keys as well, so the "removed exactly what was
+   * uploaded" assertion survives — a delete aimed at the wrong key would leave
+   * the right object behind AND the bucket would agree, which is only visible
+   * if both are checked.
+   */
+  function recordingStorage(): StorageClient & {
     uploaded: string[];
     removed: string[];
   } {
+    const real = createStorageClient({
+      baseUrl: config.SUPABASE_URL,
+      serviceRoleKey: config.SUPABASE_SERVICE_ROLE_KEY,
+    });
+
     const uploaded: string[] = [];
     const removed: string[] = [];
 
     return {
+      ...real,
       uploaded,
       removed,
-      uploadPrivate: ({ key }: { key: string }) => {
-        uploaded.push(key);
-        return Promise.resolve({ key });
+      uploadPrivate: async (input) => {
+        uploaded.push(input.key);
+        return await real.uploadPrivate(input);
       },
-      removePrivate: (key: string) => {
+      removePrivate: async (key) => {
         removed.push(key);
-        return Promise.resolve();
+        await real.removePrivate(key);
       },
-      upload: () => Promise.reject(new Error('not used')),
-      remove: () => Promise.reject(new Error('not used')),
-      signedUrl: () => Promise.reject(new Error('not used')),
-      publicUrl: (key: string) => `https://public.invalid/${key}`,
     };
+  }
+
+  /** Whether the object is actually in the bucket, asked of Storage itself. */
+  async function objectExists(
+    storage: StorageClient,
+    key: string,
+  ): Promise<boolean> {
+    try {
+      await storage.signedUrl(key);
+      return true;
+    } catch (error) {
+      if (error instanceof StorageError && error.failure === 'not-found') {
+        return false;
+      }
+      throw error;
+    }
   }
 
   /** A multipart body with the booking fields and one image part. */
@@ -748,7 +789,7 @@ describe('a failed booking does not leave its payment proof behind', () => {
     // exists for, and the most common way this route fails.
     await book(salon.handle, salon.serviceId, '09:00');
 
-    const storage = fakeStorage();
+    const storage = recordingStorage();
     const app = await buildApp(config, {
       db: () => ctx.db,
       storage,
@@ -783,6 +824,18 @@ describe('a failed booking does not leave its payment proof behind', () => {
       // on a shared bucket is worse than leaking one.
       expect(storage.uploaded).toHaveLength(1);
       expect(storage.removed).toEqual(storage.uploaded);
+
+      // ── AND THE BUCKET AGREES ─────────────────────────────────────────
+      //
+      // Asked of Storage rather than of the recorder. This is the half a fake
+      // cannot do: a delete that returned success while leaving the object —
+      // a mangled key, a wrong bucket — satisfies every line above and leaves
+      // a client's M-Pesa screenshot in a private bucket forever.
+      const key = storage.uploaded[0]!;
+      expect(
+        await objectExists(storage, key),
+        'the proof survived a failed booking',
+      ).toBe(false);
     } finally {
       await app.close();
     }
@@ -791,7 +844,7 @@ describe('a failed booking does not leave its payment proof behind', () => {
   it('keeps the object when the booking succeeds', async () => {
     const salon = await publishedSalon();
 
-    const storage = fakeStorage();
+    const storage = recordingStorage();
     const app = await buildApp(config, {
       db: () => ctx.db,
       storage,
@@ -820,6 +873,18 @@ describe('a failed booking does not leave its payment proof behind', () => {
       // the test above and delete every proof ever uploaded.
       expect(storage.uploaded).toHaveLength(1);
       expect(storage.removed).toEqual([]);
+
+      // Still in the bucket, and reachable — the owner's
+      // `GET .../payment-proof` depends on exactly this.
+      const key = storage.uploaded[0]!;
+      expect(
+        await objectExists(storage, key),
+        'a successful booking lost its proof',
+      ).toBe(true);
+
+      // Not left behind by the test. Storage is not the transaction harness:
+      // an object written here survives the rollback that removes the booking.
+      await storage.removePrivate(key);
     } finally {
       await app.close();
     }
@@ -828,7 +893,7 @@ describe('a failed booking does not leave its payment proof behind', () => {
   it('refuses a file whose bytes are not an image, and uploads nothing', async () => {
     const salon = await publishedSalon();
 
-    const storage = fakeStorage();
+    const storage = recordingStorage();
     const app = await buildApp(config, {
       db: () => ctx.db,
       storage,

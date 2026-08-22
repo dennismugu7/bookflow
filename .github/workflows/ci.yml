@@ -40,14 +40,31 @@ name: CI
 # a modified runner or read the secrets directly, and a SHA in this file stops
 # none of that.
 #
-# The third-party actions are different in exactly the way that matters: they
-# are separate trust roots, each an independent account whose compromise is
-# survivable-in-principle and would otherwise reach our credentials.
+# The third-party actions are different in exactly the way that matters, and
+# this is the whole of the distinction: **they are separate trust roots.** Each
+# is an independent account, held by someone who is not GitHub, whose compromise
+# is survivable-in-principle and would otherwise reach our credentials. Pinning
+# moves a real boundary there. It moves nothing here.
 #
-# Pinning them too would cost real upkeep — a `checkout` security patch would
-# wait for somebody to notice — for a threat model where the loss has already
-# happened. Stated rather than left implicit, so the asymmetry reads as a
-# choice and not as an oversight.
+# The upkeep cost is real but SECONDARY — a `checkout` security patch waiting
+# for somebody to notice. It is worth saying only because it is the argument
+# that would be left if the trust-boundary one failed, and it is not the reason.
+# If GitHub ever stopped being the trust root for the runtime, this decision
+# would be wrong regardless of how cheap the pins were.
+#
+# ── EXPECT TO BE ASKED THIS AGAIN ──────────────────────────────────────────
+#
+# **Scorecard-style tooling flags unpinned actions unconditionally**, `actions/*`
+# included: the `Pinned-Dependencies` check counts tags as unpinned and does not
+# model who publishes them. So do most workflow linters and most reviewers
+# working from a checklist.
+#
+# This paragraph exists so that the next person to raise it — a scanner, an
+# auditor, a future session — meets a position rather than a silence. Silence
+# reads as an oversight and gets "fixed", and a decision undone by someone who
+# never saw the reasoning is indistinguishable from one that was never made.
+# Disagree with it if you like; do not mistake it for something nobody thought
+# about.
 
 on:
   push:
@@ -108,8 +125,8 @@ jobs:
       # Excluded services, and why: every one of these is unused by the test
       # suite, which speaks SQL to Postgres through Kysely and nothing else.
       #   postgrest     ADR-013: clients never talk to PostgREST
-      #   storage-api   ADR-011's buckets are not exercised yet
-      #   imgproxy      image transforms, only meaningful with storage
+      #   imgproxy      image TRANSFORMS. Nothing requests one — the API stores
+      #                 and serves originals — and storage-api works without it.
       #   realtime      no subscription is under test
       #   postgres-meta \
       #   studio         > the dashboard; there is nobody to look at it
@@ -138,14 +155,40 @@ jobs:
       # and the happy-path test fails for a reason that has nothing to do with
       # the code under test.
       #
+      # ══ `storage-api` IS NO LONGER EXCLUDED, AND THE REASON IS A SCAR ═══════
+      #
+      # It was, with the justification "ADR-011's buckets are not exercised
+      # yet". That was true when written and **became false the day the media
+      # endpoints shipped** — and nothing anywhere noticed the justification had
+      # expired.
+      #
+      # The consequence was not theoretical. Every image path — team photos,
+      # portfolio, banners, payment proofs — was broken on staging from the day
+      # it merged until a human opened the Supabase dashboard, and **eight green
+      # jobs certified it the whole time.** `scripts/smoke-staging.mjs` never
+      # uploaded anything either, so the deployed environment had no opinion
+      # about buckets at all.
+      #
+      # The buckets are declared in `supabase/config.toml` now, so this stack
+      # comes up with the same two a fresh clone gets, and
+      # `storage.integration.test.ts` round-trips real objects through them.
+      #
+      # ── THE GENERAL RULE, WHICH IS THE PART WORTH KEEPING ──────────────────
+      #
+      # **An exclusion justified by "not exercised yet" needs something that
+      # fails when that stops being true.** A comment stating a temporary fact
+      # is a comment that will be wrong later and will not say so. Every
+      # remaining entry above is excluded for a reason that cannot expire on its
+      # own — no subscriptions exist to test, there is nobody to look at a
+      # dashboard — rather than for one waiting on work somebody might do.
+      #
       # `supabase start` applies everything in supabase/migrations as part of
       # bringing the database up, so the schema is in place before the suite
       # runs. The step after this one asserts that rather than assuming it.
-      - name: Start Supabase (database, auth and mail)
+      - name: Start Supabase (database, auth, mail and storage)
         run: |
           supabase start \
             -x postgrest \
-            -x storage-api \
             -x imgproxy \
             -x realtime \
             -x postgres-meta \
@@ -584,11 +627,24 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      # No credentials. Every assertion uses public endpoints — see the note in
-      # the script about why the sign-up probe proves the database is reachable
-      # without one, and why giving CI a service-role key to do better would be
-      # a poor trade.
+      # No PRIVILEGED credentials. Every assertion uses public endpoints — see
+      # the note in the script about why the sign-up probe proves the database is
+      # reachable without one, and why giving CI a service-role key to do better
+      # would be a poor trade.
+      #
+      # The two below are the exception, and they are not really an exception:
+      # the anon key is a published client credential that ships inside the
+      # Flutter app. They exist so the script can tell a bucket that is MISSING
+      # from one that is PRIVATE — Storage answers `NoSuchBucket` to an
+      # unauthenticated caller in both cases, and only the anon key separates
+      # them. Both are already secrets, used by the e2e job below.
+      #
+      # If either is unset the script FAILS rather than skipping. That is
+      # deliberate; the script says why at the check.
       - name: Smoke-test staging
+        env:
+          STAGING_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          STAGING_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
         run: node scripts/smoke-staging.mjs
 
   # ── The e2e gate ───────────────────────────────────────────────────────────
