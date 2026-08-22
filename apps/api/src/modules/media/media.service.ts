@@ -4,6 +4,7 @@ import type { Executor } from '../../platform/db.ts';
 import { ProblemError } from '../../platform/problem.ts';
 import {
   keyFromPublicUrl,
+  removeQuietly as removeQuietlyFrom,
   StorageError,
   type StorageClient,
 } from '../../platform/storage.ts';
@@ -16,7 +17,11 @@ import {
   setBannerUrl,
   type PortfolioImageRow,
 } from './media.repository.ts';
-import { ACCEPTED_IMAGE_TYPES, type ImagePurpose } from './media.schema.ts';
+import {
+  CONTENT_TYPE_FOR,
+  detectImageFormat,
+  type ImagePurpose,
+} from './media.schema.ts';
 
 /** Business logic. All of it. */
 
@@ -84,8 +89,25 @@ export async function uploadImage(
     readonly body: Buffer;
   },
 ): Promise<UploadResult> {
-  const extension = ACCEPTED_IMAGE_TYPES.get(input.contentType);
+  // ══ THE BYTES DECIDE, NOT THE HEADER ═══════════════════════════════════════
+  //
+  // This was `ACCEPTED_IMAGE_TYPES.get(input.contentType)` — the extension taken
+  // from a header the CALLER writes. `content-type: image/png` on an HTML
+  // document produced an object stored as `.png`, in the public bucket, served
+  // with whatever type Storage inferred from the extension we chose on their
+  // say-so.
+  //
+  // `detectImageFormat` reads the magic bytes and the extension comes from what
+  // it FOUND. Verifying and then still using the claimed extension would leave
+  // the mismatch exactly where it was.
+  //
+  // The claimed type is not even consulted: a caller who sends the right bytes
+  // with a wrong header gets the right file, and one who sends the right header
+  // with wrong bytes gets refused. Neither outcome depends on the header at all.
+  const extension = detectImageFormat(input.body);
   if (extension === undefined) {
+    // Deliberately the same message whether the header was wrong, the bytes
+    // were, or the two disagreed. `problem.ts`: no reflected value, no probe.
     throw new ProblemError('upload-rejected', 'unsupported image type');
   }
 
@@ -101,7 +123,10 @@ export async function uploadImage(
     ({ url } = await deps.storage.upload({
       key,
       body: input.body,
-      contentType: input.contentType,
+      // OURS, derived from the verified format — never `input.contentType`.
+      // Storage echoes this back on every read, so a caller-supplied value here
+      // is a caller-chosen `Content-Type` on a public URL.
+      contentType: CONTENT_TYPE_FOR[extension],
     }));
   } catch (error) {
     if (error instanceof StorageError) throw problemFor(error);
@@ -177,26 +202,23 @@ export async function removePortfolioImage(
   await removeQuietly(deps, key, 'portfolio object left behind');
 }
 
+/**
+ * The public-bucket flavour of `platform/storage.ts`'s `removeQuietly`.
+ *
+ * The implementation used to live here in full. It was lifted to the platform
+ * when the booking route turned out to need the same thing for the PRIVATE
+ * bucket — one rule, one implementation. This wrapper stays so the three call
+ * sites in this file keep reading as they did.
+ */
 async function removeQuietly(
   deps: { readonly storage: StorageClient; readonly log: MediaLogger },
   key: string,
   message: string,
 ): Promise<void> {
-  try {
-    await deps.storage.remove(key);
-  } catch (error) {
-    deps.log.warn(
-      {
-        // Same slug as the account-deletion sweep uses for the same condition,
-        // so one search finds every orphaned object however it was orphaned.
-        event: 'media.object_orphaned',
-        key,
-        // The failure slug and provider message, never the key material —
-        // `StorageError` is built so neither carries one.
-        failure: error instanceof StorageError ? error.failure : 'unknown',
-        detail: error instanceof Error ? error.message : 'unknown error',
-      },
-      message,
-    );
-  }
+  await removeQuietlyFrom(
+    (target) => deps.storage.remove(target),
+    deps.log,
+    key,
+    message,
+  );
 }

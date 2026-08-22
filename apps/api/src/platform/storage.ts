@@ -140,6 +140,23 @@ export interface StorageClient {
     key: string,
     expiresInSeconds?: number,
   ): Promise<{ readonly url: string }>;
+
+  /**
+   * Removes a PRIVATE object. A missing object is success, like `remove`.
+   *
+   * ── IT EXISTS BECAUSE AN UPLOAD CAN OUTLIVE ITS BOOKING ──────────────────
+   *
+   * `POST /v1/public/salons/{handle}/bookings` uploads the payment proof before
+   * the booking is written, because the booking row is what stores the key. If
+   * the write then fails — most often 409 `slot-taken`, an ordinary
+   * double-booking race — the object is left in the bucket referenced by
+   * nothing.
+   *
+   * That is not the same as an orphaned banner. This object is a client's
+   * M-Pesa screenshot, retained indefinitely for an appointment that does not
+   * exist and that nobody will ever look for.
+   */
+  removePrivate(key: string): Promise<void>;
 }
 
 export interface StorageClientOptions {
@@ -299,6 +316,40 @@ export function createStorageClient(
       );
     },
 
+    async removePrivate(key): Promise<void> {
+      // The same conversation as `remove`, one bucket over. Written out rather
+      // than factored into a shared helper taking a bucket name: a delete that
+      // takes its target as a parameter is a delete that can be pointed at the
+      // wrong bucket, and these are the two most destructive calls in the file.
+      const path = `/object/${PRIVATE_MEDIA_BUCKET}/${encodeKey(key)}`;
+
+      let response: Response;
+      try {
+        response = await fetch(`${storageBase}${path}`, {
+          method: 'DELETE',
+          headers: { authorization: `Bearer ${options.serviceRoleKey}` },
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+      } catch (error) {
+        throw new StorageError(
+          'unavailable',
+          `object storage unreachable at ${storageBase}: ${
+            error instanceof Error ? error.message : 'unknown error'
+          }`,
+        );
+      }
+
+      // 404 is success: the state this call exists to reach is "not there".
+      if (response.status === 200 || response.status === 404) return;
+
+      const providerMessage = providerMessageOf(await readJson(response));
+      throw new StorageError(
+        response.status >= 500 ? 'unavailable' : 'rejected',
+        `object storage refused the private delete (HTTP ${String(response.status)})`,
+        providerMessage,
+      );
+    },
+
     async signedUrl(key, expiresInSeconds): Promise<{ url: string }> {
       const path = `/object/sign/${PRIVATE_MEDIA_BUCKET}/${encodeKey(key)}`;
       const expiresIn = expiresInSeconds ?? SIGNED_URL_TTL_SECONDS;
@@ -368,6 +419,65 @@ async function readJson(response: Response): Promise<unknown> {
     return text === '' ? null : JSON.parse(text);
   } catch {
     return null;
+  }
+}
+
+/** Just enough of a logger for the helper below. `FastifyBaseLogger` satisfies it. */
+export interface StorageLogger {
+  warn(context: object, message: string): void;
+}
+
+/**
+ * Deletes an object, reporting a failure and never throwing.
+ *
+ * ══ LIFTED OUT OF `media.service.ts`, WHERE IT WAS ALREADY RIGHT ════════════
+ *
+ * This was a private function in the media module, used when an upload
+ * succeeded and the row that would reference it did not. **The booking route
+ * needed exactly the same thing and was written without it** — the payment
+ * proof is uploaded before `createBooking` runs, and a 409 `slot-taken` left
+ * the object in the private bucket referenced by nothing.
+ *
+ * One implementation, two callers, because it is one rule: **an upload that
+ * nothing ends up pointing at gets cleaned up, and the cleanup failing is not
+ * worth failing the request over.**
+ *
+ * ── WHY IT NEVER THROWS ────────────────────────────────────────────────────
+ *
+ * It runs on a path that is ALREADY failing. Letting a storage error escape
+ * would replace the real error — the one the caller can act on — with a
+ * secondary one about cleanup, and the client would be told the wrong thing
+ * about why their request failed.
+ *
+ * The failure is logged with its key, which is what a later sweep works from.
+ * `media.object_orphaned` is the shared slug, so one search finds every
+ * orphaned object however it came to be orphaned.
+ *
+ * @param remove the bucket-specific delete — `storage.remove` for public
+ *   objects, `storage.removePrivate` for private ones. Passed rather than
+ *   selected by a flag: a boolean parameter deciding which bucket to delete
+ *   from is a boolean that can be wrong, and these are destructive calls.
+ */
+export async function removeQuietly(
+  remove: (key: string) => Promise<void>,
+  log: StorageLogger,
+  key: string,
+  message: string,
+): Promise<void> {
+  try {
+    await remove(key);
+  } catch (error) {
+    log.warn(
+      {
+        event: 'media.object_orphaned',
+        key,
+        // The failure slug and the provider's message, never key material —
+        // `StorageError` is built so neither carries one.
+        failure: error instanceof StorageError ? error.failure : 'unknown',
+        detail: error instanceof Error ? error.message : 'unknown error',
+      },
+      message,
+    );
   }
 }
 

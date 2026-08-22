@@ -998,8 +998,7 @@
           },
           "photoUrl": {
             "type": "string",
-            "maxLength": 2000,
-            "format": "uri"
+            "maxLength": 2000
           },
           "position": {
             "type": "integer",
@@ -1032,8 +1031,7 @@
           },
           "photoUrl": {
             "type": "string",
-            "maxLength": 2000,
-            "format": "uri"
+            "maxLength": 2000
           },
           "position": {
             "type": "integer",
@@ -2072,8 +2070,7 @@
           },
           "photoUrl": {
             "type": "string",
-            "maxLength": 2000,
-            "format": "uri"
+            "maxLength": 2000
           },
           "position": {
             "type": "integer",
@@ -2107,8 +2104,7 @@
           },
           "photoUrl": {
             "type": "string",
-            "maxLength": 2000,
-            "format": "uri"
+            "maxLength": 2000
           },
           "position": {
             "type": "integer",

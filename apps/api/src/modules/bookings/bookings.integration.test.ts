@@ -6,6 +6,8 @@ import {
   type AccountWithBusiness,
 } from '../../../test/integration/accounts.ts';
 import { useTransaction } from '../../../test/integration/harness.ts';
+import { buildApp } from '../../app.ts';
+import { getConfig } from '../../platform/config.ts';
 import { ProblemError } from '../../platform/problem.ts';
 import type { Mail, Mailer } from '../../platform/resend.ts';
 import { StorageError, type StorageClient } from '../../platform/storage.ts';
@@ -42,6 +44,9 @@ import {
  */
 
 const ctx = useTransaction();
+
+/** For the route-level tests at the foot of this file. */
+const config = getConfig();
 
 /**
  * A logger that discards.
@@ -538,6 +543,7 @@ describe('the payment proof is reachable only by the salon that owns it', () => 
       upload: () => Promise.reject(new Error('not used')),
       uploadPrivate: () => Promise.reject(new Error('not used')),
       remove: () => Promise.reject(new Error('not used')),
+      removePrivate: () => Promise.reject(new Error('not used')),
       publicUrl: (key: string) => `https://public.invalid/${key}`,
     };
   }
@@ -646,6 +652,227 @@ describe('the payment proof is reachable only by the salon that owns it', () => 
     // risk is a key travelling under SOME name, and naming the ones we thought
     // of would miss the one somebody adds later.
     expect(JSON.stringify(booking)).not.toContain('biz/proof/abc.jpg');
+  });
+});
+
+/**
+ * ══ AN UPLOADED PROOF IS REMOVED WHEN THE BOOKING DOES NOT LAND ═════════════
+ *
+ * The proof has to be uploaded BEFORE the booking, because the booking row is
+ * what stores its key. `createBooking` can then fail in that window — most
+ * often 409 `slot-taken`, an ORDINARY double-booking race rather than an
+ * exceptional condition.
+ *
+ * Without the cleanup the object stays in the private bucket referenced by
+ * nothing: **a client's M-Pesa screenshot retained indefinitely for an
+ * appointment that does not exist.**
+ *
+ * ── DRIVEN THROUGH THE ROUTE, WHICH IS THE ONLY PLACE IT CAN BE ────────────
+ *
+ * The upload and the cleanup both live in the handler, so a service-level test
+ * cannot reach them. That means a real multipart body, assembled by hand — the
+ * one piece of ceremony in this file, and the reason it is here rather than as
+ * four smaller tests.
+ */
+describe('a failed booking does not leave its payment proof behind', () => {
+  /** The PNG signature, so `detectImageFormat` accepts the part. */
+  const PNG = Buffer.from([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+  ]);
+
+  /** Records what was uploaded and what was removed, in order. */
+  function fakeStorage(): StorageClient & {
+    uploaded: string[];
+    removed: string[];
+  } {
+    const uploaded: string[] = [];
+    const removed: string[] = [];
+
+    return {
+      uploaded,
+      removed,
+      uploadPrivate: ({ key }: { key: string }) => {
+        uploaded.push(key);
+        return Promise.resolve({ key });
+      },
+      removePrivate: (key: string) => {
+        removed.push(key);
+        return Promise.resolve();
+      },
+      upload: () => Promise.reject(new Error('not used')),
+      remove: () => Promise.reject(new Error('not used')),
+      signedUrl: () => Promise.reject(new Error('not used')),
+      publicUrl: (key: string) => `https://public.invalid/${key}`,
+    };
+  }
+
+  /** A multipart body with the booking fields and one image part. */
+  function multipart(fields: Record<string, string>): {
+    payload: Buffer;
+    headers: Record<string, string>;
+  } {
+    const boundary = '----bookflowtestboundary';
+    const parts: Buffer[] = [];
+
+    for (const [name, value] of Object.entries(fields)) {
+      parts.push(
+        Buffer.from(
+          `--${boundary}\r\n` +
+            `content-disposition: form-data; name="${name}"\r\n\r\n` +
+            `${value}\r\n`,
+          'utf8',
+        ),
+      );
+    }
+
+    parts.push(
+      Buffer.from(
+        `--${boundary}\r\n` +
+          'content-disposition: form-data; name="paymentProof"; filename="proof.png"\r\n' +
+          'content-type: image/png\r\n\r\n',
+        'utf8',
+      ),
+      PNG,
+      Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8'),
+    );
+
+    return {
+      payload: Buffer.concat(parts),
+      headers: { 'content-type': `multipart/form-data; boundary=${boundary}` },
+    };
+  }
+
+  it('removes the object when the slot was taken concurrently', async () => {
+    const salon = await publishedSalon();
+    // The slot is already gone. This is the exact race the exclusion constraint
+    // exists for, and the most common way this route fails.
+    await book(salon.handle, salon.serviceId, '09:00');
+
+    const storage = fakeStorage();
+    const app = await buildApp(config, {
+      db: () => ctx.db,
+      storage,
+      mailer: silentMailer(),
+    });
+
+    try {
+      const body = multipart({
+        serviceId: salon.serviceId,
+        startsAt: `${BOOKING_DAY}T09:00:00+03:00`,
+        clientName: 'Grace Wanjiru',
+        clientEmail: 'grace@example.com',
+        clientPhone: '+254700000000',
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/v1/public/salons/${salon.handle}/bookings`,
+        payload: body.payload,
+        headers: body.headers,
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(response.json<{ type: string }>().type).toBe(
+        '/problems/slot-taken',
+      );
+
+      // ── THE ASSERTION THE WHOLE FIX IS FOR ────────────────────────────
+      //
+      // Uploaded, then removed, and the SAME key. Asserting only "removed was
+      // called" would pass for a version that deleted the wrong object, which
+      // on a shared bucket is worse than leaking one.
+      expect(storage.uploaded).toHaveLength(1);
+      expect(storage.removed).toEqual(storage.uploaded);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('keeps the object when the booking succeeds', async () => {
+    const salon = await publishedSalon();
+
+    const storage = fakeStorage();
+    const app = await buildApp(config, {
+      db: () => ctx.db,
+      storage,
+      mailer: silentMailer(),
+    });
+
+    try {
+      const body = multipart({
+        serviceId: salon.serviceId,
+        startsAt: `${BOOKING_DAY}T09:00:00+03:00`,
+        clientName: 'Grace Wanjiru',
+        clientEmail: 'grace@example.com',
+        clientPhone: '+254700000000',
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/v1/public/salons/${salon.handle}/bookings`,
+        payload: body.payload,
+        headers: body.headers,
+      });
+
+      expect(response.statusCode).toBe(201);
+
+      // The control. Without it, a cleanup that ran unconditionally would pass
+      // the test above and delete every proof ever uploaded.
+      expect(storage.uploaded).toHaveLength(1);
+      expect(storage.removed).toEqual([]);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('refuses a file whose bytes are not an image, and uploads nothing', async () => {
+    const salon = await publishedSalon();
+
+    const storage = fakeStorage();
+    const app = await buildApp(config, {
+      db: () => ctx.db,
+      storage,
+      mailer: silentMailer(),
+    });
+
+    try {
+      // A boundary crafted by hand so the part CLAIMS `image/png` and carries
+      // HTML — the case the old `part.mimetype` lookup accepted.
+      const boundary = '----bookflowtestboundary';
+      const payload = Buffer.concat([
+        Buffer.from(
+          `--${boundary}\r\ncontent-disposition: form-data; name="serviceId"\r\n\r\n${salon.serviceId}\r\n` +
+            `--${boundary}\r\ncontent-disposition: form-data; name="startsAt"\r\n\r\n${BOOKING_DAY}T09:00:00+03:00\r\n` +
+            `--${boundary}\r\ncontent-disposition: form-data; name="clientName"\r\n\r\nGrace\r\n` +
+            `--${boundary}\r\ncontent-disposition: form-data; name="clientEmail"\r\n\r\ng@example.com\r\n` +
+            `--${boundary}\r\ncontent-disposition: form-data; name="clientPhone"\r\n\r\n+254700000000\r\n` +
+            `--${boundary}\r\ncontent-disposition: form-data; name="paymentProof"; filename="x.png"\r\n` +
+            'content-type: image/png\r\n\r\n',
+          'utf8',
+        ),
+        Buffer.from('<html><script>alert(1)</script></html>', 'utf8'),
+        Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8'),
+      ]);
+
+      const response = await app.inject({
+        method: 'POST',
+        url: `/v1/public/salons/${salon.handle}/bookings`,
+        payload,
+        headers: {
+          'content-type': `multipart/form-data; boundary=${boundary}`,
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.json<{ type: string }>().type).toBe(
+        '/problems/upload-rejected',
+      );
+      // Nothing reached the bucket at all — the check is before the upload,
+      // which is the only place it is worth anything.
+      expect(storage.uploaded).toEqual([]);
+    } finally {
+      await app.close();
+    }
   });
 });
 

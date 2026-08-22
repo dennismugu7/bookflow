@@ -7,10 +7,15 @@ import { z } from 'zod';
 import { principalOf } from '../../platform/auth.ts';
 import type { Executor } from '../../platform/db.ts';
 import { ProblemError } from '../../platform/problem.ts';
-import { StorageError, type StorageClient } from '../../platform/storage.ts';
+import {
+  removeQuietly,
+  StorageError,
+  type StorageClient,
+} from '../../platform/storage.ts';
 import type { Mailer } from '../../platform/resend.ts';
 import {
-  ACCEPTED_IMAGE_TYPES,
+  CONTENT_TYPE_FOR,
+  detectImageFormat,
   MAX_IMAGE_BYTES,
 } from '../media/media.schema.ts';
 import {
@@ -157,12 +162,46 @@ export function registerBookingRoutes(
         request.params.handle,
       );
 
-      const booking = await createBooking(db(), {
-        handle: request.params.handle,
-        ...fields,
-      });
+      // ══ THE UPLOAD IS UNDONE IF THE BOOKING DOES NOT LAND ══════════════════
+      //
+      // The proof has to be uploaded BEFORE the booking, because the booking row
+      // is what stores its key. So there is a window where the object exists and
+      // the row does not — and `createBooking` can fail in it, most often with
+      // 409 `slot-taken`, which is an ORDINARY double-booking race rather than
+      // an exceptional condition.
+      //
+      // Without this the object stays in the private bucket forever, referenced
+      // by nothing: **a client's M-Pesa screenshot retained indefinitely for an
+      // appointment that does not exist and that nobody will ever look for.**
+      //
+      // `media.service.ts` has solved this since the media slice — an upload
+      // whose row insert fails is removed the same way. This route was written
+      // without reusing it. `removeQuietly` now lives in `platform/storage.ts`
+      // so there is one implementation of the rule rather than two chances to
+      // forget it.
+      //
+      // The cleanup NEVER throws, which matters here more than in the media
+      // case: the caller is a booking client who needs to be told "that time was
+      // taken", and replacing that with a storage error would send them looking
+      // for the wrong problem.
+      try {
+        const booking = await createBooking(db(), {
+          handle: request.params.handle,
+          ...fields,
+        });
 
-      return await reply.code(201).send(booking);
+        return await reply.code(201).send(booking);
+      } catch (error) {
+        if (fields.paymentProofKey !== undefined) {
+          await removeQuietly(
+            (key) => storage.removePrivate(key),
+            request.log,
+            fields.paymentProofKey,
+            'booking failed after the proof was uploaded; object removed',
+          );
+        }
+        throw error;
+      }
     },
   );
 
@@ -358,7 +397,14 @@ async function readBookingParts(
 
   let paymentProofKey: string | undefined;
   if (proof !== undefined) {
-    const extension = ACCEPTED_IMAGE_TYPES.get(proof.mimetype);
+    // ══ THE BYTES DECIDE, NOT THE HEADER ═════════════════════════════════════
+    //
+    // This was `ACCEPTED_IMAGE_TYPES.get(proof.mimetype)` — the extension taken
+    // from a header the caller writes, on the API's only UNAUTHENTICATED upload.
+    // See `media.schema.ts`'s `detectImageFormat` for the argument; it applies
+    // with more force here, since there is no account behind this request to
+    // hold responsible afterwards.
+    const extension = detectImageFormat(proof.buffer);
     if (extension === undefined) {
       throw new ProblemError('upload-rejected', 'unsupported proof type');
     }
@@ -391,7 +437,9 @@ async function readBookingParts(
         const stored = await storage.uploadPrivate({
           key: `${salon.businessId}/proof/${randomUUID()}.${extension}`,
           body: proof.buffer,
-          contentType: proof.mimetype,
+          // Ours, from the verified format. A caller-supplied content type on a
+          // stored object is a caller-chosen content type on every read of it.
+          contentType: CONTENT_TYPE_FOR[extension],
         });
         paymentProofKey = stored.key;
       } catch (error) {
