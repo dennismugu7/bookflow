@@ -8,13 +8,16 @@ part of 'delete_account_request_input.dart';
 
 class _$DeleteAccountRequestInput extends DeleteAccountRequestInput {
   @override
+  final String password;
+  @override
   final String? reason;
 
   factory _$DeleteAccountRequestInput(
           [void Function(DeleteAccountRequestInputBuilder)? updates]) =>
       (DeleteAccountRequestInputBuilder()..update(updates))._build();
 
-  _$DeleteAccountRequestInput._({this.reason}) : super._();
+  _$DeleteAccountRequestInput._({required this.password, this.reason})
+      : super._();
   @override
   DeleteAccountRequestInput rebuild(
           void Function(DeleteAccountRequestInputBuilder) updates) =>
@@ -27,12 +30,15 @@ class _$DeleteAccountRequestInput extends DeleteAccountRequestInput {
   @override
   bool operator ==(Object other) {
     if (identical(other, this)) return true;
-    return other is DeleteAccountRequestInput && reason == other.reason;
+    return other is DeleteAccountRequestInput &&
+        password == other.password &&
+        reason == other.reason;
   }
 
   @override
   int get hashCode {
     var _$hash = 0;
+    _$hash = $jc(_$hash, password.hashCode);
     _$hash = $jc(_$hash, reason.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -41,6 +47,7 @@ class _$DeleteAccountRequestInput extends DeleteAccountRequestInput {
   @override
   String toString() {
     return (newBuiltValueToStringHelper(r'DeleteAccountRequestInput')
+          ..add('password', password)
           ..add('reason', reason))
         .toString();
   }
@@ -50,6 +57,10 @@ class DeleteAccountRequestInputBuilder
     implements
         Builder<DeleteAccountRequestInput, DeleteAccountRequestInputBuilder> {
   _$DeleteAccountRequestInput? _$v;
+
+  String? _password;
+  String? get password => _$this._password;
+  set password(String? password) => _$this._password = password;
 
   String? _reason;
   String? get reason => _$this._reason;
@@ -62,6 +73,7 @@ class DeleteAccountRequestInputBuilder
   DeleteAccountRequestInputBuilder get _$this {
     final $v = _$v;
     if ($v != null) {
+      _password = $v.password;
       _reason = $v.reason;
       _$v = null;
     }
@@ -84,6 +96,8 @@ class DeleteAccountRequestInputBuilder
   _$DeleteAccountRequestInput _build() {
     final _$result = _$v ??
         _$DeleteAccountRequestInput._(
+          password: BuiltValueNullFieldError.checkNotNull(
+              password, r'DeleteAccountRequestInput', 'password'),
           reason: reason,
         );
     replace(_$result);

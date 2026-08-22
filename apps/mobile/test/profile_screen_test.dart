@@ -390,8 +390,10 @@ class _StubRepository implements ProfileRepository {
   }
 
   @override
-  Future<void> deleteAccount({required String? reason}) =>
-      throw UnimplementedError('this screen never deletes the account');
+  Future<void> deleteAccount({
+    required String password,
+    required String? reason,
+  }) => throw UnimplementedError('this screen never deletes the account');
 }
 
 class _MemberRepository implements MembershipRepository {

@@ -223,6 +223,58 @@ services:
         source: /*
         destination: /index.html
 
+    # ── SECURITY HEADERS ─────────────────────────────────────────────────────
+    #
+    # `apps/api` gets these from `@fastify/helmet`. A static site has no process
+    # to register a plugin in, so Render's edge sets them — which means **they
+    # are configuration, not code, and a blueprint that has not been re-synced
+    # ships a site with none of them.** ENVIRONMENT.md carries that as a step.
+    #
+    # Unlike the API, this one DOES render HTML, so the CSP here is meaningful
+    # rather than decorative — and `frame-ancestors` inside it is what actually
+    # stops framing on modern browsers, with `X-Frame-Options` kept for older
+    # ones that ignore it.
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+
+      - path: /*
+        name: Referrer-Policy
+        # `strict-origin-when-cross-origin` rather than the API's
+        # `no-referrer`: this is a page people SHARE, and stripping the referrer
+        # entirely would make it impossible for a salon to tell whether their
+        # bookings came from WhatsApp or Instagram. The origin travels; the
+        # path — which carries the salon's handle — does not leave the origin.
+        value: strict-origin-when-cross-origin
+
+      - path: /*
+        name: Content-Security-Policy
+        # ── WHAT THIS ACTUALLY PERMITS, AND WHY EACH ENTRY IS THERE ─────────
+        #
+        #   default-src 'self'   the bundle and the stylesheet, nothing else
+        #   img-src              salon photos come from Supabase Storage on
+        #                        another origin, and `data:` covers inlined
+        #                        placeholders in the CSS
+        #   connect-src          the API, cross-origin — this is the entry that
+        #                        breaks the whole site if it is wrong, and the
+        #                        reason a CSP here has to be maintained rather
+        #                        than pasted
+        #   style-src 'unsafe-inline'  React sets inline `style` attributes for
+        #                        the calendar block positions and a few one-off
+        #                        layout values. Recorded as a real weakening
+        #                        rather than hidden: removing it means moving
+        #                        those to CSS custom properties first.
+        #   frame-ancestors      the clickjacking control that browsers honour
+        #   object-src 'none'    no plugins, ever
+        #   base-uri 'self'      stops an injected <base> re-pointing relative
+        #                        URLs at somebody else's origin
+        value: "default-src 'self'; img-src 'self' https: data:; connect-src 'self' https://bookflow-api-staging-gabm.onrender.com; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'"
+
     envVars:
       # ── SET HERE, NOT `sync: false`, BECAUSE IT IS NOT A SECRET ───────────
       #

@@ -8,14 +8,19 @@ import 'package:built_value/serializer.dart';
 
 part 'delete_account_request_input.g.dart';
 
-/// Optional feedback accompanying an account deletion.
+/// Confirmation and optional feedback for an account deletion.
 ///
 /// Properties:
+/// * [password] - The caller’s current password. Verified before anything is deleted.
 /// * [reason] - Free text from the exit survey. Logged, never stored.
 @BuiltValue()
 abstract class DeleteAccountRequestInput
     implements
         Built<DeleteAccountRequestInput, DeleteAccountRequestInputBuilder> {
+  /// The caller’s current password. Verified before anything is deleted.
+  @BuiltValueField(wireName: r'password')
+  String get password;
+
   /// Free text from the exit survey. Logged, never stored.
   @BuiltValueField(wireName: r'reason')
   String? get reason;
@@ -50,6 +55,11 @@ class _$DeleteAccountRequestInputSerializer
     DeleteAccountRequestInput object, {
     FullType specifiedType = FullType.unspecified,
   }) sync* {
+    yield r'password';
+    yield serializers.serialize(
+      object.password,
+      specifiedType: const FullType(String),
+    );
     if (object.reason != null) {
       yield r'reason';
       yield serializers.serialize(
@@ -82,6 +92,13 @@ class _$DeleteAccountRequestInputSerializer
       final key = serializedList[i] as String;
       final value = serializedList[i + 1];
       switch (key) {
+        case r'password':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.password = valueDes;
+          break;
         case r'reason':
           final valueDes = serializers.deserialize(
             value,

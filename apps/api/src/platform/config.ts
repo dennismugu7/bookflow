@@ -30,6 +30,36 @@ const baseConfigSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   HOST: nonEmpty.default('0.0.0.0'),
 
+  /**
+   * How much the process writes down.
+   *
+   * ══ IT DEFAULTS TO `info` EVERYWHERE, AND `warn` WAS A REAL DEFECT ══════════
+   *
+   * `app.ts` used to hardcode `warn` outside local, with the reasoning "quiet in
+   * the environments where request volume is real". That was a performance
+   * instinct applied to a security control, and the result was that **the entire
+   * audit trail existed and was written nowhere**: account deletion, the
+   * cross-tenant `business.scoped_miss` probe signal, the payment-proof miss
+   * events, the sign-up conflict counters — every one of them is `log.info`, so
+   * on staging and in production none of it was recorded.
+   *
+   * ── WHY THE EVENTS WERE NOT PROMOTED TO `warn` INSTEAD ─────────────────────
+   *
+   * That is the tempting one-line fix and it is worse. A `warn` that is not a
+   * problem trains everybody to ignore warns, and the ones that ARE problems —
+   * `business.conflict_constraint`, `account.object_orphaned` — go with them.
+   * The levels are already correct: these events are records, not faults. What
+   * was wrong was the floor.
+   *
+   * `LOG_LEVEL` overrides it, so a noisy incident can be turned up to `debug`
+   * without a deploy, and a genuinely overwhelming volume can be turned down —
+   * **deliberately, by someone who knows what they are switching off**, rather
+   * than by a default nobody revisits.
+   */
+  LOG_LEVEL: z
+    .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
+    .default('info'),
+
   // ─── Database ──────────────────────────────────────────────────────────────
   // The APPLICATION's connection, as the `bookflow_api` role (ADR-038) — CRUD,
   // no DDL, no ownership. Nothing in the application connects as `postgres`, in

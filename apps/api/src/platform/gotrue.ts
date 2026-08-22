@@ -80,6 +80,50 @@ export interface GoTrueClient {
 
   /** The compensating delete (ADR-037). */
   deleteUser(userId: string): Promise<void>;
+
+  /**
+   * Whether this email and password are a valid credential right now.
+   *
+   * ══ A RE-AUTHENTICATION CHECK, NOT A LOGIN ══════════════════════════════════
+   *
+   * `DELETE /v1/me` destroys a salon's entire booking history, and a bearer
+   * token is valid for up to an hour with no denylist (ADR-017). So the token
+   * alone must not be enough: a phone left unlocked for five minutes, or a token
+   * lifted from a log, is otherwise a complete and irreversible erasure.
+   *
+   * **It returns a boolean and never a session.** The caller is already
+   * authenticated; what is being answered is "is the person holding this token
+   * the person who owns the account", and anything more than yes/no would be a
+   * second way to obtain credentials from an endpoint that has no business
+   * minting them.
+   *
+   * The grant DOES create a session server-side as a side effect — that is
+   * unavoidable with a password grant — and it is simply not returned. An hour
+   * from now it expires unused.
+   *
+   * ── IT TAKES A USER ID, NOT AN EMAIL, AND THAT IS THE SAFETY ──────────────
+   *
+   * An email parameter would make this a password-guessing oracle against any
+   * account: pass somebody else's address with a guess and the boolean tells
+   * you whether you were right. Every caller would then have to remember to
+   * source it from the verified token — and one day one would not.
+   *
+   * Taking the id makes that impossible rather than merely discouraged: the
+   * address is resolved here, from GoTrue's admin API, for the id the caller's
+   * own token carries. There is no parameter to get wrong.
+   *
+   * **The id must come from a verified token.** `jwt.ts` trusts nothing but
+   * `sub`, deliberately — so the email is looked up rather than read from an
+   * `email` claim, which is untrusted and can be stale after an address change.
+   *
+   * Returns false for a user that does not exist, which is the same answer a
+   * wrong password gets. There is nothing to distinguish for a caller who is
+   * authenticated as that user.
+   */
+  verifyPassword(input: {
+    readonly userId: string;
+    readonly password: string;
+  }): Promise<boolean>;
 }
 
 export interface GoTrueClientOptions {
@@ -244,6 +288,69 @@ export function createGoTrueClient(options: GoTrueClientOptions): GoTrueClient {
       throw new GoTrueError(
         classify(status, code),
         `auth provider refused to delete the user (HTTP ${String(status)})`,
+        code,
+      );
+    },
+
+    async verifyPassword({ userId, password }): Promise<boolean> {
+      // The address, from the admin API rather than from a claim. See the
+      // interface comment: `jwt.ts` trusts nothing but `sub`, and an `email`
+      // claim can be stale after an address change.
+      const lookup = await call(`/admin/users/${encodeURIComponent(userId)}`, {
+        method: 'GET',
+        key: options.serviceRoleKey,
+      });
+
+      if (lookup.status === 404) return false;
+      if (lookup.status !== 200) {
+        const code = providerCodeOf(lookup.body);
+        throw new GoTrueError(
+          classify(lookup.status, code),
+          `auth provider could not read the user (HTTP ${String(lookup.status)})`,
+          code,
+        );
+      }
+
+      const email = (lookup.body as { email?: unknown } | null)?.email;
+      if (typeof email !== 'string' || email === '') {
+        // An account with no address cannot have a password grant run against
+        // it. Refusing is right: this is a re-authentication check, and one
+        // that cannot be performed has not passed.
+        return false;
+      }
+
+      // ── THE ANON KEY, NOT THE SERVICE-ROLE KEY ───────────────────────────
+      //
+      // This is the ordinary password grant every client uses, and it must be
+      // made as one. The service-role key bypasses RLS and, more to the point
+      // here, is the wrong credential for an operation whose entire purpose is
+      // to check somebody else's: an admin-authenticated call that "verified" a
+      // password would be verifying it under an authority that does not need
+      // one.
+      const { status, body } = await call('/token?grant_type=password', {
+        method: 'POST',
+        key: options.anonKey,
+        body: { email, password },
+      });
+
+      if (status === 200) return true;
+
+      // ── A WRONG PASSWORD IS `false`, AND AN OUTAGE IS A THROW ────────────
+      //
+      // The distinction is the whole safety of this function. GoTrue answers
+      // 400 for bad credentials; anything else — 500, a gateway error, a
+      // timeout — means we do not KNOW whether the password was right.
+      //
+      // **Returning false for those would fail closed**, which sounds correct
+      // and is not: the caller turns false into "wrong password", so an outage
+      // would tell an owner their own password is wrong. Throwing lets the
+      // caller say "we could not check" instead, which is true.
+      if (status === 400 || status === 401) return false;
+
+      const code = providerCodeOf(body);
+      throw new GoTrueError(
+        classify(status, code),
+        `auth provider could not verify the password (HTTP ${String(status)})`,
         code,
       );
     },

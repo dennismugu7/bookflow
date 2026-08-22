@@ -131,6 +131,23 @@ export const PROBLEM_TYPES = {
     status: 503,
     title: 'Storage service unavailable',
   },
+  // ── DISTINCT FROM EVERY OTHER 401, AND DELIBERATELY SO ────────────────────
+  //
+  // `invalid-token` and `expired-token` mean the SESSION is not good, and a
+  // client acts on them by signing in again. This means the session is fine and
+  // the person could not prove they own the account — the remedy is to retype a
+  // password, on the screen they are already on.
+  //
+  // Reusing an auth slug here would be a lie about what failed, and the client
+  // would act on it by ending a session that was never in question. The 401
+  // interceptor in the Flutter app does exactly that on `invalid-token`.
+  //
+  // It reveals nothing beyond pass/fail: no attempt count, no lockout state, no
+  // hint about the password itself.
+  'reauthentication-failed': {
+    status: 401,
+    title: 'Re-authentication required',
+  },
   'rate-limited': {
     status: 429,
     title: 'Too many requests',
@@ -249,6 +266,13 @@ export function registerProblemHandler(app: FastifyInstance): void {
         // once it starts quoting the value back.
         request.log.info(
           {
+            // ── EVERY REFUSAL IS SLUGGED, AND THIS ONE MATTERS MOST ────────
+            //
+            // These three are the only record that a request was refused at
+            // all — the response carries no detail by design. A burst of
+            // `request.malformed` against one route is what a fuzzer looks
+            // like, and it is invisible without a stable key to count.
+            event: 'request.malformed',
             slug,
             detail:
               error instanceof Error ? error.message : 'malformed request',
@@ -262,14 +286,17 @@ export function registerProblemHandler(app: FastifyInstance): void {
 
     if (error instanceof ProblemError) {
       request.log.info(
-        { slug: error.slug, detail: error.message },
+        { event: 'request.refused', slug: error.slug, detail: error.message },
         'request refused',
       );
       sendProblem(reply, error.slug);
       return;
     }
 
-    request.log.error({ err: error }, 'unhandled error');
+    request.log.error(
+      { event: 'request.unhandled', err: error },
+      'unhandled error',
+    );
     sendProblem(reply, 'internal-error');
   });
 

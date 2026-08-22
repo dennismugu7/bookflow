@@ -28,7 +28,23 @@ export function registerPublicRoutes(
       // recoverable." This route publishes data ON PURPOSE, which is exactly
       // why what it publishes is an allowlist (`public.schema.ts`) and why the
       // repository filters on `published`.
-      config: { public: true },
+      config: {
+        public: true,
+        // ── THE OTHER HEAVY PUBLIC READ ────────────────────────────────────
+        //
+        // One request assembles the whole page — services, team, hours,
+        // portfolio — in several joins, for an unauthenticated caller.
+        //
+        // Higher than availability's ceiling because a visitor legitimately
+        // reloads this: it is the page a shared link opens, and a browser
+        // back-and-forward or a pull-to-refresh each cost one. 120 an hour is
+        // far above any honest reading of one salon's page and far below the
+        // rate that makes scraping every published salon cheap.
+        //
+        // Per IP, with the same CGNAT caveat sign-up records at length: a
+        // shared carrier NAT counts as one key, which is why this is generous.
+        rateLimit: { max: 120, timeWindow: '1 hour' },
+      },
       schema: {
         operationId: 'getPublicSalon',
         summary: 'A published salon’s booking page',

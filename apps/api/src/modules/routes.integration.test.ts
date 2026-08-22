@@ -608,6 +608,67 @@ describe('default-deny, swept over the registered route table', () => {
  * `includes` instead of `startsWith`) would open routes nobody meant to open,
  * and would look correct.
  */
+/**
+ * ══ SECURITY HEADERS ON EVERY RESPONSE, INCLUDING THE ERRORS ════════════════
+ *
+ * `@fastify/helmet` is registered first so that error responses carry the
+ * headers too — an error document is the response most likely to echo something
+ * and the one most easily forgotten.
+ *
+ * Driven rather than assumed: a plugin registered AFTER the error handler, or
+ * scoped inside a `register` call, silently covers less than it looks like it
+ * covers, and no test of the happy path would notice.
+ */
+describe('security headers', () => {
+  it('sets nosniff, frame-deny and a referrer policy on a 200', async () => {
+    const response = await app.inject({ method: 'GET', url: '/health' });
+
+    expect(response.statusCode).toBe(200);
+    // A JSON body a browser is allowed to sniff as HTML is an XSS vector.
+    expect(response.headers['x-content-type-options']).toBe('nosniff');
+    expect(response.headers['x-frame-options']).toBe('DENY');
+    expect(response.headers['referrer-policy']).toBe('no-referrer');
+  });
+
+  it('sets them on a 401 too, which is the response most easily missed', async () => {
+    const response = await app.inject({ method: 'GET', url: '/v1/me' });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.headers['x-content-type-options']).toBe('nosniff');
+    expect(response.headers['x-frame-options']).toBe('DENY');
+  });
+
+  it('sends NO Content-Security-Policy, deliberately', async () => {
+    // ── AN ABSENCE ASSERTED ON PURPOSE ────────────────────────────────────
+    //
+    // This service renders no HTML, so a CSP constrains nothing a browser would
+    // enforce. Shipping one would look like a control in a review and be worth
+    // nothing — and would be the first thing widened the day anything
+    // HTML-shaped is served here.
+    //
+    // Asserted so that adding one is a deliberate act with a test to update,
+    // rather than a default somebody turns on because it sounds safe.
+    const response = await app.inject({ method: 'GET', url: '/health' });
+    expect(response.headers['content-security-policy']).toBeUndefined();
+  });
+
+  it('does not send a cross-origin-resource-policy that would block the public reads', async () => {
+    // Helmet's default is `same-origin`, which BLOCKS exactly the cross-origin
+    // reads the public surface exists to serve. CORS governs those; two
+    // mechanisms disagreeing would surface as a browser refusing a salon page
+    // with nothing the client could report.
+    // The handle need not resolve: helmet's headers are set on the way out
+    // regardless of the status, so a 404 carries them exactly as a 200 does.
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/public/salons/any-salon',
+      headers: { origin: 'https://bookflow-staging-web.onrender.com' },
+    });
+
+    expect(response.headers['cross-origin-resource-policy']).toBeUndefined();
+  });
+});
+
 describe('CORS is scoped to the public surface', () => {
   const ORIGIN = 'https://bookflow-staging-web.onrender.com';
 

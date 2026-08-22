@@ -1,4 +1,5 @@
-import 'package:bookflow/features/profile/profile_models.dart';
+import 'package:bookflow/features/profile/profile_models.dart'
+    show OwnerProfile, ReauthenticationFailed;
 import 'package:bookflow/features/profile/profile_providers.dart';
 import 'package:bookflow/features/profile/profile_repository.dart';
 import 'package:bookflow/features/settings/delete_account_screen.dart';
@@ -206,10 +207,99 @@ void main() {
       expect(deleteButton().onPressed, isNull);
       expect(repository.deleted, isFalse);
 
+      // Ticking the box is NOT enough on its own any more. The password gate
+      // is the one that resists a stolen token; the checkbox only resists a
+      // mistake, and a version that forgot the first would pass a test that
+      // only ticked the second.
       await tester.tap(find.byKey(const Key('delete-confirm-gate')));
+      await tester.pumpAndSettle();
+      expect(deleteButton().onPressed, isNull);
+
+      await tester.enterText(
+        find.byKey(const Key('delete-password')),
+        'hunter2',
+      );
       await tester.pumpAndSettle();
 
       expect(deleteButton().onPressed, isNotNull);
+    });
+
+    testWidgets('a password alone does not open the gate either', (
+      WidgetTester tester,
+    ) async {
+      final _RecordingProfile repository = _RecordingProfile();
+
+      usePhoneViewport(tester);
+      await tester.pumpWidget(
+        host(
+          const DeleteAccountScreen(),
+          overrides: <Override>[
+            profileRepositoryProvider.overrideWithValue(repository),
+            authGatewayProvider.overrideWithValue(_FakeGateway()),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('delete-reason-accident')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('delete-survey-continue')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('delete-password')),
+        'hunter2',
+      );
+      await tester.pumpAndSettle();
+
+      // The mirror of the test above. Both gates, independently — the checkbox
+      // answers "do you understand what you lose" and the password answers "are
+      // you the owner", and neither substitutes for the other.
+      final FilledButton button = tester.widget<FilledButton>(
+        find.byKey(const Key('delete-confirm-submit')),
+      );
+      expect(button.onPressed, isNull);
+      expect(repository.deleted, isFalse);
+    });
+
+    testWidgets('a wrong password reports on the field and deletes nothing', (
+      WidgetTester tester,
+    ) async {
+      final _RecordingProfile repository = _RecordingProfile(
+        wrongPassword: true,
+      );
+
+      usePhoneViewport(tester);
+      await tester.pumpWidget(
+        host(
+          const DeleteAccountScreen(),
+          overrides: <Override>[
+            profileRepositoryProvider.overrideWithValue(repository),
+            authGatewayProvider.overrideWithValue(_FakeGateway()),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('delete-reason-accident')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('delete-survey-continue')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('delete-confirm-gate')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('delete-password')), 'wrong');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('delete-confirm-submit')));
+      await tester.pumpAndSettle();
+
+      // On the FIELD, with the specific sentence — not the generic failure
+      // banner, which would send somebody looking for a second problem.
+      expect(find.text('That password is incorrect.'), findsOneWidget);
+      expect(find.byKey(const Key('delete-error')), findsNothing);
+
+      // Still on the confirmation step, with something to retype.
+      expect(find.byKey(const Key('delete-done-title')), findsNothing);
+      expect(find.byKey(const Key('delete-password')), findsOneWidget);
     });
 
     testWidgets(
@@ -237,8 +327,18 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('delete-confirm-gate')));
         await tester.pumpAndSettle();
+        await tester.enterText(
+          find.byKey(const Key('delete-password')),
+          'hunter2',
+        );
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('delete-confirm-submit')));
         await tester.pumpAndSettle();
+
+        // The password reaches the API. It is what the server re-authenticates
+        // against, so a screen that collected it and did not send it would be a
+        // field that looks like a control and is not one.
+        expect(repository.password, 'hunter2');
 
         // The SENTENCE, not the enum name. A log read to learn why people leave
         // is not helped by `tooComplicated`.
@@ -287,6 +387,11 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('delete-confirm-gate')));
       await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('delete-password')),
+        'hunter2',
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('delete-confirm-submit')));
       await tester.pumpAndSettle();
 
@@ -300,15 +405,22 @@ void main() {
 }
 
 class _RecordingProfile implements ProfileRepository {
-  _RecordingProfile({this.fails = false});
+  _RecordingProfile({this.fails = false, this.wrongPassword = false});
 
   final bool fails;
+  final bool wrongPassword;
   bool deleted = false;
   String? reason;
+  String? password;
 
   @override
-  Future<void> deleteAccount({required String? reason}) async {
+  Future<void> deleteAccount({
+    required String password,
+    required String? reason,
+  }) async {
     this.reason = reason;
+    this.password = password;
+    if (wrongPassword) throw const ReauthenticationFailed();
     if (fails) throw StateError('deletion failed');
     deleted = true;
   }

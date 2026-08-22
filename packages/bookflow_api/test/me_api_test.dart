@@ -8,7 +8,7 @@ void main() {
   group(MeApi, () {
     // Delete the authenticated owner’s account
     //
-    // Irreversible. Deletes the caller’s business and everything it owns in one transaction, then its storage objects (best-effort — a storage failure is logged and does not stop the deletion), then the profile, then the Supabase Auth user LAST so that a partial failure leaves an account that can retry rather than one that cannot sign in. An optional reason is written to the structured log and is never stored. Answers 204.
+    // Irreversible, and requires the caller’s password in addition to a valid token — a bearer token alone is not sufficient, because ADR-017 keeps no denylist and a stolen one would otherwise erase a salon’s entire booking history. A wrong password answers 401 reauthentication-failed and deletes nothing. Rate limited to a few attempts per hour per USER. On success: deletes the business and everything it owns in one transaction, then its storage objects (best-effort — a storage failure is logged and does not stop the deletion), then the profile, then the Supabase Auth user LAST so that a partial failure leaves an account that can retry rather than one that cannot sign in. An optional reason is written to the structured log and is never stored. Answers 204.
     //
     //Future deleteMe(DeleteAccountRequestInput deleteAccountRequestInput) async
     test('test deleteMe', () async {

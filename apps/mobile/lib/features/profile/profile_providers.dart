@@ -88,11 +88,16 @@ class DeleteAccountController extends AutoDisposeNotifier<AsyncValue<void>> {
   @override
   AsyncValue<void> build() => const AsyncData<void>(null);
 
-  Future<void> delete({required String? reason}) async {
+  Future<void> delete({
+    required String password,
+    required String? reason,
+  }) async {
     state = const AsyncLoading<void>();
 
     state = await AsyncValue.guard<void>(
-      () => ref.read(profileRepositoryProvider).deleteAccount(reason: reason),
+      () => ref
+          .read(profileRepositoryProvider)
+          .deleteAccount(password: password, reason: reason),
     );
   }
 }

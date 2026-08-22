@@ -60,7 +60,22 @@ export function registerBookingRoutes(
   app.withTypeProvider<ZodTypeProvider>().get(
     '/v1/public/salons/:handle/availability',
     {
-      config: { public: true },
+      config: {
+        public: true,
+        // ── THE HEAVIEST QUERY IN THE SYSTEM, NOW BOUNDED ──────────────────
+        //
+        // Two scoped reads and an overlap computation per call, unauthenticated
+        // and cacheable by nobody. A visitor comparing days across a fortnight
+        // fires one of these per tap, so the ceiling has to clear real browsing
+        // — 60 an hour is roughly four times the busiest honest session.
+        //
+        // Per IP, which is the only key available: there is no principal on a
+        // public route. That carries sign-up's CGNAT caveat — a shared carrier
+        // NAT is one key — which is why this is generous rather than tight. It
+        // raises the cost of scraping a salon's whole diary without pretending
+        // to prevent it.
+        rateLimit: { max: 60, timeWindow: '1 hour' },
+      },
       schema: {
         operationId: 'getSalonAvailability',
         summary: 'Bookable start times for one service on one day',
@@ -108,9 +123,20 @@ export function registerBookingRoutes(
       //
       // Looser than sign-up's: a family sharing a connection may legitimately
       // book several appointments in an afternoon.
+      //
+      // ── TIGHTENED, BECAUSE THIS ONE ALSO WRITES TO STORAGE ───────────────
+      //
+      // It was 10 per 10 minutes — 60 an hour. It is the tightest of the three
+      // public routes now, and deliberately tighter than the two reads: every
+      // call can carry a 5 MB image that is UPLOADED before the booking is
+      // validated, so an abusive caller fills a bucket as well as a diary. The
+      // reads cost CPU that ends with the response; this costs bytes that stay.
+      //
+      // 6 in 10 minutes still clears a family booking several appointments in
+      // an afternoon, which is the case the old comment was sized for.
       config: {
         public: true,
-        rateLimit: { max: 10, timeWindow: '10 minutes' },
+        rateLimit: { max: 6, timeWindow: '10 minutes' },
       },
       schema: {
         operationId: 'createSalonBooking',
@@ -373,7 +399,11 @@ async function readBookingParts(
         // A booking is worth more than its proof. The client can be asked for
         // it again; the appointment cannot be recreated from nothing.
         request.log.warn(
-          { failure: error.failure, detail: error.message },
+          {
+            event: 'booking.proof_upload_failed',
+            failure: error.failure,
+            detail: error.message,
+          },
           'payment proof not stored; booking proceeding without it',
         );
       }
