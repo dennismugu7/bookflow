@@ -30,7 +30,6 @@ jobs:
       PROJECT_REF: ${{ vars.SUPABASE_PROJECT_ID }}
       GOOGLE_CLIENT_ID: ${{ secrets.SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID }}
       GOOGLE_SECRET: ${{ secrets.SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET }}
-      SMTP_USER: ${{ secrets.SMTP_USER }}
       SMTP_PASS: ${{ secrets.SMTP_PASS }}
     steps:
       - id: secrets
@@ -43,10 +42,10 @@ jobs:
             echo "google=false" >> "$GITHUB_OUTPUT"
           fi
           # Free-tier projects can only change email templates with a custom SMTP sender.
-          if [ -n "$SMTP_USER" ] && [ -n "$SMTP_PASS" ]; then
+          if [ -n "$SMTP_PASS" ]; then
             echo "smtp=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::SMTP_USER / SMTP_PASS are not set; skipping SMTP and the email code templates."
+            echo "::notice::SMTP_PASS is not set; skipping SMTP and the email code templates."
             echo "smtp=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -56,7 +55,10 @@ jobs:
       - name: Main auth settings
         if: steps.secrets.outputs.google == 'true'
         run: |
-          jq -n             --arg google_client_id "$GOOGLE_CLIENT_ID"             --arg google_secret "$GOOGLE_SECRET"             '{
+          jq -n \
+            --arg google_client_id "$GOOGLE_CLIENT_ID" \
+            --arg google_secret "$GOOGLE_SECRET" \
+            '{
               site_url: "https://bookflow-web-pearl.vercel.app",
               uri_allow_list: "http://localhost:3000/**,https://*-dennismugu7-6048s-projects.vercel.app/**",
               external_google_enabled: true,
@@ -68,16 +70,19 @@ jobs:
             }' > "$RUNNER_TEMP/auth.json"
           .github/scripts/patch-auth-config.sh "$RUNNER_TEMP/auth.json"
 
-      # Gmail with an app password. Sent before the templates, which need a custom sender.
+      # Resend (free tier). The sender domain must be verified in Resend.
+      # Sent before the templates, which need a custom sender.
       - name: SMTP sender
         if: steps.secrets.outputs.smtp == 'true'
         run: |
-          jq -n             --arg user "$SMTP_USER"             --arg pass "$SMTP_PASS"             '{
-              smtp_host: "smtp.gmail.com",
+          jq -n \
+            --arg pass "$SMTP_PASS" \
+            '{
+              smtp_host: "smtp.resend.com",
               smtp_port: "465",
-              smtp_user: $user,
+              smtp_user: "resend",
               smtp_pass: $pass,
-              smtp_admin_email: $user,
+              smtp_admin_email: "support@mugu-labs.com",
               smtp_sender_name: "Bookflow"
             }' > "$RUNNER_TEMP/auth.json"
           .github/scripts/patch-auth-config.sh "$RUNNER_TEMP/auth.json"
@@ -85,7 +90,10 @@ jobs:
       - name: Email code templates
         if: steps.secrets.outputs.smtp == 'true'
         run: |
-          jq -n             --rawfile magic_link supabase/templates/magic_link.html             --rawfile confirmation supabase/templates/confirmation.html             '{
+          jq -n \
+            --rawfile magic_link supabase/templates/magic_link.html \
+            --rawfile confirmation supabase/templates/confirmation.html \
+            '{
               mailer_subjects_magic_link: "Your Bookflow code",
               mailer_subjects_confirmation: "Your Bookflow code",
               mailer_templates_magic_link_content: $magic_link,
