@@ -10,3 +10,4 @@ Short records of decisions with lasting impact: the context, the options conside
 | [0004](0004-v1-without-deposits.md) | v1 launches without deposits | 2026-10-02 | Accepted |
 | [0005](0005-lead-owned-tests-human-merge.md) | Lead-owned acceptance tests; human merge gate | 2026-10-02 | Accepted |
 | [0006](0006-secrets-in-dashboards.md) | Secrets live in service dashboards, never in chat or the repo | 2026-10-02 | Accepted |
+| [0007](0007-client-identity.md) | Clients sign in with Google or an email code; phone collected, not verified (yet) | 2026-10-02 | Accepted |

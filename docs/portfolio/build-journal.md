@@ -70,6 +70,21 @@ Entry format: **Context → Challenge → What we did → Outcome.** Decisions w
 - **Challenge 3:** the first automatic deploy to Supabase failed: `Invalid access token format`. Claude Code read the CLI source to rule out a version problem (the token pattern is `^sbp_(oauth_|v0_)?[a-f0-9]{40}$` and values aren't trimmed), which narrowed it to the stored secret. **Fix:** a fresh token, pasted with the copy button. The deploy then applied all 4 migrations.
 - **Outcome:** any migration merged to `main` now deploys itself; `db` is a required check alongside `check`.
 
+### Phase 1b: the booking engine (PR #5)
+- **What we did:** availability, 10-minute holds, confirmation and staff/owner booking actions, all as Postgres functions. 148 database assertions, including a real two-session race in which the second visitor correctly gets "slot not available".
+- **Challenge:** Claude Code spotted that the per-IP rate limit trusted a header the visitor can fake. **Decision:** in Phase 3, holds go through a Next.js route that runs a Cloudflare Turnstile bot check and uses Vercel's trusted IP; `create_hold` becomes server-only.
+- **Other catches:** the database linter flagged a helper wrongly marked `IMMUTABLE`; a secret-scan hit on `sbp_` turned out to be the regex text in this journal.
+
+### Choosing how clients prove who they are (ADR 0007)
+- **Context:** the designs used SMS codes, about KES 2.40 per booking at roughly KES 0.80 per SMS.
+- **Research:** WhatsApp's pricing changed on 2026-10-01; every outbound business message is now charged, including replies inside the 24-hour window. Receiving messages is still free.
+- **First choice:** a zero-cost "Verify with WhatsApp" flow where the client sends us a pre-filled code. Meta developer sign-up failed, which would have blocked the schedule.
+- **Decision:** Google sign-in or an email code (free); the phone is collected but marked unverified. The design keeps a slot for WhatsApp verification later.
+- **Lesson:** don't let an external approval sit on the critical path; design the seam so it can be added later.
+
+### Hardware break
+- The laptop was shut down for a RAM upgrade (16 GB to 32 GB), which ended the Claude Code session. Nothing was lost: the rules live in `CLAUDE.md`, each task lives in a spec in `docs/specs/`, and the state lives in git. A fresh session picked up from the repo alone.
+
 ---
 
 ## Evidence to capture as we go

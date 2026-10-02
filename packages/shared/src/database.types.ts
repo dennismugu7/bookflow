@@ -100,13 +100,13 @@ isOneToOne: false
                   ]
                 },"clients": {
                   Row: {
-                    "created_at": string,"full_name": string,"id": string,"notes": string | null,"phone": string,"salon_id": string,"updated_at": string,"user_id": string | null
+                    "created_at": string,"email": string | null,"full_name": string,"id": string,"notes": string | null,"phone": string,"phone_verified": boolean,"salon_id": string,"updated_at": string,"user_id": string | null
                   }
                   Insert: {
-                    "created_at"?: string,"full_name": string,"id"?: string,"notes"?: string | null,"phone": string,"salon_id": string,"updated_at"?: string,"user_id"?: string | null
+                    "created_at"?: string,"email"?: string | null,"full_name": string,"id"?: string,"notes"?: string | null,"phone": string,"phone_verified"?: boolean,"salon_id": string,"updated_at"?: string,"user_id"?: string | null
                   }
                   Update: {
-                    "created_at"?: string,"full_name"?: string,"id"?: string,"notes"?: string | null,"phone"?: string,"salon_id"?: string,"updated_at"?: string,"user_id"?: string | null
+                    "created_at"?: string,"email"?: string | null,"full_name"?: string,"id"?: string,"notes"?: string | null,"phone"?: string,"phone_verified"?: boolean,"salon_id"?: string,"updated_at"?: string,"user_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -283,6 +283,9 @@ isOneToOne: false
           Functions: {
             "confirm_booking":
 { Args: { "p_full_name": string,"p_hold_token": string }; Returns: string
+                           },
+"confirm_booking_contact":
+{ Args: { "p_full_name": string,"p_hold_token": string,"p_phone": string }; Returns: string
                            },
 "create_hold":
 { Args: { "p_hold_token": string,"p_salon_slug": string,"p_service_ids": (string)[],"p_staff_id": string,"p_starts_at": string }; Returns: {
