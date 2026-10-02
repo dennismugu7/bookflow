@@ -1,0 +1,12 @@
+pnpm-lock.yaml
+.next/
+.expo/
+.turbo/
+node_modules/
+supabase/.temp/
+docs/
+CLAUDE.md
+apps/web/AGENTS.md
+apps/web/CLAUDE.md
+apps/owner/AGENTS.md
+supabase/

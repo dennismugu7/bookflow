@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Hoisted layout for React Native / Expo. pnpm 12 reads this here; .npmrc keeps the same value for older tooling.
+nodeLinker: hoisted
+
+allowBuilds:
+  sharp: false
+  unrs-resolver: false

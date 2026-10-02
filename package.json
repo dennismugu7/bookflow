@@ -1,0 +1,24 @@
+{
+  "name": "bookflow",
+  "private": true,
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:owner": "pnpm --filter owner start",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "build": "turbo run build",
+    "check": "turbo run lint typecheck test",
+    "format": "prettier --write ."
+  },
+  "prettier": "@bookflow/config/prettier",
+  "devDependencies": {
+    "@bookflow/config": "workspace:*",
+    "prettier": "3.9.9",
+    "turbo": "2.11.6"
+  }
+}

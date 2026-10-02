@@ -1,0 +1,29 @@
+# Bookflow
+
+Salon booking SaaS. Salon owners and staff run the salon from an Android app; clients book through a web link the salon shares on social media.
+
+## Layout
+
+```
+apps/web         Client booking site: Next.js (App Router), Tailwind
+apps/owner       Owner/staff app: Expo + expo-router, Android only
+packages/shared  Shared TypeScript: schemas, domain logic, formatting
+packages/config  Shared tsconfig, ESLint and Prettier config
+supabase/        Supabase config (migrations, tests, functions later)
+docs/specs/      Task specs
+```
+
+## Commands
+
+Requires Node 24 (`.nvmrc`) and pnpm (`corepack enable`).
+
+```sh
+pnpm install
+pnpm dev:web      # web app on http://localhost:3000
+pnpm dev:owner    # Expo / Metro for the owner app
+pnpm check        # lint + typecheck + tests (must pass before a PR)
+pnpm build        # production builds
+pnpm --filter web test:e2e   # Playwright smoke tests (run `pnpm --filter web exec playwright install chromium` once)
+```
+
+Env: copy each app's `.env.example` to `.env.local` and fill in values. Never commit `.env*` files.
