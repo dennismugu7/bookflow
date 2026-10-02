@@ -17,11 +17,13 @@ Roles on this project: **Lead** (Claude in Cowork) writes specs in `docs/specs/`
 1. **Follow the spec.** Each task has a spec in `docs/specs/`. If the spec is unclear or wrong, stop and ask — do not guess on domain rules.
 2. **Tests first** for any logic (slots, holds, prices, permissions). UI work needs at least a smoke test.
 3. **`pnpm check` must pass** (lint + typecheck + tests) before you report a task as done.
-4. **Branch per task**: `feat/<short-name>` or `fix/<short-name>`. Open a PR with `gh pr create`. Do not merge to `main` — the lead approves merges.
+4. **Branch per task**: `feat/<name>` or `fix/<name>`; open a PR with `gh pr create`. `main` is protected. **Never merge PRs yourself**: Dennis squash-merges on GitHub after the lead approves. After he says "merged", run `git checkout main && git pull` and delete the local branch.
 5. **Commits**: Conventional Commits (`feat:`, `fix:`, `chore:`, `test:`, `docs:`).
 6. **Secrets**: never read, print or commit `.env*` files or secret values. Add new keys to the matching `.env.example` and the env schema; Dennis sets real values in dashboards.
 7. **The database enforces business rules** (RLS, constraints, exclusion constraints). Apps never trust the client for prices, availability or permissions.
 8. Prefer small, boring, well-known libraries. Ask before adding a dependency that isn't in a spec.
+9. **Acceptance tests belong to the lead.** Each spec has an 'Acceptance tests' section. Copy those cases verbatim into files named `*.acceptance.test.ts` (TypeScript) or `supabase/tests/acceptance/*.sql` (pgTAP). Never weaken, skip, delete or edit them. If one looks wrong, stop and ask. You may add as many extra tests of your own as you like.
+10. **This repo is public.** Never commit real personal data, real phone numbers, screenshots with client data, or secrets. Seed and test data use fake names and numbers in the `+2547000000xx` range.
 
 ## Domain conventions
 - Money: integer amounts in KES (no decimals), column suffix `_kes`. Display as `KES 1,200`.

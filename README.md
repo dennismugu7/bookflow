@@ -27,3 +27,7 @@ pnpm --filter web test:e2e   # Playwright smoke tests (run `pnpm --filter web ex
 ```
 
 Env: copy each app's `.env.example` to `.env.local` and fill in values. Never commit `.env*` files.
+
+## License
+
+© 2026 mugu-labs. All rights reserved. The source is public for portfolio review only; no license is granted to use, copy, modify or distribute it.
