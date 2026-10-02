@@ -155,6 +155,8 @@ max_indexes = 5
 
 [auth]
 enabled = true
+# Local dev only. The remote auth settings Bookflow manages are sent by .github/workflows/auth-config.yml;
+# keep the two in step (site URL, redirect URLs, Google, OTP expiry and email templates).
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
 site_url = "https://bookflow-web-pearl.vercel.app"
