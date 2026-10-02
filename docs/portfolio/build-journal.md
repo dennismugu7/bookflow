@@ -39,6 +39,7 @@ Entry format: **Context → Challenge → What we did → Outcome.** Decisions w
 - **Challenge:** Claude Code's own safety check refused to merge a PR without human review.
 - **Outcome:** we kept it that way. Dennis is the only one who merges, so a human signs off on every change that reaches `main`.
 - **Lead's mistake:** a read-only `git status` run from the lead's sandbox left a stale `index.lock` that would have blocked Claude Code. Caught immediately and moved aside; the lead now uses `--no-optional-locks` for repo reads.
+- **Later the same day:** to keep Dennis working from one app, merges moved to Claude Code, but only on the exact phrase "approved: merge PR #<n>" from Dennis himself. The sign-off stays explicit and auditable; GitHub still blocks merges without green checks.
 
 ### First deploy to Vercel
 - **Challenge:** the first build failed: `the installed pnpm wrapper is missing`. Vercel's bundled pnpm couldn't switch itself to the exact pnpm 12 version pinned in the repo.
