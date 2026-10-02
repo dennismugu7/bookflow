@@ -10,3 +10,4 @@ apps/web/AGENTS.md
 apps/web/CLAUDE.md
 apps/owner/AGENTS.md
 supabase/
+packages/shared/src/database.types.ts
