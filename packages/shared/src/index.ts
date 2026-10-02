@@ -1,4 +1,5 @@
 export { formatKes } from "./money";
+export { normalizeKenyanPhone } from "./phone";
 export {
   BOOKING_ERROR_CODES,
   bookingErrorKind,

@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - supabase/migrations/**
+      - supabase/config.toml
+      - supabase/templates/**
   workflow_dispatch:
 
 # Queue, never cancel: stopping a migration mid-way could leave the database half-migrated.
@@ -35,3 +37,50 @@ jobs:
 
       # Applies only migrations missing from the remote history; the seed is never pushed.
       - run: supabase db push --yes
+
+  # Auth settings as code (phase 1c). `config diff` is read-only and always runs; the push itself
+  # stays off until the repo variable AUTH_CONFIG_PUSH is "true", because config.toml still declares
+  # template defaults (rate limits, JWT expiry, MFA, storage...) that would overwrite remote values.
+  auth-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: deploy
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID: ${{ secrets.SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID }}
+      SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET: ${{ secrets.SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET }}
+    steps:
+      # Without both values the CLI would send the literal "env(...)" text as the Google client ID.
+      - id: secrets
+        run: |
+          if [ -z "$SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID" ] || [ -z "$SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET" ]; then
+            echo "::notice::Google secrets are not set; skipping the auth config push."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.secrets.outputs.ok == 'true'
+        uses: actions/checkout@v7
+
+      - if: steps.secrets.outputs.ok == 'true'
+        uses: supabase/setup-cli@v3
+        with:
+          version: 2.119.0
+
+      - if: steps.secrets.outputs.ok == 'true'
+        run: supabase link --project-ref "$PROJECT_REF"
+        env:
+          PROJECT_REF: ${{ vars.SUPABASE_PROJECT_ID }}
+
+      - name: Show what would change on the remote
+        if: steps.secrets.outputs.ok == 'true'
+        run: supabase config diff
+
+      - name: Push auth config
+        if: steps.secrets.outputs.ok == 'true' && vars.AUTH_CONFIG_PUSH == 'true'
+        run: supabase config push --yes
+
+      - if: steps.secrets.outputs.ok == 'true' && vars.AUTH_CONFIG_PUSH != 'true'
+        run: echo "::notice::Auth config push is off (repo variable AUTH_CONFIG_PUSH). Review the diff above."

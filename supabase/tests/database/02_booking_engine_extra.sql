@@ -42,9 +42,9 @@ insert into public.bookings (id, salon_id, staff_id, status, period) values
    'confirmed', tstzrange(((current_date + 20) + time '10:00') at time zone 'Africa/Nairobi',
                           ((current_date + 20) + time '10:30') at time zone 'Africa/Nairobi'));
 
--- An existing client whose name the owner has edited.
-insert into public.clients (salon_id, full_name, phone)
-values ('a0000000-0000-4000-8000-000000000001', 'Name Set By Owner', '+254700000021');
+-- An existing client with a verified phone whose name the owner has edited.
+insert into public.clients (salon_id, full_name, phone, phone_verified)
+values ('a0000000-0000-4000-8000-000000000001', 'Name Set By Owner', '+254700000021', true);
 
 set local role anon;
 set local request.jwt.claims = '{"role":"anon"}';
