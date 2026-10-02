@@ -41,3 +41,21 @@ pnpm-debug.log*
 
 # Claude local
 .claude/settings.local.json
+
+# Expo / Metro extras
+expo-env.d.ts
+.metro-health-check*
+.kotlin/
+
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+# Supabase local
+supabase/.temp/
+supabase/.branches/
+
+# Vercel
+*.pem
