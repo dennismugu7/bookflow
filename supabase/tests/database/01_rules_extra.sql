@@ -83,15 +83,16 @@ set local role authenticated;
 set local request.jwt.claims = '{"sub":"d0000000-0000-4000-8000-000000000002","role":"authenticated"}';
 select is((select count(*)::int from public.services where salon_id = 'a0000000-0000-4000-8000-000000000001'), 2,
   'members see non-bookable services');
+-- Since phase 1b, staff change bookings only through update_booking_status().
 select results_eq($$ with u as (update public.bookings set status = 'completed'
   where id = 'f0000000-0000-4000-8000-000000000001' returning 1) select count(*)::int from u $$,
-  $$ values (1) $$, 'staff can update their own booking');
+  $$ values (0) $$, 'staff cannot update even their own booking directly');
 select results_eq($$ with u as (update public.bookings set status = 'completed'
   where id = 'f0000000-0000-4000-8000-000000000002' returning 1) select count(*)::int from u $$,
   $$ values (0) $$, 'staff cannot update another staff member''s booking');
-select throws_ok($$ update public.bookings set staff_id = 'b0000000-0000-4000-8000-000000000002'
-  where id = 'f0000000-0000-4000-8000-000000000001' $$,
-  '42501', null, 'staff cannot hand their booking to someone else');
+select results_eq($$ with u as (update public.bookings set staff_id = 'b0000000-0000-4000-8000-000000000002'
+  where id = 'f0000000-0000-4000-8000-000000000001' returning 1) select count(*)::int from u $$,
+  $$ values (0) $$, 'staff cannot hand their booking to someone else');
 reset role;
 
 -- Owner

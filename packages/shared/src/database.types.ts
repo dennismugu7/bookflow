@@ -69,13 +69,13 @@ isOneToOne: false
                   ]
                 },"bookings": {
                   Row: {
-                    "cancel_reason": string | null,"client_id": string | null,"created_at": string,"hold_expires_at": string | null,"id": string,"period": unknown,"salon_id": string,"source": string,"staff_id": string,"status": Database["public"]['Enums']["booking_status"],"total_kes": number,"updated_at": string
+                    "cancel_reason": string | null,"client_id": string | null,"created_at": string,"hold_expires_at": string | null,"hold_token_hash": string | null,"id": string,"period": unknown,"salon_id": string,"source": string,"staff_id": string,"status": Database["public"]['Enums']["booking_status"],"total_kes": number,"updated_at": string
                   }
                   Insert: {
-                    "cancel_reason"?: string | null,"client_id"?: string | null,"created_at"?: string,"hold_expires_at"?: string | null,"id"?: string,"period": unknown,"salon_id": string,"source"?: string,"staff_id": string,"status": Database["public"]['Enums']["booking_status"],"total_kes"?: number,"updated_at"?: string
+                    "cancel_reason"?: string | null,"client_id"?: string | null,"created_at"?: string,"hold_expires_at"?: string | null,"hold_token_hash"?: string | null,"id"?: string,"period": unknown,"salon_id": string,"source"?: string,"staff_id": string,"status": Database["public"]['Enums']["booking_status"],"total_kes"?: number,"updated_at"?: string
                   }
                   Update: {
-                    "cancel_reason"?: string | null,"client_id"?: string | null,"created_at"?: string,"hold_expires_at"?: string | null,"id"?: string,"period"?: unknown,"salon_id"?: string,"source"?: string,"staff_id"?: string,"status"?: Database["public"]['Enums']["booking_status"],"total_kes"?: number,"updated_at"?: string
+                    "cancel_reason"?: string | null,"client_id"?: string | null,"created_at"?: string,"hold_expires_at"?: string | null,"hold_token_hash"?: string | null,"id"?: string,"period"?: unknown,"salon_id"?: string,"source"?: string,"staff_id"?: string,"status"?: Database["public"]['Enums']["booking_status"],"total_kes"?: number,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -281,8 +281,27 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "create_salon":
+            "confirm_booking":
+{ Args: { "p_full_name": string,"p_hold_token": string }; Returns: string
+                           },
+"create_hold":
+{ Args: { "p_hold_token": string,"p_salon_slug": string,"p_service_ids": (string)[],"p_staff_id": string,"p_starts_at": string }; Returns: {
+              "expires_at": string,"hold_id": string,"staff_id": string
+            }[]
+                           },
+"create_salon":
 { Args: { "p_name": string,"p_slug": string }; Returns: string
+                           },
+"get_availability":
+{ Args: { "p_date": string,"p_salon_slug": string,"p_service_ids": (string)[],"p_staff_id"?: string }; Returns: {
+              "ends_at": string,"staff_id": string,"starts_at": string
+            }[]
+                           },
+"release_hold":
+{ Args: { "p_hold_token": string }; Returns: undefined
+                           },
+"update_booking_status":
+{ Args: { "p_booking_id": string,"p_reason"?: string,"p_status": Database["public"]['Enums']["booking_status"] }; Returns: undefined
                            }
           }
           Enums: {

@@ -63,6 +63,13 @@ Entry format: **Context → Challenge → What we did → Outcome.** Decisions w
 - **Outcome:** the app runs on a real device, showing the shared `formatKes` output and the build channel. Evidence: [`evidence/2026-10-02-first-apk.jpg`](evidence/2026-10-02-first-apk.jpg).
 - **Milestone:** Phase 0 complete on day 1. Code goes from commit to CI, to the web in production, and to an installable phone app, all driven from a phone.
 
+### Phase 1a: the database enforces the rules (PR #4)
+- **What we did:** 12 tables; double bookings blocked by a Postgres exclusion constraint; cross-salon links made impossible with composite foreign keys; row-level security on every table; `create_salon()` as the only way to create a salon. The lead wrote 5 acceptance test files (55 assertions), Claude Code added 17 of its own (72 in total), and they run in CI against a fresh local Supabase on every database change.
+- **Challenge 1:** the lead's tests count rows, so they failed once demo data was loaded. **Fix:** CI runs the tests on an empty database first, then loads the seed separately. The tests stayed unchanged, as the rules require.
+- **Challenge 2:** a phone screenshot headed for the public repo. **Fix:** Claude Code checked its hidden metadata (location data, device info) before committing it.
+- **Challenge 3:** the first automatic deploy to Supabase failed: `Invalid access token format`. Claude Code read the CLI source to rule out a version problem (the token pattern is `^sbp_(oauth_|v0_)?[a-f0-9]{40}$` and values aren't trimmed), which narrowed it to the stored secret. **Fix:** a fresh token, pasted with the copy button. The deploy then applied all 4 migrations.
+- **Outcome:** any migration merged to `main` now deploys itself; `db` is a required check alongside `check`.
+
 ---
 
 ## Evidence to capture as we go
