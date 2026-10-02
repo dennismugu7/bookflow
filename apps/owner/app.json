@@ -2,7 +2,11 @@
   "expo": {
     "name": "Bookflow Owner",
     "slug": "bookflow-owner",
+    "owner": "mugulabs",
     "version": "0.1.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "platforms": ["android"],
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -32,6 +36,14 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "updates": {
+      "url": "https://u.expo.dev/78a8a0b2-77d1-48fe-8c16-2299fb26526c"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "78a8a0b2-77d1-48fe-8c16-2299fb26526c"
+      }
     }
   }
 }

@@ -1,0 +1,73 @@
+name: EAS update
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/owner/**
+      - packages/shared/**
+  pull_request:
+    paths:
+      - apps/owner/**
+      - packages/shared/**
+
+concurrency:
+  group: eas-update-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      # Secrets are not passed to fork PRs, so skip cleanly instead of failing.
+      - name: Check for EXPO_TOKEN
+        id: token
+        run: |
+          if [ -n "$EXPO_TOKEN" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::EXPO_TOKEN is not available (e.g. a fork PR), so the EAS update is skipped."
+          fi
+
+      - if: steps.token.outputs.available == 'true'
+        uses: actions/checkout@v7
+
+      - if: steps.token.outputs.available == 'true'
+        uses: pnpm/action-setup@v6
+
+      - if: steps.token.outputs.available == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - if: steps.token.outputs.available == 'true'
+        uses: expo/expo-github-action@v9
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - if: steps.token.outputs.available == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Publish to the preview channel
+        if: steps.token.outputs.available == 'true' && github.event_name == 'push'
+        working-directory: apps/owner
+        run: eas update --channel preview --message "$(git log -1 --pretty=%s)" --non-interactive
+
+      - name: Publish a PR preview and comment the QR code
+        if: steps.token.outputs.available == 'true' && github.event_name == 'pull_request'
+        uses: expo/expo-github-action/preview@v9
+        with:
+          working-directory: apps/owner
+          command: eas update --auto --branch pr-${{ github.event.pull_request.number }} --non-interactive
