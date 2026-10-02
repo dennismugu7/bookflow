@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(gh:*)",
+      "Bash(pnpm:*)",
+      "Bash(npx:*)",
+      "Bash(node:*)",
+      "Bash(supabase:*)",
+      "Bash(vercel:*)",
+      "Bash(eas:*)",
+      "PowerShell(git:*)",
+      "PowerShell(gh:*)",
+      "PowerShell(pnpm:*)",
+      "PowerShell(npx:*)",
+      "PowerShell(node:*)",
+      "PowerShell(supabase:*)",
+      "PowerShell(vercel:*)",
+      "PowerShell(eas:*)",
+      "Edit(./**)",
+      "Write(./**)"
+    ]
+  }
+}
