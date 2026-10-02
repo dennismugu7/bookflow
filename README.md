@@ -29,10 +29,10 @@ pnpm --filter web test:e2e   # Playwright smoke tests (run `pnpm --filter web ex
 Database (needs Docker):
 
 ```sh
-npx supabase db start                                   # local Postgres
-npx supabase db reset --no-seed && npx supabase test db # pgTAP tests expect an empty database
-npx supabase db reset                                   # migrations + demo seed for local dev
-npx supabase gen types typescript --local > packages/shared/src/database.types.ts
+pnpm db:start   # local Postgres (Supabase CLI pinned in package.json, same version as CI)
+pnpm db:test    # empty database + pgTAP tests (they count rows, so no seed)
+pnpm db:reset   # migrations + demo seed for local dev
+pnpm db:types   # regenerate packages/shared/src/database.types.ts
 ```
 
 Env: copy each app's `.env.example` to `.env.local` and fill in values. Never commit `.env*` files.

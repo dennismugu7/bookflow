@@ -13,12 +13,17 @@
     "test": "turbo run test",
     "build": "turbo run build",
     "check": "turbo run lint typecheck test",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "db:start": "supabase db start",
+    "db:reset": "supabase db reset --local",
+    "db:test": "supabase db reset --local --no-seed && supabase test db",
+    "db:types": "supabase gen types typescript --local > packages/shared/src/database.types.ts"
   },
   "prettier": "@bookflow/config/prettier",
   "devDependencies": {
     "@bookflow/config": "workspace:*",
     "prettier": "3.9.9",
+    "supabase": "2.119.0",
     "turbo": "2.11.6"
   }
 }

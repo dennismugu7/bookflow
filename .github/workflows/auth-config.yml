@@ -1,0 +1,79 @@
+name: Auth config
+
+# Sends only the auth settings Bookflow manages to the Supabase Management API.
+# Every other remote setting is left untouched (a PATCH changes only the fields it names).
+# Edit the field list below to change a managed setting; supabase/config.toml is for local dev.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/auth-config.yml
+  workflow_dispatch:
+
+concurrency:
+  group: auth-config
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_REF: ${{ vars.SUPABASE_PROJECT_ID }}
+      GOOGLE_CLIENT_ID: ${{ secrets.SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID }}
+      GOOGLE_SECRET: ${{ secrets.SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET }}
+    steps:
+      # Never send an empty Google config.
+      - id: secrets
+        run: |
+          if [ -z "$GOOGLE_CLIENT_ID" ] || [ -z "$GOOGLE_SECRET" ]; then
+            echo "::notice::Google secrets are not set; skipping the auth config update."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.secrets.outputs.ok == 'true'
+        uses: actions/checkout@v7
+
+      - name: Update managed auth settings
+        if: steps.secrets.outputs.ok == 'true'
+        run: |
+          jq -n \
+            --arg google_client_id "$GOOGLE_CLIENT_ID" \
+            --arg google_secret "$GOOGLE_SECRET" \
+            --rawfile magic_link supabase/templates/magic_link.html \
+            --rawfile confirmation supabase/templates/confirmation.html \
+            '{
+              site_url: "https://bookflow-web-pearl.vercel.app",
+              uri_allow_list: "http://localhost:3000/**,https://*-dennismugu7-6048s-projects.vercel.app/**",
+              external_google_enabled: true,
+              external_google_client_id: $google_client_id,
+              external_google_secret: $google_secret,
+              external_phone_enabled: false,
+              mailer_otp_exp: 600,
+              mailer_otp_length: 6,
+              mailer_subjects_magic_link: "Your Bookflow code",
+              mailer_subjects_confirmation: "Your Bookflow code",
+              mailer_templates_magic_link_content: $magic_link,
+              mailer_templates_confirmation_content: $confirmation
+            }' > "$RUNNER_TEMP/auth.json"
+
+          status=$(curl -sS -o "$RUNNER_TEMP/response.json" -w '%{http_code}' -X PATCH \
+            "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data @"$RUNNER_TEMP/auth.json")
+          rm "$RUNNER_TEMP/auth.json"
+          echo "HTTP $status"
+
+          # Print only non-secret fields from the response.
+          jq '{site_url, uri_allow_list, external_google_enabled, external_phone_enabled, mailer_otp_exp,
+               mailer_otp_length, mailer_subjects_magic_link, mailer_subjects_confirmation, message}' \
+            "$RUNNER_TEMP/response.json" 2>/dev/null || echo "::warning::Response was not JSON."
+          [ "$status" -ge 200 ] && [ "$status" -lt 300 ]

@@ -7,4 +7,6 @@ nodeLinker: hoisted
 
 allowBuilds:
   sharp: false
+  # Downloads the pinned Supabase CLI binary.
+  supabase: true
   unrs-resolver: false
