@@ -26,6 +26,15 @@ pnpm build        # production builds
 pnpm --filter web test:e2e   # Playwright smoke tests (run `pnpm --filter web exec playwright install chromium` once)
 ```
 
+Database (needs Docker):
+
+```sh
+npx supabase db start                                   # local Postgres
+npx supabase db reset --no-seed && npx supabase test db # pgTAP tests expect an empty database
+npx supabase db reset                                   # migrations + demo seed for local dev
+npx supabase gen types typescript --local > packages/shared/src/database.types.ts
+```
+
 Env: copy each app's `.env.example` to `.env.local` and fill in values. Never commit `.env*` files.
 
 ## License
