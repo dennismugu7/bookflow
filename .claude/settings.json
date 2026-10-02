@@ -19,6 +19,16 @@
       "PowerShell(eas:*)",
       "Edit(./**)",
       "Write(./**)"
+    ],
+    "deny": [
+      "Read(./**/.env)",
+      "Read(./**/.env.local)",
+      "Read(./**/.env.*.local)",
+      "Read(./**/.env.development)",
+      "Read(./**/.env.production)",
+      "Edit(./**/.env)",
+      "Edit(./**/.env.local)",
+      "Edit(./**/.env.*.local)"
     ]
   }
 }
