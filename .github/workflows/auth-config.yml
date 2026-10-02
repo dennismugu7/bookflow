@@ -9,6 +9,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/auth-config.yml
+      - supabase/templates/**
   workflow_dispatch:
 
 concurrency:
