@@ -51,10 +51,23 @@ Entry format: **Context → Challenge → What we did → Outcome.** Decisions w
 - **What we did:** didn't install it. Added the two public keys (project URL and anon key) to Vercel by hand as **Config** variables. They ship to the browser anyway, so marking them Secret was wrong, which is what Vercel's warning was pointing out.
 - **Outcome:** no extra project, no billing link, and secret keys never leave Supabase. → [ADR 0006](../adr/0006-secrets-in-dashboards.md)
 
+### Phase 0b: Supabase, Vercel and Expo wired up (PR #2)
+- **What we did:** connected the web app to Supabase with a public `/api/health` endpoint; Vercel now skips web builds when only the owner app changes; the owner app gets builds and over-the-air updates entirely from GitHub Actions, so the laptop never logs in to Expo.
+- **Challenge 1:** the first `eas update` run failed because it tries to export iOS as well, and the app is Android-only. **Fix:** `--platform android` on every update command.
+- **Challenge 2:** the build-info line couldn't tell the APK's built-in bundle apart from an over-the-air update, because both have an ID. **Fix:** check whether the running bundle is the embedded one, not whether an ID exists; covered by unit tests.
+- **Challenge 3:** Vercel preview links are behind login, so the health check couldn't be verified on the PR. **Fix:** verified on production right after merge: `{"status":"ok","supabase":"ok","commit":"d1f126e"}`.
+- **Process change (PR #3):** merges moved to Claude Code on Dennis's exact phrase `approved: merge PR #<n>`.
+
+### First build on a real phone
+- **What we did:** Claude Code started the EAS build from the command line through the GitHub workflow; Expo built it in about 20 minutes; Dennis installed the APK on his phone.
+- **Outcome:** the app runs on a real device, showing the shared `formatKes` output and the build channel. Evidence: [`evidence/2026-10-02-first-apk.jpg`](evidence/2026-10-02-first-apk.jpg).
+- **Milestone:** Phase 0 complete on day 1. Code goes from commit to CI, to the web in production, and to an installable phone app, all driven from a phone.
+
 ---
 
 ## Evidence to capture as we go
 - [ ] Screenshots: plan timeline, architecture diagram, first deploy, first booking, CI checks
+- [x] First APK running on a phone (2026-10-02)
 - [ ] Short screen recording of each major flow (booking, owner setup, Today view)
 - [ ] Numbers: test count, CI duration, web performance score, app bundle size, bugs found by tests before reaching Dennis
 - [ ] Pilot salon quotes (with permission)
