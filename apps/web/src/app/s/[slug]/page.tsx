@@ -1,15 +1,15 @@
 import { bookingLink, mapsEmbedUrl } from "@bookflow/shared";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { BottomBar, pillPrimary } from "../../../components/ui";
+import { SalonIdentity } from "../../../components/salon-header";
 import { initials } from "../../../lib/format";
 import { directionsUrl } from "../../../lib/my-booking";
 import { getPublicSalon, mapQuery } from "../../../lib/salon";
 import { isoWeekday, salonDate } from "../../../lib/time";
 import {
   AboutText,
+  BookNowBar,
   OpenStatusLine,
   SectionTabs,
   ServicesSection,
@@ -38,6 +38,9 @@ export async function generateMetadata(props: PageProps<"/s/[slug]">): Promise<M
   };
 }
 
+/** Section heading from originals 02–04 (26 px, medium). */
+const sectionHeading = "text-[26px] leading-8 font-semibold";
+
 export default async function SalonPage(props: PageProps<"/s/[slug]">) {
   const { slug } = await props.params;
   const salon = await getPublicSalon(slug);
@@ -49,8 +52,8 @@ export default async function SalonPage(props: PageProps<"/s/[slug]">) {
   const count = salon.services.length;
 
   return (
-    <main className="mx-auto w-full max-w-[560px] pb-28">
-      {/* Hero: banner at 4:3 with a share button */}
+    <main className="mx-auto w-full max-w-[560px] pb-[110px]">
+      {/* Hero: banner at 4:3 with a share button (original 01) */}
       <div className="relative">
         {salon.bannerUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- Supabase public URLs; no image optimiser on the free plan
@@ -66,59 +69,58 @@ export default async function SalonPage(props: PageProps<"/s/[slug]">) {
         <ShareButton title={salon.name} url={bookingLink(salon.slug)} />
       </div>
 
-      {/* Info card overlapping the hero */}
-      <div className="relative -mt-6 rounded-t-[24px] bg-white px-4 pt-6">
-        <div className="flex items-start gap-4">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-[24px] leading-tight font-bold">{salon.name}</h1>
-            {salon.tagline ? <p className="mt-1 text-[15px] text-muted">{salon.tagline}</p> : null}
-            {salon.address ? (
-              <p className="mt-2 truncate text-[13px] text-muted">{salon.address}</p>
-            ) : null}
+      {/*
+        Everything below the hero lives in this one container, so the sticky tabs (a direct child)
+        stay stuck for the whole length of the sections. No ancestor may set overflow.
+      */}
+      <div className="relative -mt-7 rounded-t-[20px] bg-white">
+        <div className="px-[30px] pt-[31px] pb-10">
+          <SalonIdentity
+            as="h1"
+            name={salon.name}
+            tagline={salon.tagline}
+            address={salon.address}
+            logoUrl={salon.logoUrl}
+          />
+          <div className="mt-4">
+            <OpenStatusLine hours={salon.hours} timeZone={salon.timezone} />
           </div>
-          {salon.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- as above
-            <img
-              src={salon.logoUrl}
-              alt={`${salon.name} logo`}
-              className="size-16 shrink-0 rounded-ds object-cover"
-            />
+
+          {salon.about ? (
+            <section aria-labelledby="about-heading" className="mt-[21px]">
+              <h2 id="about-heading" className="text-[20px] leading-6 font-bold">
+                About
+              </h2>
+              <AboutText text={salon.about} />
+            </section>
           ) : null}
         </div>
-        <div className="mt-3">
-          <OpenStatusLine hours={salon.hours} timeZone={salon.timezone} />
-        </div>
 
-        {salon.about ? (
-          <section aria-labelledby="about-heading" className="mt-6">
-            <h2 id="about-heading" className="mb-2 text-[18px] font-bold">
-              About
-            </h2>
-            <AboutText text={salon.about} />
-          </section>
-        ) : null}
+        <SectionTabs hasTeam={salon.staff.length > 0} />
 
-        <div className="mt-6">
-          <SectionTabs hasTeam={salon.staff.length > 0} />
-        </div>
-
-        <section id="services" aria-labelledby="services-heading" className="scroll-mt-14 pt-6">
-          <h2 id="services-heading" className="mb-3 text-[18px] font-bold">
+        <section id="services" aria-labelledby="services-heading" className="scroll-mt-[55px]">
+          <h2 id="services-heading" className={`${sectionHeading} px-10 pt-[33px] pb-4`}>
             Services
           </h2>
-          {count > 0 ? (
-            <ServicesSection slug={salon.slug} services={salon.services} />
-          ) : (
-            <p className="text-[15px] text-muted">No services are bookable online right now.</p>
-          )}
+          <div className="bg-surface px-[22px] pt-2 pb-[15px]">
+            {count > 0 ? (
+              <ServicesSection slug={salon.slug} services={salon.services} />
+            ) : (
+              <p className="py-4 text-[15px] text-muted">
+                No services are bookable online right now.
+              </p>
+            )}
+          </div>
         </section>
 
         {salon.staff.length > 0 ? (
-          <section id="team" aria-labelledby="team-heading" className="scroll-mt-14 pt-8">
-            <h2 id="team-heading" className="mb-3 text-[18px] font-bold">
-              Team
-            </h2>
+          <section
+            id="team"
+            aria-labelledby="team-heading"
+            className="scroll-mt-[76px] pt-1.5 pb-1.5"
+          >
             <TeamSection
+              headingClass={`${sectionHeading} pl-10`}
               team={salon.staff.map(({ id, name, title, bio, photoUrl }) => ({
                 id,
                 name,
@@ -127,14 +129,19 @@ export default async function SalonPage(props: PageProps<"/s/[slug]">) {
                 photoUrl,
               }))}
             />
+            <hr className="mx-11 mt-[30px] border-line" />
           </section>
         ) : null}
 
-        <section id="hours" aria-labelledby="hours-heading" className="scroll-mt-14 pt-8">
-          <h2 id="hours-heading" className="mb-2 text-[18px] font-bold">
-            Opening hours
+        <section
+          id="hours"
+          aria-labelledby="hours-heading"
+          className="scroll-mt-[55px] px-[47px] pt-[18px]"
+        >
+          <h2 id="hours-heading" className="text-[21px] leading-7 font-semibold">
+            Opening times
           </h2>
-          <dl>
+          <dl className="mt-[13px]">
             {WEEKDAYS.map((name, index) => {
               const day = index + 1;
               const ranges = salon.hours.filter((h) => h.weekday === day);
@@ -142,17 +149,17 @@ export default async function SalonPage(props: PageProps<"/s/[slug]">) {
               return (
                 <div
                   key={name}
-                  className={`flex h-8 items-center gap-3 text-[15px] ${day === today ? "font-bold" : ""}`}
+                  className={`flex h-[28px] items-center text-[16px] ${day === today ? "font-bold" : "font-medium"}`}
                 >
                   <span
                     aria-hidden="true"
-                    className={`size-2.5 shrink-0 rounded-full ${open ? "bg-success" : "bg-line-strong"}`}
+                    className={`size-[11px] shrink-0 rounded-full ${open ? "bg-day-dot" : "bg-line-strong"}`}
                   />
-                  <dt className="flex-1">{name}</dt>
+                  <dt className="ml-[11px] flex-1">{name}</dt>
                   <dd className={open ? "" : "text-muted"}>
                     {open
                       ? ranges
-                          .map((r) => `${r.opens.slice(0, 5)} – ${r.closes.slice(0, 5)}`)
+                          .map((r) => `${r.opens.slice(0, 5)} - ${r.closes.slice(0, 5)}`)
                           .join(", ")
                       : "Closed"}
                   </dd>
@@ -162,25 +169,25 @@ export default async function SalonPage(props: PageProps<"/s/[slug]">) {
           </dl>
 
           {salon.address || query ? (
-            <div className="mt-6" aria-label="Location">
-              <h2 className="mb-3 text-[18px] font-bold">Location</h2>
+            <div aria-label="Location" role="group">
+              <hr className="mt-10 border-line" />
               {query ? (
                 <iframe
                   title={`Map showing ${salon.name}`}
                   src={mapsEmbedUrl(query)}
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
-                  className="h-40 w-full rounded-ds border border-line"
+                  className="mx-1.5 mt-7 h-[158px] w-[calc(100%-12px)] rounded-[16px]"
                 />
               ) : null}
-              <p className="mt-3 text-[14px]">
-                {salon.address ? <>{salon.address} </> : null}
+              <p className="mx-1.5 mt-3 text-[15px] font-medium">
+                {salon.address ? <>{salon.address.replace(/\.$/, "")}. </> : null}
                 {directions ? (
                   <a
                     href={directions}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex min-h-11 items-center font-semibold text-brand underline-offset-2 hover:underline"
+                    className="press -my-3 inline-block py-3 font-medium text-link"
                   >
                     Get directions
                   </a>
@@ -191,17 +198,7 @@ export default async function SalonPage(props: PageProps<"/s/[slug]">) {
         </section>
       </div>
 
-      <BottomBar label="Book">
-        <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-semibold">Ready for a fresh look?</p>
-          <p className="text-[13px] text-muted">
-            Check out our {count} {count === 1 ? "service" : "services"}
-          </p>
-        </div>
-        <Link href={`/s/${salon.slug}/book`} className={pillPrimary}>
-          Book now
-        </Link>
-      </BottomBar>
+      <BookNowBar slug={salon.slug} count={count} />
     </main>
   );
 }

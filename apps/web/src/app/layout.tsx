@@ -8,6 +8,8 @@ import { WEB_BASE_URL } from "@bookflow/shared";
 const urbanist = Urbanist({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  // The "Ready for a fresh look?" bar is italic in the originals.
+  style: ["normal", "italic"],
   variable: "--font-urbanist",
   display: "swap",
 });

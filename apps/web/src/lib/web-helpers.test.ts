@@ -108,8 +108,8 @@ describe("times in the salon's timezone", () => {
     expect(countdown("2026-10-10T07:40:00Z", new Date("2026-10-10T07:45:00Z")).seconds).toBe(0);
   });
   it("formats durations", () => {
-    expect(formatDuration(30)).toBe("30 min");
-    expect(formatDuration(135)).toBe("2h 15m");
+    expect(formatDuration(30)).toBe("30 mins");
+    expect(formatDuration(135)).toBe("2h 15 mins");
   });
 });
 

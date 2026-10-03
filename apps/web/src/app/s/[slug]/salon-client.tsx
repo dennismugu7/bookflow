@@ -5,7 +5,7 @@ import { Clock, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
-import { Initials, cardClass, pillOutline } from "../../../components/ui";
+import { Initials, ServiceText, cardClass, pillOutline } from "../../../components/ui";
 import { ProfileSheet, type Profile } from "../../../components/profile-sheet";
 import { choiceQuery } from "../../../lib/booking-query";
 import { initials } from "../../../lib/format";
@@ -49,14 +49,14 @@ export function ShareButton({ title, url }: { title: string; url: string }) {
         type="button"
         aria-label={`Share ${title}`}
         onClick={() => void share()}
-        className="absolute top-3 right-3 flex size-10 items-center justify-center rounded-full bg-white text-ink shadow-md"
+        className="press absolute top-[21px] right-[70px] flex size-[39px] items-center justify-center rounded-full bg-[#ebebeb]/95 text-ink"
       >
-        <Share2 className="size-5" />
+        <Share2 className="size-5" strokeWidth={2.25} />
       </button>
       {toast ? (
         <p
           role="status"
-          className="fixed bottom-24 left-1/2 z-30 -translate-x-1/2 rounded-full bg-ink px-4 py-2 text-[14px] font-semibold text-white"
+          className="fixed bottom-28 left-1/2 z-30 -translate-x-1/2 rounded-full bg-ink px-4 py-2 text-[14px] font-semibold text-white"
         >
           Link copied
         </p>
@@ -65,21 +65,19 @@ export function ShareButton({ title, url }: { title: string; url: string }) {
   );
 }
 
-/** "Open · until 18:00" or "Closed · opens Mon 09:00", worked out on the phone in the salon's timezone. */
+/** "Open  until 18:00" or "Closed  opens Mon 09:00", worked out on the phone in the salon's timezone. */
 export function OpenStatusLine({ hours, timeZone }: { hours: HoursRow[]; timeZone: string }) {
   const minute = useMinute();
-  if (minute === null) return <p className="h-5" aria-hidden="true" />;
+  if (minute === null) return <p className="h-6" aria-hidden="true" />;
   const now = new Date(minute * 60_000);
   const status = openStatus(hours, now, timeZone);
   const today = isoDay(now, timeZone);
   const { label, detail } = describeOpenStatus(status, today);
   return (
-    <p className="flex items-center gap-2 text-[14px]">
-      <Clock className="size-4 text-ink" aria-hidden="true" />
-      <span className={`font-semibold ${status.open ? "text-success" : "text-danger"}`}>
-        {label}
-      </span>
-      {detail ? <span className="text-muted">· {detail}</span> : null}
+    <p className="flex h-6 items-center text-[15px] font-medium tracking-[0.04em]">
+      <Clock className="size-5 text-ink" strokeWidth={2.25} aria-hidden="true" />
+      <span className={`ml-2 ${status.open ? "text-open" : "text-danger"}`}>{label}</span>
+      {detail ? <span className="ml-3 text-until">{detail}</span> : null}
     </p>
   );
 }
@@ -89,28 +87,30 @@ function isoDay(now: Date, timeZone: string): number {
   return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(short) + 1;
 }
 
-/** About text clamped to 4 lines, with "Read more" only when it is long. */
+const ABOUT_PREVIEW = 200;
+
+/** About text cut to about four lines, ending "… Read more" inline (original 01). */
 export function AboutText({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
-  const long = text.length > 220 || text.split("\n").length > 4;
+  const long = text.length > ABOUT_PREVIEW + 20;
+  const preview = long ? text.slice(0, text.lastIndexOf(" ", ABOUT_PREVIEW)).trimEnd() : text;
   return (
-    <div>
-      <p
-        className={`text-[15px] leading-relaxed whitespace-pre-line ${!open && long ? "line-clamp-4" : ""}`}
-      >
-        {text}
-      </p>
+    <p className="mt-[23px] text-[13px] leading-[15px] font-medium whitespace-pre-line">
+      {open || !long ? text : `${preview}…`}
       {long ? (
-        <button
-          type="button"
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-          className="mt-1 min-h-11 text-[15px] font-semibold text-brand"
-        >
-          {open ? "Show less" : "Read more"}
-        </button>
+        <>
+          {" "}
+          <button
+            type="button"
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+            className="press font-bold text-read-more"
+          >
+            {open ? "Show less" : "Read more"}
+          </button>
+        </>
       ) : null}
-    </div>
+    </p>
   );
 }
 
@@ -120,44 +120,53 @@ const TABS = [
   { id: "hours", label: "Hours & location" },
 ];
 
-/** Sticky section tabs with scroll-spy; the active tab gets an ink underline. */
+/** A section counts as reached once its top is this close to the top (tab bar plus its scroll margin). */
+const REACHED = 120;
+
+/**
+ * Sticky section tabs (originals 02–07) with scroll-spy: the active tab is the last section whose
+ * top has reached the bar, or the last one once the page can't scroll further.
+ */
 export function SectionTabs({ hasTeam }: { hasTeam: boolean }) {
   const tabs = useMemo(() => (hasTeam ? TABS : TABS.filter((t) => t.id !== "team")), [hasTeam]);
   const [active, setActive] = useState(tabs[0]!.id);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible[0]) setActive(visible[0].target.id);
-      },
-      { rootMargin: "-56px 0px -60% 0px" },
-    );
-    for (const tab of tabs) {
-      const el = document.getElementById(tab.id);
-      if (el) observer.observe(el);
-    }
-    return () => observer.disconnect();
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const atBottom =
+        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+      let current = tabs[0]!.id;
+      for (const tab of tabs) {
+        const el = document.getElementById(tab.id);
+        if (el && el.getBoundingClientRect().top <= REACHED) current = tab.id;
+      }
+      setActive(atBottom && window.scrollY > 0 ? tabs[tabs.length - 1]!.id : current);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
   }, [tabs]);
 
   return (
-    <nav
-      aria-label="Sections"
-      className="sticky top-0 z-10 -mx-4 border-b border-line bg-white px-4"
-    >
-      <ul className="flex gap-6 overflow-x-auto">
+    <nav aria-label="Sections" className="sticky top-0 z-10 bg-white">
+      <ul className="flex h-[55px] gap-7 overflow-x-auto px-[21px]">
         {tabs.map((tab) => (
-          <li key={tab.id}>
+          <li key={tab.id} className="flex">
             <a
               href={`#${tab.id}`}
               aria-current={active === tab.id ? "true" : undefined}
-              onClick={() => setActive(tab.id)}
-              className={`flex min-h-12 items-center border-b-2 text-[15px] whitespace-nowrap ${
-                active === tab.id
-                  ? "border-ink font-semibold text-ink"
-                  : "border-transparent text-muted"
+              className={`press flex items-start border-b-[3px] pt-[17px] text-[16px] leading-5 font-bold whitespace-nowrap ${
+                active === tab.id ? "border-ink" : "border-transparent"
               }`}
             >
               {tab.label}
@@ -169,20 +178,25 @@ export function SectionTabs({ hasTeam }: { hasTeam: boolean }) {
   );
 }
 
-/** Service cards with a "Book" pill; the first five, then "See all services (n)". */
+const SERVICES_PREVIEW = 3;
+
+/** Service cards with a "Book" pill (originals 02, 03); the first three, then "See all". */
 export function ServicesSection({ slug, services }: { slug: string; services: SalonService[] }) {
   const [all, setAll] = useState(false);
-  const shown = all ? services : services.slice(0, 5);
+  const shown = all ? services : services.slice(0, SERVICES_PREVIEW);
   return (
-    <div className="flex flex-col gap-3">
-      <ul className="flex flex-col gap-3">
+    <>
+      <ul className="flex flex-col gap-[13px]">
         {shown.map((service) => (
-          <li key={service.id} className={`${cardClass(false)} flex items-center gap-3 p-4`}>
-            <div className="min-w-0 flex-1">
-              <p className="text-[16px] font-semibold">{service.name}</p>
-              <p className="mt-1 text-[14px] text-muted">{formatDuration(service.duration_min)}</p>
-              <p className="mt-1 text-[16px] font-semibold">{formatKes(service.price_kes)}</p>
-            </div>
+          <li
+            key={service.id}
+            className={`${cardClass(false)} flex items-center gap-3 pt-[14px] pr-[13px] pb-3 pl-5`}
+          >
+            <ServiceText
+              name={service.name}
+              duration={formatDuration(service.duration_min)}
+              price={formatKes(service.price_kes)}
+            />
             <Link
               href={`/s/${slug}/book?${choiceQuery({ serviceIds: [service.id], staffId: null })}`}
               aria-label={`Book ${service.name}`}
@@ -193,51 +207,110 @@ export function ServicesSection({ slug, services }: { slug: string; services: Sa
           </li>
         ))}
       </ul>
-      {!all && services.length > 5 ? (
-        <button type="button" onClick={() => setAll(true)} className={`${pillOutline} w-full`}>
-          See all services ({services.length})
+      {!all && services.length > SERVICES_PREVIEW ? (
+        <button
+          type="button"
+          onClick={() => setAll(true)}
+          className="press mt-[26px] flex h-[52px] w-full items-center justify-center rounded-full border-[1.5px] border-line-strong bg-white text-[17px] font-semibold"
+        >
+          See all
         </button>
       ) : null}
-    </div>
+    </>
   );
 }
 
-/** A row of team members; tapping one opens their profile sheet (original 11). */
-export function TeamSection({ team }: { team: Profile[] }) {
+const TEAM_PREVIEW = 3;
+
+/** The team row (originals 03, 04); tapping someone opens their profile sheet (original 11). */
+export function TeamSection({ team, headingClass }: { team: Profile[]; headingClass: string }) {
   const [open, setOpen] = useState<Profile | null>(null);
+  const [all, setAll] = useState(false);
   const close = useCallback(() => setOpen(null), []);
   return (
     <>
-      <ul className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2">
+      <div className="flex items-center justify-between pr-[50px]">
+        <h2 id="team-heading" className={headingClass}>
+          Team
+        </h2>
+        {team.length > TEAM_PREVIEW ? (
+          <button
+            type="button"
+            aria-expanded={all}
+            onClick={() => setAll((v) => !v)}
+            className="press min-h-11 text-[16px] font-medium text-link"
+          >
+            {all ? "Show less" : "See all"}
+          </button>
+        ) : null}
+      </div>
+      <ul
+        className={`mt-[13px] flex gap-[13px] px-10 ${all ? "flex-wrap justify-center" : "overflow-x-auto"}`}
+      >
         {team.map((person) => (
-          <li key={person.id} className="w-[88px] shrink-0">
+          <li key={person.id} className="w-[100px] shrink-0">
             <button
               type="button"
               onClick={() => setOpen(person)}
               aria-label={`${person.name}${person.title ? `, ${person.title}` : ""}. View profile`}
-              className="flex w-full flex-col items-center gap-2 text-center"
+              className="press flex w-full flex-col items-center text-center"
             >
               {person.photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- Supabase public URLs
                 <img
                   src={person.photoUrl}
                   alt=""
-                  className="size-[72px] rounded-full object-cover"
+                  className="size-[88px] rounded-full object-cover"
                 />
               ) : (
-                <Initials text={initials(person.name)} className="size-[72px] text-xl" />
+                <Initials text={initials(person.name)} className="size-[88px] text-2xl" />
               )}
-              <span className="w-full">
-                <span className="block truncate text-[14px] font-semibold">{person.name}</span>
-                {person.title ? (
-                  <span className="block truncate text-[12px] text-muted">{person.title}</span>
-                ) : null}
+              <span className="mt-[15px] block w-full truncate text-[16px] leading-5 font-medium">
+                {person.name}
               </span>
+              {person.title ? (
+                <span className="mt-1.5 block w-full truncate text-[12px] leading-4 font-medium tracking-[0.1em] text-muted">
+                  {person.title}
+                </span>
+              ) : null}
             </button>
           </li>
         ))}
       </ul>
       <ProfileSheet profile={open} onClose={close} />
     </>
+  );
+}
+
+/** "Ready for a fresh look?" bar with the glossy BOOK NOW pill (originals 01–07). */
+export function BookNowBar({ slug, count }: { slug: string; count: number }) {
+  return (
+    <div
+      role="region"
+      aria-label="Book"
+      className="fixed inset-x-0 bottom-0 z-20 bg-white pb-[max(26px,env(safe-area-inset-bottom))]"
+    >
+      <div className="mx-auto max-w-[560px]">
+        <div aria-hidden="true" className="mr-[46px] ml-[30px] h-0.5 bg-ink" />
+        <div className="flex items-center justify-between gap-3 pt-[24px] pr-[33px] pl-8">
+          <p className="text-[16px] leading-[18px] font-semibold italic">
+            Ready for a fresh look?
+            <br />
+            Check out our {count} {count === 1 ? "service" : "services"}
+          </p>
+          <Link
+            href={`/s/${slug}/book`}
+            prefetch
+            className="press flex min-h-11 shrink-0 items-center"
+          >
+            <span className="flex h-[27px] items-center rounded-full border-2 border-[#111] bg-[linear-gradient(#4d4d4d,#2b2b2b_48%,#101010_52%,#1c1c1c)] px-[13px] shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_1px_2px_rgba(0,0,0,0.4)]">
+              <span className="bg-[linear-gradient(#ffe88f,#f5c84f_55%,#dfa52c)] bg-clip-text text-[15px] leading-none font-bold text-transparent uppercase">
+                Book now
+              </span>
+            </span>
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 }

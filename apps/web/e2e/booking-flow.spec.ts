@@ -54,7 +54,6 @@ test("a client books with an email code", async ({ page }) => {
     timeout: 20_000,
   });
   await expect(page.getByText(/held for \d:\d{2}/)).toBeVisible();
-  await expect(page.getByText("Pay at the salon. No payment is taken online.")).toBeVisible();
 
   // The hold token lives only in an httpOnly cookie that page scripts can't read (ADR 0008).
   const holdCookie = (await page.context().cookies()).find((c) => c.name === "bf_hold");
@@ -69,14 +68,14 @@ test("a client books with an email code", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "What should we call you?" })).toBeVisible({
     timeout: 20_000,
   });
-  await page.getByLabel("Your name").fill("Wanjiru Otieno");
+  await page.getByLabel("First name").fill("Wanjiru");
   await page.getByLabel("Phone number").fill("700 000 041");
   await page.getByRole("button", { name: "Confirm booking" }).click();
 
   await expect(page.getByRole("heading", { name: /You're all set!/ })).toBeVisible({
     timeout: 20_000,
   });
-  await expect(page.getByText("Trim – with Njeri")).toBeVisible();
+  await expect(page.getByText("Trim - with Njeri")).toBeVisible();
   await expect(page.getByRole("link", { name: "Add to calendar" })).toBeVisible();
 
   const ics = await page.request.get(`${new URL(page.url()).pathname}/ics`);

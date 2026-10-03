@@ -1,6 +1,6 @@
 "use client";
 
-import { Share2 } from "lucide-react";
+import { MessageCircle, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { whatsappShareUrl } from "../../../lib/format";
@@ -19,15 +19,15 @@ export function ShareCard({ salonName, link }: { salonName: string; link: string
   return (
     <section
       aria-labelledby="share-heading"
-      className="rounded-[16px] border border-line bg-white p-5"
+      className="mx-1.5 rounded-[12px] border border-line bg-white px-[14px] pt-[17px] pb-[14px]"
     >
-      <h2 id="share-heading" className="text-[17px] font-semibold">
-        Know someone who&apos;d love <strong>{salonName}</strong>?
+      <h2 id="share-heading" className="text-[15.5px] leading-5 font-medium">
+        Know someone who&apos;d love <strong className="font-bold">{salonName}</strong>?
       </h2>
-      <p className="mt-1 text-[14px] text-muted">
-        Share the link. They can book in a minute, no app needed.
+      <p className="mt-1.5 text-[13.5px] leading-[15px] text-muted">
+        Share your link — they can browse services and book in a minute, no app to download.
       </p>
-      <div className="mt-4 flex items-center gap-2 rounded-ds border border-line bg-surface p-2 pl-3">
+      <div className="mt-3 flex h-9 items-center gap-2 rounded-[10px] border border-line bg-white pr-2 pl-2.5">
         <label htmlFor="share-link" className="sr-only">
           Booking link
         </label>
@@ -35,25 +35,28 @@ export function ShareCard({ salonName, link }: { salonName: string; link: string
           id="share-link"
           readOnly
           value={link.replace(/^https:\/\//, "")}
-          className="min-w-0 flex-1 bg-transparent text-[14px] outline-none"
+          className="min-w-0 flex-1 bg-transparent font-mono text-[12.5px] text-ink outline-none"
         />
         <button
           type="button"
           onClick={() => {
             void navigator.clipboard?.writeText(link).then(() => setCopied(true));
           }}
-          className="min-h-11 rounded-ds border border-line bg-white px-4 text-[14px] font-semibold"
+          className="press -my-2 flex min-h-11 items-center"
         >
-          {copied ? "Copied" : "Copy"}
+          <span className="rounded-[6px] border border-line-strong bg-white px-2 py-0.5 text-[13px]">
+            {copied ? "Copied" : "Copy"}
+          </span>
         </button>
       </div>
-      <div className="mt-3 flex gap-2">
+      <div className="mt-2.5 flex gap-2">
         <a
           href={whatsappShareUrl(message, link)}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex min-h-12 flex-1 items-center justify-center rounded-ds bg-whatsapp text-base font-semibold text-ink"
+          className="press flex h-11 flex-1 items-center justify-center gap-1.5 rounded-[8px] bg-whatsapp text-[15px] font-bold text-ink"
         >
+          <MessageCircle className="size-[18px]" strokeWidth={2.25} aria-hidden="true" />
           WhatsApp
         </a>
         <button
@@ -66,9 +69,9 @@ export function ShareCard({ salonName, link }: { salonName: string; link: string
                 .catch(() => undefined);
             else void navigator.clipboard?.writeText(link).then(() => setCopied(true));
           }}
-          className="flex size-12 shrink-0 items-center justify-center rounded-ds border border-line bg-white"
+          className="press flex size-11 shrink-0 items-center justify-center rounded-[8px] border border-line-strong bg-white"
         >
-          <Share2 className="size-5" />
+          <Share2 className="size-[18px]" strokeWidth={2.25} />
         </button>
       </div>
     </section>

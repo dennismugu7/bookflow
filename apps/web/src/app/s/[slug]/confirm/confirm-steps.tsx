@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useState } from "react";
 
+import { firstName } from "../../../../lib/format";
 import { phoneFromField } from "../../../../lib/phone-field";
 import { createClient } from "../../../../lib/supabase/client";
 import { countdown } from "../../../../lib/time";
@@ -12,10 +13,11 @@ import { confirmBooking, type ConfirmState } from "./actions";
 
 type Props = {
   slug: string;
+  salonName: string;
   expiresAt: string;
   pickTimeHref: string;
   signInFailed: boolean;
-  /** Banner lines: "Mon 5 Oct, 10:45" and "Silk press – KES 1,500". */
+  /** Banner lines: "Mon 5 Oct, 10:45" and "Silk press - KES 1,500". */
   hold: { when: string; what: string };
   /** "Njeri will see this on the day." */
   seenBy: string;
@@ -23,11 +25,16 @@ type Props = {
 };
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+/** Rectangular buttons and fields of originals 16 and 18 (not pills). */
 const button =
-  "flex min-h-[52px] w-full items-center justify-center rounded-full text-base font-semibold disabled:opacity-40";
-const card = "mx-4 mt-4 flex flex-col gap-4 rounded-[16px] bg-white p-5";
+  "press flex h-[42px] w-full items-center justify-center gap-2.5 rounded-[10px] text-[15px] font-semibold disabled:opacity-40";
+const outline = `${button} border border-line-strong bg-white font-medium`;
+const primary = `${button} bg-ink text-white`;
 const input =
-  "h-[52px] w-full rounded-ds border border-line bg-white px-4 text-[15px] outline-none focus:border-2 focus:border-select";
+  "h-10 w-full rounded-[8px] border border-line-strong bg-white px-4 text-[16px] outline-none placeholder:text-muted focus:border-2 focus:border-select";
+const fieldLabel = "text-[13px] font-semibold text-muted";
+const heading = "text-[19px] leading-6 font-semibold";
+const lead = "mt-1.5 text-[14px] leading-5 font-medium text-muted";
 
 function useNow(intervalMs = 1000) {
   const [now, setNow] = useState(() => new Date());
@@ -38,8 +45,23 @@ function useNow(intervalMs = 1000) {
   return now;
 }
 
+/** Google's "G" as an outline, like the icon in original 16. */
+function GoogleMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true" fill="none">
+      <path
+        d="M20.4 12.2c0-.6 0-1.2-.2-1.7H12v3.3h4.7a4 4 0 0 1-1.7 2.6M12 3a9 9 0 1 0 6.4 15.4M17.9 6.1A8.9 8.9 0 0 0 12 3"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function ConfirmSteps({
   slug,
+  salonName,
   expiresAt,
   pickTimeHref,
   signInFailed,
@@ -52,12 +74,10 @@ export function ConfirmSteps({
 
   if (left.seconds === 0) {
     return (
-      <section className={card} aria-live="polite">
-        <h2 className="text-[22px] font-bold">Your hold expired</h2>
-        <p className="text-[15px] text-muted">
-          We hold a time for 10 minutes. Pick a time again to continue.
-        </p>
-        <Link href={pickTimeHref} className={`${button} bg-ink text-white`}>
+      <section className="flex flex-col gap-4 px-[35px] pt-[52px]" aria-live="polite">
+        <h1 className={heading}>Your hold expired</h1>
+        <p className={lead}>We hold a time for 10 minutes. Pick a time again to continue.</p>
+        <Link href={pickTimeHref} className={primary}>
           Pick another time
         </Link>
       </section>
@@ -66,37 +86,35 @@ export function ConfirmSteps({
 
   return (
     <>
-      <div className="flex items-center gap-4 bg-gradient-to-r from-[#FBD34D] to-[#F0A030] px-5 py-3 text-ink">
-        <Clock className="size-7 shrink-0" aria-hidden="true" />
-        <div className="min-w-0 text-[15px]">
+      <div className="flex min-h-[61px] items-center gap-5 bg-[linear-gradient(90deg,#ffdd59,#ffb853_50%,#ff924d)] py-1.5 pr-4 pl-[29px] text-ink">
+        <Clock className="size-[26px] shrink-0" strokeWidth={2} aria-hidden="true" />
+        <div className="min-w-0 text-[15px] leading-[22px] font-medium">
           <p>
             {hold.when} · held for{" "}
-            <strong role="timer" aria-live="off" aria-label={`${left.label} left`}>
+            <span role="timer" aria-live="off" aria-label={`${left.label} left`}>
               {left.label}
-            </strong>
+            </span>
           </p>
           <p className="truncate">{hold.what}</p>
         </div>
       </div>
-      <p className="mx-4 mt-2 text-[13px] text-muted">
-        Pay at the salon. No payment is taken online.
-      </p>
       {user ? (
         <Details slug={slug} user={user} pickTimeHref={pickTimeHref} seenBy={seenBy} />
       ) : (
-        <SignIn signInFailed={signInFailed} />
+        <SignIn salonName={salonName} signInFailed={signInFailed} />
       )}
     </>
   );
 }
 
-function SignIn({ signInFailed }: { signInFailed: boolean }) {
+function SignIn({ salonName, signInFailed }: { salonName: string; signInFailed: boolean }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [email, setEmail] = useState("");
   const [sentTo, setSentTo] = useState<string>();
   const [sentAt, setSentAt] = useState(0);
   const [code, setCode] = useState("");
+  const [focused, setFocused] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(
     signInFailed ? "Google sign-in didn't finish. Try again or use your email." : undefined,
@@ -165,61 +183,72 @@ function SignIn({ signInFailed }: { signInFailed: boolean }) {
   }
 
   if (sentTo) {
+    const active = Math.min(code.length, 5);
     return (
-      <section className={card} aria-labelledby="code-heading">
-        <div>
-          <h2 id="code-heading" className="text-[22px] font-bold">
-            Check your email
-          </h2>
-          <p className="mt-1 text-[15px] text-muted">
-            We sent a 6-digit code to <strong className="text-ink">{sentTo}</strong>. It&apos;s from
-            Bookflow and expires in 10 minutes.
-          </p>
-        </div>
+      <section className="px-[35px] pt-[52px]" aria-labelledby="code-heading">
+        <h1 id="code-heading" className={heading}>
+          Check your email
+        </h1>
+        <p className={lead}>
+          We sent a 6-digit code to <strong className="text-ink">{sentTo}</strong>. It&apos;s from
+          Bookflow and expires in 10 minutes.
+        </p>
         <form
-          className="flex flex-col gap-3"
+          className="mt-6 flex flex-col"
           onSubmit={(e) => {
             e.preventDefault();
             void verify(code);
           }}
         >
-          <label htmlFor="otp" className="text-sm font-bold">
+          <label htmlFor="otp" className={fieldLabel}>
             6-digit code
           </label>
-          <input
-            id="otp"
-            className={`${input} text-center text-2xl font-bold tracking-[0.5em]`}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-            value={code}
-            onChange={(e) => {
-              const next = e.target.value.replace(/\D/g, "").slice(0, 6);
-              setCode(next);
-              if (next.length === 6) void verify(next);
-            }}
-            autoFocus
-          />
-          <p className="text-[13px] text-muted">Tip: you can paste the whole code.</p>
-          <button
-            type="submit"
-            disabled={busy || code.length !== 6}
-            className={`${button} bg-ink text-white`}
-          >
+          {/* Six boxes as in the sign-in design; one invisible input on top takes typing and paste. */}
+          <div className="relative mt-2 flex gap-2">
+            {Array.from({ length: 6 }, (_, i) => (
+              <span
+                key={i}
+                aria-hidden="true"
+                className={`flex h-[52px] flex-1 items-center justify-center rounded-[10px] bg-white text-[22px] font-bold ${
+                  focused && i === active ? "border-2 border-select" : "border border-line-strong"
+                }`}
+              >
+                {code[i] ?? ""}
+              </span>
+            ))}
+            <input
+              id="otp"
+              className="absolute inset-0 h-full w-full caret-transparent opacity-0"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={code}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              onChange={(e) => {
+                const next = e.target.value.replace(/\D/g, "").slice(0, 6);
+                setCode(next);
+                if (next.length === 6) void verify(next);
+              }}
+              autoFocus
+            />
+          </div>
+          <p className="mt-2 text-[13px] text-muted">Tip: you can paste the whole code.</p>
+          <button type="submit" disabled={busy || code.length !== 6} className={`${primary} mt-5`}>
             {busy ? "Checking…" : "Verify"}
           </button>
         </form>
         {error ? (
-          <p role="alert" className="text-[15px] text-danger">
+          <p role="alert" className="mt-3 text-[15px] text-danger">
             {error}
           </p>
         ) : null}
-        <div className="flex items-center justify-between gap-4 text-[15px]">
+        <div className="mt-3 flex items-center justify-between gap-4 text-[15px]">
           <button
             type="button"
             disabled={resendIn > 0 || busy}
             onClick={() => void sendCode(sentTo)}
-            className="min-h-11 text-muted disabled:opacity-70 enabled:font-bold enabled:text-brand"
+            className="press min-h-11 text-muted enabled:font-semibold enabled:text-brand"
           >
             {resendIn > 0 ? `Resend code in 0:${String(resendIn).padStart(2, "0")}` : "Resend code"}
           </button>
@@ -229,12 +258,12 @@ function SignIn({ signInFailed }: { signInFailed: boolean }) {
               setSentTo(undefined);
               setError(undefined);
             }}
-            className="min-h-11 font-bold text-brand underline"
+            className="press min-h-11 font-semibold text-brand underline"
           >
             Use a different email
           </button>
         </div>
-        <p className="text-center text-[13px] text-muted">
+        <p className="mt-10 text-center text-[13px] text-muted">
           Can&apos;t find it? Check your spam or promotions folder.
         </p>
       </section>
@@ -242,55 +271,52 @@ function SignIn({ signInFailed }: { signInFailed: boolean }) {
   }
 
   return (
-    <section className={card} aria-labelledby="signin-heading">
-      <div>
-        <h2 id="signin-heading" className="text-[22px] font-bold">
-          Sign in to confirm
-        </h2>
-        <p className="mt-1 text-[15px] text-muted">
-          So you can view your booking later. It&apos;s free and takes a few seconds.
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={() => void google()}
-        className={`${button} border border-line bg-white`}
-      >
-        Continue with Google
+    <section className="px-[35px] pt-[52px]" aria-labelledby="signin-heading">
+      <h1 id="signin-heading" className={heading}>
+        Confirm your booking
+      </h1>
+      <p className={lead}>
+        Sign in so you can view, change or cancel it later. It&apos;s free and takes a few seconds.
+      </p>
+      <button type="button" onClick={() => void google()} className={`${outline} mt-6`}>
+        <GoogleMark /> Continue with Google
       </button>
-      <div className="flex items-center gap-3 text-[13px] text-muted">
+      <div className="my-4 flex items-center gap-3 text-[13px] text-muted">
         <span className="h-px flex-1 bg-line" />
         or use your email
         <span className="h-px flex-1 bg-line" />
       </div>
       <form
-        className="flex flex-col gap-3"
+        className="flex flex-col"
         onSubmit={(e) => {
           e.preventDefault();
           void sendCode(email.trim().toLowerCase());
         }}
       >
-        <label htmlFor="email" className="text-sm font-bold">
+        <label htmlFor="email" className={fieldLabel}>
           Email
         </label>
         <input
           id="email"
           type="email"
-          className={input}
+          className={`${input} mt-2`}
           placeholder="you@example.com"
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        <button type="submit" disabled={busy} className={`${button} bg-ink text-white`}>
+        <button type="submit" disabled={busy} className={`${primary} mt-3`}>
           {busy ? "Sending…" : "Email me a code"}
         </button>
       </form>
       {error ? (
-        <p role="alert" className="text-[15px] text-danger">
+        <p role="alert" className="mt-3 text-[15px] text-danger">
           {error}
         </p>
       ) : null}
+      <p className="mt-10 text-center text-[13px] leading-[18px] text-muted">
+        By continuing you agree to {salonName}&apos;s booking and cancellation terms.
+      </p>
     </section>
   );
 }
@@ -318,10 +344,10 @@ function Details({
 
   if (state.next === "expired") {
     return (
-      <section className={card} aria-live="polite">
-        <h2 className="text-[22px] font-bold">Your hold expired</h2>
-        <p className="text-[15px] text-muted">{state.message}</p>
-        <Link href={pickTimeHref} className={`${button} bg-ink text-white`}>
+      <section className="flex flex-col gap-4 px-[35px] pt-[52px]" aria-live="polite">
+        <h1 className={heading}>Your hold expired</h1>
+        <p className={lead}>{state.message}</p>
+        <Link href={pickTimeHref} className={primary}>
           Pick another time
         </Link>
       </section>
@@ -331,105 +357,102 @@ function Details({
   const shownPhoneError = phoneError ?? state.fieldErrors?.phone;
 
   return (
-    <section className={card} aria-labelledby="details-heading">
-      <p className="text-[13px] font-semibold text-success">Signed in as {user.email}</p>
-      <div>
-        <h2 id="details-heading" className="text-[22px] font-bold">
-          What should we call you?
-        </h2>
-        <p className="mt-1 text-[15px] text-muted">{seenBy}</p>
-      </div>
-      <form
-        action={formAction}
-        className="flex flex-col gap-4"
-        onSubmit={(e) => {
-          if (!phoneFromField(phone)) {
-            e.preventDefault();
-            setPhoneError("Enter a phone number like 0712 345 678.");
-          }
-        }}
-      >
-        <input type="hidden" name="slug" value={slug} />
-        <div className="flex flex-col gap-2">
-          <label htmlFor="fullName" className="text-sm font-bold">
-            Your name
-          </label>
-          <input
-            id="fullName"
-            name="fullName"
-            className={input}
-            defaultValue={user.name}
-            autoComplete="name"
-            maxLength={80}
-            required
-            aria-invalid={!!state.fieldErrors?.fullName}
-          />
-          {state.fieldErrors?.fullName ? (
-            <p className="text-[13px] text-danger">{state.fieldErrors.fullName}</p>
-          ) : null}
-        </div>
-        <div className="flex flex-col gap-2">
-          <label htmlFor="phone" className="text-sm font-bold">
-            Phone number
-          </label>
-          <div
-            className={`flex h-[52px] overflow-hidden rounded-ds border bg-white focus-within:border-2 focus-within:border-select ${
-              shownPhoneError ? "border-danger" : "border-line"
-            }`}
+    <>
+      <div className="mt-[27px] bg-sand px-[11px] pt-1 pb-2">
+        <section
+          className="rounded-[16px] border border-line bg-white px-[21px] pt-5 pb-6"
+          aria-labelledby="details-heading"
+        >
+          <h1 id="details-heading" className={heading}>
+            What should we call you?
+          </h1>
+          <p className={lead}>{seenBy}</p>
+          <form
+            action={formAction}
+            className="mt-[22px] flex flex-col"
+            onSubmit={(e) => {
+              if (!phoneFromField(phone)) {
+                e.preventDefault();
+                setPhoneError("Enter a phone number like 0712 345 678.");
+              }
+            }}
           >
-            <span
-              className="flex items-center border-r border-line bg-surface px-4 text-[15px] font-bold"
-              aria-hidden="true"
-            >
-              +254
-            </span>
+            <input type="hidden" name="slug" value={slug} />
+            <label htmlFor="fullName" className="sr-only">
+              First name
+            </label>
             <input
-              id="phone"
-              name="phone"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              className="min-w-0 flex-1 px-4 text-[15px] outline-none"
-              placeholder="700 000 021"
-              value={phone}
-              onChange={(e) => {
-                setPhone(e.target.value);
-                setPhoneError(undefined);
-              }}
-              aria-invalid={!!shownPhoneError}
-              aria-describedby="phone-help"
+              id="fullName"
+              name="fullName"
+              className={input}
+              placeholder="First name"
+              defaultValue={user.name ? firstName(user.name) : ""}
+              autoComplete="given-name"
+              maxLength={80}
               required
+              aria-invalid={!!state.fieldErrors?.fullName}
             />
-          </div>
-          <p
-            id="phone-help"
-            className="rounded-ds border border-dashed border-line-strong px-3 py-2 text-[13px] text-muted"
-          >
-            We&apos;ll use this to reach you about your booking. You can type 07… or +254…
-          </p>
-          {shownPhoneError ? <p className="text-[13px] text-danger">{shownPhoneError}</p> : null}
-        </div>
-        <button type="submit" disabled={pending} className={`${button} bg-ink text-white`}>
-          {pending ? "Confirming…" : "Confirm booking"}
+            {state.fieldErrors?.fullName ? (
+              <p className="mt-1.5 text-[13px] text-danger">{state.fieldErrors.fullName}</p>
+            ) : null}
+            <label htmlFor="phone" className={`${fieldLabel} mt-4`}>
+              Phone number
+            </label>
+            <div
+              className={`mt-2 flex h-10 overflow-hidden rounded-[8px] border bg-white focus-within:border-2 focus-within:border-select ${
+                shownPhoneError ? "border-danger" : "border-line-strong"
+              }`}
+            >
+              <span
+                className="flex items-center border-r border-line bg-sand px-3.5 text-[16px] font-medium"
+                aria-hidden="true"
+              >
+                +254
+              </span>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                className="min-w-0 flex-1 px-3.5 text-[16px] outline-none placeholder:text-muted"
+                placeholder="712 345 678"
+                value={phone}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  setPhoneError(undefined);
+                }}
+                aria-invalid={!!shownPhoneError}
+                aria-describedby={shownPhoneError ? "phone-error" : undefined}
+                required
+              />
+            </div>
+            {shownPhoneError ? (
+              <p id="phone-error" className="mt-1.5 text-[13px] text-danger">
+                {shownPhoneError}
+              </p>
+            ) : null}
+            <button type="submit" disabled={pending} className={`${primary} mt-[14px]`}>
+              {pending ? "Confirming…" : "Confirm booking"}
+            </button>
+            {state.message && (!state.next || state.next === "signin") ? (
+              <p role="alert" className="mt-3 text-[15px] text-danger">
+                {state.message}
+              </p>
+            ) : null}
+          </form>
+        </section>
+      </div>
+      <p className="mt-2 px-[35px] text-center text-[13px] text-muted">
+        Signed in as {user.email}.{" "}
+        <button
+          type="button"
+          onClick={() => void supabase.auth.signOut().then(() => router.refresh())}
+          className="press min-h-11 font-semibold underline"
+        >
+          Not you?
         </button>
-        {state.message && !state.next ? (
-          <p role="alert" className="text-[15px] text-danger">
-            {state.message}
-          </p>
-        ) : null}
-        {state.next === "signin" ? (
-          <p role="alert" className="text-[15px] text-danger">
-            {state.message}
-          </p>
-        ) : null}
-      </form>
-      <button
-        type="button"
-        onClick={() => void supabase.auth.signOut().then(() => router.refresh())}
-        className="min-h-11 self-start text-[15px] font-semibold text-muted underline"
-      >
-        Not you? Use a different account
-      </button>
-    </section>
+      </p>
+    </>
   );
 }

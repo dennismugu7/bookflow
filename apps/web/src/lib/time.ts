@@ -50,6 +50,10 @@ export function addDays(date: string, days: number): string {
 export type Day = { date: string; weekday: string; dayOfMonth: string; month: string };
 
 /** The next `count` days in the salon's timezone, starting today. */
+// Built once: creating Intl formatters is slow on low-end phones, and the strip needs 28 labels.
+const WEEKDAY_UTC = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "UTC" });
+const MONTH_UTC = new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" });
+
 export function dayStrip(now: Date, timeZone: string, count = 14): Day[] {
   const today = salonDate(now, timeZone);
   return Array.from({ length: count }, (_, i) => {
@@ -57,12 +61,9 @@ export function dayStrip(now: Date, timeZone: string, count = 14): Day[] {
     const noonUtc = new Date(`${date}T12:00:00Z`);
     return {
       date,
-      weekday:
-        i === 0
-          ? "Today"
-          : new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: "UTC" }).format(noonUtc),
+      weekday: i === 0 ? "Today" : WEEKDAY_UTC.format(noonUtc),
       dayOfMonth: String(Number(date.slice(8, 10))),
-      month: new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" }).format(noonUtc),
+      month: MONTH_UTC.format(noonUtc),
     };
   });
 }
@@ -81,8 +82,8 @@ export function countdown(expiresAt: string | Date, now: Date): { seconds: numbe
 
 /** "45 min", "1h", "2h 15m". */
 export function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return `${minutes} mins`;
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
-  return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`;
+  return rest === 0 ? `${hours}h` : `${hours}h ${rest} mins`;
 }
