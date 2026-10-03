@@ -74,6 +74,70 @@ export async function resolveMapsLink(
   }
 }
 
+/**
+ * Links Bookflow accepts as a salon's Google Maps link. The database check on
+ * `salons.maps_url` uses the same pattern.
+ */
+export const GOOGLE_MAPS_URL =
+  /^https:\/\/(maps\.app\.goo\.gl\/|goo\.gl\/maps|(www\.)?google\.[a-z]{2,3}(\.[a-z]{2})?\/maps|maps\.google\.[a-z]{2,3}(\.[a-z]{2})?\/)/i;
+
+export function isGoogleMapsUrl(url: string): boolean {
+  return GOOGLE_MAPS_URL.test(url.trim());
+}
+
+/** "Galito's+Lusaka+Road,+Nairobi" from `/maps/place/<name>/…`, decoded; null if absent. */
+function placeNameFrom(url: string): string | null {
+  const match = /\/maps\/place\/([^/?#]+)/.exec(url);
+  if (!match) return null;
+  try {
+    const name = decodeURIComponent(match[1]!.replace(/\+/g, " ")).trim();
+    return name || null;
+  } catch {
+    return null;
+  }
+}
+
+export type MapsLinkInfo = { mapsUrl: string; placeName: string | null; pin: LatLng | null };
+
+/**
+ * Checks a link the owner pasted. Long Google Maps links are read locally; short links from the
+ * Google Maps app are followed (only those hosts are ever fetched) because they usually carry a
+ * place name and ID rather than coordinates. Returns null for non-Google links or when a short
+ * link can't be checked. `mapsUrl` is the pasted link itself, which opens the exact place.
+ */
+export async function inspectMapsLink(
+  url: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<MapsLinkInfo | null> {
+  const mapsUrl = url.trim();
+  if (!isGoogleMapsUrl(mapsUrl)) return null;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(mapsUrl);
+  } catch {
+    return null;
+  }
+
+  let finalUrl = mapsUrl;
+  if (isGoogleShortLink(parsed)) {
+    try {
+      const response = await fetchImpl(parsed.toString(), { redirect: "follow" });
+      if (!response.url) return null;
+      finalUrl = consentTarget(response.url) ?? response.url;
+    } catch {
+      return null;
+    }
+  }
+
+  return { mapsUrl, placeName: placeNameFrom(finalUrl), pin: parseGoogleMapsLink(finalUrl) };
+}
+
+/** Google's keyless embed for a small map preview of a place or address. */
+export function mapsEmbedUrl(query: string): string {
+  return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
+}
+
 /** Public URL of an object in the salon-media bucket, from its stored path. */
 export function mediaUrl(supabaseUrl: string, path: string): string {
   return `${supabaseUrl.replace(/\/+$/, "")}/storage/v1/object/public/salon-media/${path}`;
