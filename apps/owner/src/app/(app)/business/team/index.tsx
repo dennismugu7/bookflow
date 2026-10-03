@@ -13,6 +13,7 @@ type Member = {
   display_name: string;
   title: string | null;
   photo_path: string | null;
+  updated_at: string;
   is_active: boolean;
   services: number;
 };
@@ -28,7 +29,7 @@ export default function TeamScreen() {
       if (!salonId) return;
       void getSupabase()
         .from("staff")
-        .select("id, display_name, title, photo_path, is_active, staff_services(count)")
+        .select("id, display_name, title, photo_path, updated_at, is_active, staff_services(count)")
         .eq("salon_id", salonId)
         .order("is_active", { ascending: false })
         .order("sort_order")
@@ -44,6 +45,7 @@ export default function TeamScreen() {
               display_name: s.display_name,
               title: s.title,
               photo_path: s.photo_path,
+              updated_at: s.updated_at,
               is_active: s.is_active,
               services: s.staff_services[0]?.count ?? 0,
             })),
@@ -87,7 +89,7 @@ export default function TeamScreen() {
         <View key={m.id} style={styles.member}>
           {m.photo_path ? (
             <Image
-              source={{ uri: publicMediaUrl(m.photo_path) }}
+              source={{ uri: publicMediaUrl(m.photo_path, m.updated_at) }}
               style={styles.photo}
               accessibilityIgnoresInvertColors
             />

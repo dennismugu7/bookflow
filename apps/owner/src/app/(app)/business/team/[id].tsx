@@ -1,8 +1,8 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { pickAndUploadImage, publicMediaUrl, removeImage } from "../../../../lib/media";
+import { useImageSlot } from "../../../../lib/media";
 import { useSession } from "../../../../lib/session";
 import { diffIds, validateStaff, type StaffErrors, type StaffForm } from "../../../../lib/setup";
 import { getSupabase } from "../../../../lib/supabase";
@@ -20,13 +20,26 @@ export default function TeamMemberScreen() {
 
   const [form, setForm] = useState<StaffForm>({ name: "", title: "", about: "", serviceIds: [] });
   const [savedServiceIds, setSavedServiceIds] = useState<string[]>([]);
-  const [photoPath, setPhotoPath] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(true);
   const [services, setServices] = useState<ServiceOption[]>();
   const [loaded, setLoaded] = useState(isNew);
   const [errors, setErrors] = useState<StaffErrors & { form?: string }>({});
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
+
+  // Existing members save a new photo straight away; new ones save it with the form.
+  const savePhoto = useCallback(
+    async (path: string) => {
+      if (isNew) return;
+      const { error } = await getSupabase()
+        .from("staff")
+        .update({ photo_path: path })
+        .eq("id", params.id);
+      if (error) throw error;
+    },
+    [isNew, params.id],
+  );
+  const photo = useImageSlot(salonId, "staff", savePhoto);
+  const loadPhoto = photo.load;
 
   useEffect(() => {
     if (!salonId) return;
@@ -39,7 +52,9 @@ export default function TeamMemberScreen() {
     if (isNew) return;
     void getSupabase()
       .from("staff")
-      .select("display_name, title, bio, photo_path, is_active, staff_services(service_id)")
+      .select(
+        "display_name, title, bio, photo_path, is_active, updated_at, staff_services(service_id)",
+      )
       .eq("id", params.id)
       .single()
       .then(({ data, error }) => {
@@ -55,34 +70,11 @@ export default function TeamMemberScreen() {
           serviceIds: ids,
         });
         setSavedServiceIds(ids);
-        setPhotoPath(data.photo_path);
+        loadPhoto(data.photo_path, data.updated_at);
         setIsActive(data.is_active);
         setLoaded(true);
       });
-  }, [salonId, isNew, params.id]);
-
-  async function changePhoto() {
-    if (!salonId) return;
-    setUploading(true);
-    try {
-      const path = await pickAndUploadImage(salonId, "staff");
-      if (!path) return;
-      // Existing members save the photo straight away; new ones save it with the form.
-      if (!isNew) {
-        const { error } = await getSupabase()
-          .from("staff")
-          .update({ photo_path: path })
-          .eq("id", params.id);
-        if (error) throw error;
-        void removeImage(photoPath);
-      }
-      setPhotoPath(path);
-    } catch {
-      setErrors({ form: "Couldn't upload the photo. Check your connection and try again." });
-    } finally {
-      setUploading(false);
-    }
-  }
+  }, [salonId, isNew, params.id, loadPhoto]);
 
   async function save() {
     if (!salonId) return;
@@ -95,7 +87,7 @@ export default function TeamMemberScreen() {
       display_name: form.name.trim(),
       title: form.title.trim() || null,
       bio: form.about.trim() || null,
-      photo_path: photoPath,
+      photo_path: photo.path,
     };
     try {
       let staffId = params.id;
@@ -122,15 +114,13 @@ export default function TeamMemberScreen() {
         if (error) throw error;
       }
       if (add.length > 0) {
-        const { error } = await supabase
-          .from("staff_services")
-          .insert(
-            add.map((serviceId) => ({
-              salon_id: salonId,
-              staff_id: staffId,
-              service_id: serviceId,
-            })),
-          );
+        const { error } = await supabase.from("staff_services").insert(
+          add.map((serviceId) => ({
+            salon_id: salonId,
+            staff_id: staffId,
+            service_id: serviceId,
+          })),
+        );
         if (error) throw error;
       }
 
@@ -187,7 +177,13 @@ export default function TeamMemberScreen() {
   return (
     <Screen
       footer={
-        <Button title="Save" onPress={() => void save()} loading={saving} disabled={!loaded} />
+        <Button
+          title="Save"
+          onPress={() => void save()}
+          loading={saving}
+          // A new member's photo is saved with the form, so wait for its upload.
+          disabled={!loaded || photo.uploading}
+        />
       }
     >
       <Header title={isMe ? "Add yourself" : isNew ? "Add a team member" : "Edit team member"} />
@@ -197,9 +193,9 @@ export default function TeamMemberScreen() {
             <ImageSlot
               label="Photo"
               shape="circle"
-              uri={publicMediaUrl(photoPath)}
-              busy={uploading}
-              onPress={() => void changePhoto()}
+              uri={photo.uri}
+              busy={photo.uploading}
+              onPress={() => void photo.change()}
             />
             <View style={styles.name}>
               <TextField
@@ -260,6 +256,7 @@ export default function TeamMemberScreen() {
             {errors.services ? <Text style={styles.error}>{errors.services}</Text> : null}
           </View>
 
+          {photo.error ? <Text style={styles.error}>{photo.error}</Text> : null}
           {errors.form ? <Text style={styles.error}>{errors.form}</Text> : null}
 
           {!isNew ? (

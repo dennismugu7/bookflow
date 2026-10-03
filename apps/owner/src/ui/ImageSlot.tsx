@@ -24,7 +24,12 @@ export function ImageSlot({ label, uri, shape, busy = false, onPress }: Props) {
       style={[styles.base, shapeStyle, !uri && styles.empty]}
     >
       {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
-      {busy ? (
+      {busy && uri ? (
+        // Keep the picked photo visible while it uploads; just mark the slot as busy.
+        <View style={styles.badge} accessibilityLabel="Uploading">
+          <ActivityIndicator size="small" color={colors.white} />
+        </View>
+      ) : busy ? (
         <ActivityIndicator color={colors.brand} />
       ) : !uri ? (
         <View style={styles.placeholder}>
@@ -49,4 +54,15 @@ const styles = StyleSheet.create({
   banner: { width: "100%", aspectRatio: 16 / 7, borderRadius: radius },
   placeholder: { alignItems: "center", gap: space(1) },
   label: { fontFamily: fonts.semibold, fontSize: 12, color: colors.muted },
+  badge: {
+    position: "absolute",
+    right: space(2),
+    bottom: space(2),
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(22, 19, 31, 0.7)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

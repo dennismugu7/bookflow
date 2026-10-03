@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { mediaUrl, parseGoogleMapsLink } from "./maps";
+import { mediaUrl, parseGoogleMapsLink, resolveMapsLink } from "./maps";
 
 describe("parseGoogleMapsLink (extra cases)", () => {
   it("reads an encoded comma", () => {
@@ -36,5 +36,40 @@ describe("mediaUrl (extra cases)", () => {
     expect(mediaUrl("https://abc.supabase.co/", "s/logo/x.jpg")).toBe(
       "https://abc.supabase.co/storage/v1/object/public/salon-media/s/logo/x.jpg",
     );
+  });
+});
+
+describe("resolveMapsLink (extra cases)", () => {
+  const fetchTo = (finalUrl: string) =>
+    vi.fn(async () => ({ ok: true, url: finalUrl }) as unknown as Response);
+
+  it("follows goo.gl/maps links too", async () => {
+    const f = fetchTo("https://www.google.com/maps/place/X/data=!3d-1.2901!4d36.7842");
+    await expect(resolveMapsLink("https://goo.gl/maps/abc", f)).resolves.toEqual({
+      lat: -1.2901,
+      lng: 36.7842,
+    });
+  });
+
+  it.each([
+    "https://goo.gl/abc",
+    "https://maps.app.goo.gl.evil.example/abc",
+    "ftp://maps.app.goo.gl/abc",
+    "not a url",
+  ])("does not fetch %j", async (url) => {
+    const f = fetchTo("https://www.google.com/maps/@-1.29,36.78,17z");
+    await expect(resolveMapsLink(url, f)).resolves.toBeNull();
+    expect(f).not.toHaveBeenCalled();
+  });
+
+  it("returns null when the short link lands somewhere without a pin", async () => {
+    await expect(
+      resolveMapsLink("https://maps.app.goo.gl/abc", fetchTo("https://www.google.com/maps")),
+    ).resolves.toBeNull();
+  });
+
+  it("ignores a consent page whose continue URL has no pin", async () => {
+    const f = fetchTo("https://consent.google.com/ml?continue=https%3A%2F%2Fwww.google.com%2F");
+    await expect(resolveMapsLink("https://maps.app.goo.gl/abc", f)).resolves.toBeNull();
   });
 });

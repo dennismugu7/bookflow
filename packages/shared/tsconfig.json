@@ -1,7 +1,7 @@
 {
   "extends": "@bookflow/config/tsconfig.base.json",
   "compilerOptions": {
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
     "types": []
   },
   "include": ["src"]
