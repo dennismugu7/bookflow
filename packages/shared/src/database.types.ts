@@ -303,6 +303,15 @@ isOneToOne: false
 "release_hold":
 { Args: { "p_hold_token": string }; Returns: undefined
                            },
+"salon_setup_status":
+{ Args: { "p_salon_id": string }; Returns: Json
+                           },
+"set_opening_hours":
+{ Args: { "p_hours": Json,"p_salon_id": string }; Returns: undefined
+                           },
+"set_salon_published":
+{ Args: { "p_published": boolean,"p_salon_id": string }; Returns: undefined
+                           },
 "update_booking_status":
 { Args: { "p_booking_id": string,"p_reason"?: string,"p_status": Database["public"]['Enums']["booking_status"] }; Returns: undefined
                            }
