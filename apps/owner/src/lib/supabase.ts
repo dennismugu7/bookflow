@@ -1,7 +1,7 @@
 import type { Database } from "@bookflow/shared";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 
 import { getEnv } from "../env";
 import { createChunkedStorage } from "./chunked-storage";
@@ -17,7 +17,8 @@ export function getSupabase(): SupabaseClient<Database> {
   const env = getEnv();
   client = createClient<Database>(env.EXPO_PUBLIC_SUPABASE_URL, env.EXPO_PUBLIC_SUPABASE_ANON_KEY, {
     auth: {
-      storage: createChunkedStorage(SecureStore),
+      // The web target exists only for design captures; it keeps Supabase's default localStorage.
+      storage: Platform.OS === "web" ? undefined : createChunkedStorage(SecureStore),
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,

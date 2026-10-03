@@ -39,4 +39,33 @@ The images are in `design-ref/` (git-ignored; ask Dennis if missing). **For layo
 - The back arrow and × on confirm have no grey square behind them (the shade in `16`/`18` was a mistake); they keep a 44 px tap area with a soft pressed tint (Dennis, 2026-10-03).
 
 ## Owner app (`apps/owner`), images in `design-ref/original-owner/`
-To be added before the next owner UI task.
+
+Files are numbered as Dennis made them (`NN-name.png`). The current app on Dennis's phone is in `design-ref/live-owner/` (2026-10-03).
+
+| Screen / state | Copy from |
+| --- | --- |
+| Splash | `01-splash` |
+| Welcome (signed out) | `02-welcome` |
+| Sign-in sheet (email) | `05-sign-in`, `03-create-account` (sheet over the purple gradient, layout and buttons) |
+| Code entry | `04-enter-code` |
+| Create your salon (onboarding) | no design: same sheet style as `03`/`05` |
+| Today, no bookings | `12-today-empty`, with the header and tab bar from `12`–`14` |
+| Today with bookings, booking card and actions | `13`–`24` (Phase 4) |
+| Calendar | `25-calendar-day` (Phase 4; placeholder until then) |
+| Clients | `26`–`28` (Phase 4; placeholder until then) |
+| Account | `29-account`, `30-account-logout`, `31-logout-confirm` |
+| My brand | `44-my-brand-empty`, `45-my-brand` (view), `46-my-brand-edit` |
+| My services | `47-services-empty`, `49-services-list`, `48-add-service` |
+| My team | `50-team-empty`, `52-team-list`, `51-add-team-member`, `53-team-member-profile` |
+| Portfolio | `54`, `55` (Phase 2c) |
+| Opening hours | `57-opening-hours` (view), `56-opening-hours-edit` |
+| Location | `58-location-edit`, `59-location` (view) |
+| Profile, settings, delete account, feedback, help | `32`–`43`, `60`–`62` (later phases) |
+
+### Approved deviations (owner app)
+- **Sign-in uses a 6-digit email code, with no passwords** (Phase 2a decision). No password fields, no reset or change-password screens (`06`–`11`, `34`). Google and Facebook buttons are hidden until Google sign-in for owners exists (2c); Facebook is not planned.
+- Font: Urbanist (Dennis, 2026-10-03).
+- No ratings, review counts or deposits anywhere (no reviews yet; ADR 0004 removed deposits).
+- Account rows for features that don't exist yet (Profile, Settings, Share feedback, Support, Portfolio) are hidden, not shown as dead links.
+- The Today stat tiles ("Booked / Expected / Gaps") and booking cards come with Phase 4; the empty Today copies `12` without the tiles until then.
+- Calendar and Clients stay "Coming soon" until Phase 4.

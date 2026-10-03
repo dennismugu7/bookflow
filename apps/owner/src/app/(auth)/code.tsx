@@ -5,12 +5,15 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   AUTH_MESSAGES,
   resendSecondsLeft,
+  sanitizeCode,
   sendCodeErrorMessage,
   verifyCodeErrorMessage,
 } from "../../lib/auth-errors";
 import { getSupabase } from "../../lib/supabase";
 import { colors, fonts, minTouch, space, type } from "../../theme";
-import { Button, CodeInput, Screen } from "../../ui";
+import { AuthSheet, Button, SheetText, TextField } from "../../ui";
+
+const LENGTH = 6;
 
 export default function CodeScreen() {
   const params = useLocalSearchParams<{ email: string; sentAt?: string }>();
@@ -30,7 +33,7 @@ export default function CodeScreen() {
   }, [secondsLeft]);
 
   async function verify(token: string) {
-    if (token.length !== 6) {
+    if (token.length !== LENGTH) {
       setError(AUTH_MESSAGES.incompleteCode);
       return;
     }
@@ -66,76 +69,88 @@ export default function CodeScreen() {
     setNotice("We sent a new code.");
   }
 
-  return (
-    <Screen
-      footer={<Button title="Sign in" onPress={() => void verify(code)} loading={verifying} />}
-    >
-      <View style={styles.heading}>
-        <Text style={type.display}>Check your email</Text>
-        <Text style={[type.body, { color: colors.muted }]}>
-          We sent a 6-digit code to <Text style={styles.email}>{email}</Text>. It expires in 10
-          minutes.
-        </Text>
-      </View>
+  const backToSignIn = () => router.replace({ pathname: "/sign-in", params: { email } });
 
-      <View style={styles.codeBlock}>
-        <CodeInput
+  return (
+    <AuthSheet title="Enter your code" onBack={backToSignIn}>
+      <SheetText center={false}>
+        We sent a 6-digit code to {email}. Enter it below to activate your account.
+      </SheetText>
+
+      <View style={styles.field}>
+        <Text style={styles.label}>Verification code</Text>
+        <TextField
+          variant="sheet"
+          label="Verification code"
+          hideLabel
           value={code}
-          onChange={(next) => {
+          onChangeText={(text) => {
+            const next = sanitizeCode(text);
             setCode(next);
             if (error) setError(undefined);
+            if (next.length === LENGTH) void verify(next);
           }}
-          onComplete={(full) => void verify(full)}
-          error={!!error}
-          disabled={verifying}
+          error={error}
+          editable={!verifying}
+          autoFocus
+          keyboardType="number-pad"
+          textContentType="oneTimeCode"
+          autoComplete="one-time-code"
+          maxLength={LENGTH}
+          style={styles.codeInput}
         />
-        {error ? (
-          <Text style={styles.error} accessibilityLiveRegion="polite">
-            {error}
-          </Text>
-        ) : notice ? (
+        {notice && !error ? (
           <Text style={styles.notice} accessibilityLiveRegion="polite">
             {notice}
           </Text>
         ) : null}
       </View>
 
-      <View style={styles.links}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={
-            secondsLeft > 0 ? `Resend code in ${secondsLeft} seconds` : "Resend code"
-          }
-          accessibilityState={{ disabled: secondsLeft > 0 }}
-          disabled={secondsLeft > 0}
-          onPress={() => void resend()}
-          style={styles.link}
-        >
-          <Text style={[styles.linkText, secondsLeft > 0 && styles.linkDisabled]}>
-            {secondsLeft > 0 ? `Resend code in ${secondsLeft}s` : "Resend code"}
+      <Button title="Verify" variant="blue" onPress={() => void verify(code)} loading={verifying} />
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={
+          secondsLeft > 0 ? `Resend code in ${secondsLeft} seconds` : "Resend code"
+        }
+        accessibilityState={{ disabled: secondsLeft > 0 }}
+        disabled={secondsLeft > 0}
+        onPress={() => void resend()}
+        style={styles.link}
+      >
+        <Text style={styles.linkLine}>
+          Didn&apos;t get a code?{" "}
+          <Text style={secondsLeft > 0 ? styles.resendWait : styles.resend}>
+            {secondsLeft > 0 ? `Resend in ${secondsLeft}s` : "Resend"}
           </Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Use a different email"
-          onPress={() => router.replace({ pathname: "/sign-in", params: { email } })}
-          style={styles.link}
-        >
-          <Text style={styles.linkText}>Use a different email</Text>
-        </Pressable>
-      </View>
-    </Screen>
+        </Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Back to sign in"
+        onPress={backToSignIn}
+        style={styles.link}
+      >
+        <Text style={styles.linkLine}>Back to sign in</Text>
+      </Pressable>
+    </AuthSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  heading: { gap: space(2), marginTop: space(6) },
-  email: { fontFamily: fonts.semibold, color: colors.ink },
-  codeBlock: { gap: space(3) },
-  error: { ...type.caption, color: colors.danger },
+  field: { gap: space(3), marginTop: space(2) },
+  label: {
+    fontFamily: fonts.medium,
+    fontSize: 15,
+    letterSpacing: 1.6,
+    color: colors.text,
+    marginLeft: space(2),
+  },
+  codeInput: { letterSpacing: 8, fontFamily: fonts.semibold, fontSize: 20 },
   notice: { ...type.caption, color: colors.success },
-  links: { gap: space(1) },
-  link: { minHeight: minTouch, justifyContent: "center", alignSelf: "flex-start" },
-  linkText: { fontFamily: fonts.bold, fontSize: 15, color: colors.brand },
-  linkDisabled: { color: colors.muted },
+  link: { minHeight: minTouch, alignItems: "center", justifyContent: "center" },
+  linkLine: { fontFamily: fonts.medium, fontSize: 15, letterSpacing: 1.6, color: colors.text },
+  resend: { color: colors.blue },
+  resendWait: { color: colors.muted },
 });

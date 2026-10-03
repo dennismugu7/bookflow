@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844" width="390" height="844" preserveAspectRatio="none">
+  <!-- Deep indigo with soft violet light, behind the splash, welcome and sign-in sheet (01–05). -->
+  <defs>
+    <radialGradient id="dark" cx="0.78" cy="0.48" r="0.42"><stop offset="0" stop-color="#140C4C"/><stop offset="1" stop-color="#140C4C" stop-opacity="0"/></radialGradient>
+    <radialGradient id="glow" cx="0.42" cy="0.3" r="0.4"><stop offset="0" stop-color="#3F359E"/><stop offset="1" stop-color="#3F359E" stop-opacity="0"/></radialGradient>
+    <radialGradient id="violet" cx="0.05" cy="0.6" r="0.42"><stop offset="0" stop-color="#5A36AC"/><stop offset="1" stop-color="#5A36AC" stop-opacity="0"/></radialGradient>
+    <radialGradient id="deep" cx="0.45" cy="0.82" r="0.35"><stop offset="0" stop-color="#1B1263"/><stop offset="1" stop-color="#1B1263" stop-opacity="0"/></radialGradient>
+    <radialGradient id="corner" cx="1" cy="1" r="0.35"><stop offset="0" stop-color="#4734B4"/><stop offset="1" stop-color="#4734B4" stop-opacity="0"/></radialGradient>
+    <radialGradient id="top" cx="0.9" cy="0.05" r="0.35"><stop offset="0" stop-color="#3E2FA2"/><stop offset="1" stop-color="#3E2FA2" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="390" height="844" fill="#2A1E86"/>
+  <rect width="390" height="844" fill="url(#dark)"/>
+  <rect width="390" height="844" fill="url(#deep)"/>
+  <rect width="390" height="844" fill="url(#glow)"/>
+  <rect width="390" height="844" fill="url(#violet)"/>
+  <rect width="390" height="844" fill="url(#corner)"/>
+  <rect width="390" height="844" fill="url(#top)"/>
+</svg>

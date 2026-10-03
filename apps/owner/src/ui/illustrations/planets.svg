@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 390" width="440" height="390">
+  <!-- Bookflow's own empty-state art: planets over a moon ridge (designs 44, 50, 54). -->
+  <defs>
+    <clipPath id="big"><circle cx="290" cy="290" r="120"/></clipPath>
+    <clipPath id="top"><circle cx="272" cy="56" r="44"/></clipPath>
+  </defs>
+  <g fill="#8FD8F2">
+    <path d="M102 20l5 13 13 5-13 5-5 13-5-13-13-5 13-5z"/>
+    <path d="M396 60l5 12 12 5-12 5-5 12-5-12-12-5 12-5z"/>
+    <path d="M130 200l5 12 12 5-12 5-5 12-5-12-12-5 12-5z"/>
+    <path d="M144 77l3 7 7 3-7 3-3 7-3-7-7-3 7-3z"/>
+    <path d="M352 30l3 6 6 3-6 3-3 6-3-6-6-3 6-3z"/>
+    <path d="M382 135l3 6 6 3-6 3-3 6-3-6-6-3 6-3z"/>
+    <path d="M24 237l3 6 6 3-6 3-3 6-3-6-6-3 6-3z"/>
+  </g>
+  <g clip-path="url(#top)">
+    <circle cx="272" cy="56" r="44" fill="#B5E5F7"/>
+    <path d="M270 10c18 6 22 30 2 40s-30 20-20 50l-40-30z" fill="#8AD3EE"/>
+    <path d="M318 40c-10 26-40 30-60 22l60 40z" fill="#8AD3EE"/>
+  </g>
+  <circle cx="68" cy="160" r="37" fill="#B5E5F7"/>
+  <ellipse cx="68" cy="160" rx="64" ry="14" fill="none" stroke="#8AD3EE" stroke-width="2.5" transform="rotate(-24 68 160)"/>
+  <path d="M33 168a37 37 0 0 0 70-14" fill="none" stroke="#B5E5F7" stroke-width="4"/>
+  <g clip-path="url(#big)">
+    <circle cx="290" cy="290" r="120" fill="#B5E5F7"/>
+    <path d="M160 215c50-30 90 10 140 0s80-30 120-10v40c-40-20-80 8-130 12s-90-30-130 0z" fill="#8AD3EE"/>
+    <path d="M160 300c50-24 100 4 150 0s70-24 110-6v32c-40-16-70 6-120 8s-100-20-140 4z" fill="#8AD3EE"/>
+  </g>
+  <path d="M0 390l34-30v-14c40-26 64-34 90-38l22 8c40-6 90-8 140-2l26-8c40 4 66 24 84 50l44 34z" fill="#E9E9E9"/>
+  <path d="M36 350c30-26 58-34 88-38-20 14-46 30-88 38z" fill="#CFCFCF"/>
+  <path d="M276 390c26-10 32-24 22-44 50 4 80 22 106 44z" fill="#CFCFCF"/>
+  <path d="M322 308c30 6 50 18 62 34-24-10-46-16-70-18z" fill="#CFCFCF"/>
+</svg>

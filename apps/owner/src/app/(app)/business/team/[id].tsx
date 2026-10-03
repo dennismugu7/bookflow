@@ -7,10 +7,11 @@ import { useSession } from "../../../../lib/session";
 import { diffIds, validateStaff, type StaffErrors, type StaffForm } from "../../../../lib/setup";
 import { getSupabase } from "../../../../lib/supabase";
 import { colors, fonts, minTouch, space, type } from "../../../../theme";
-import { Button, Card, Chip, Header, ImageSlot, Screen, TextField } from "../../../../ui";
+import { Button, CardScreen, CardTitle, Chip, TextField, UploadBox } from "../../../../ui";
 
 type ServiceOption = { id: string; name: string };
 
+/** Add or edit a team member (51). */
 export default function TeamMemberScreen() {
   const params = useLocalSearchParams<{ id: string; me?: string }>();
   const isNew = params.id === "new";
@@ -22,6 +23,7 @@ export default function TeamMemberScreen() {
   const [savedServiceIds, setSavedServiceIds] = useState<string[]>([]);
   const [isActive, setIsActive] = useState(true);
   const [services, setServices] = useState<ServiceOption[]>();
+  const [picking, setPicking] = useState(false);
   const [loaded, setLoaded] = useState(isNew);
   const [errors, setErrors] = useState<StaffErrors & { form?: string }>({});
   const [saving, setSaving] = useState(false);
@@ -174,42 +176,34 @@ export default function TeamMemberScreen() {
         : [...f.serviceIds, id],
     }));
 
+  // A new member's photo is saved with the form, so wait for its upload.
+  const canSave = loaded && !photo.uploading && !saving;
+  const selectedNames = (services ?? [])
+    .filter((s) => form.serviceIds.includes(s.id))
+    .map((s) => s.name);
+
   return (
-    <Screen
-      footer={
-        <Button
-          title="Save"
-          onPress={() => void save()}
-          loading={saving}
-          // A new member's photo is saved with the form, so wait for its upload.
-          disabled={!loaded || photo.uploading}
-        />
-      }
+    <CardScreen
+      left={{ icon: "arrow-left", label: "Back", onPress: () => router.back() }}
+      right={{ icon: "check", label: "Save", onPress: () => canSave && void save() }}
     >
-      <Header title={isMe ? "Add yourself" : isNew ? "Add a team member" : "Edit team member"} />
+      <CardTitle>
+        {isMe ? "Add yourself" : isNew ? "Add a team member" : "Edit team member"}
+      </CardTitle>
       {loaded ? (
-        <>
-          <View style={styles.top}>
-            <ImageSlot
-              label="Photo"
-              shape="circle"
-              uri={photo.uri}
-              busy={photo.uploading}
-              onPress={() => void photo.change()}
-            />
-            <View style={styles.name}>
-              <TextField
-                label="Name"
-                placeholder={isMe ? "Your name" : "Njeri Kamau"}
-                value={form.name}
-                onChangeText={(name) => setForm({ ...form, name })}
-                error={errors.name}
-                maxLength={60}
-                autoCapitalize="words"
-              />
-            </View>
-          </View>
+        <View style={styles.fields}>
           <TextField
+            variant="card"
+            label="Name"
+            placeholder={isMe ? "Your name" : "John Doe"}
+            value={form.name}
+            onChangeText={(name) => setForm({ ...form, name })}
+            error={errors.name}
+            maxLength={60}
+            autoCapitalize="words"
+          />
+          <TextField
+            variant="card"
             label="Title"
             placeholder="Stylist"
             value={form.title}
@@ -217,9 +211,65 @@ export default function TeamMemberScreen() {
             error={errors.title}
             maxLength={40}
           />
+
+          <View style={styles.group}>
+            <Text style={styles.label}>Services offered</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Services offered, ${form.serviceIds.length} selected`}
+              accessibilityState={{ expanded: picking }}
+              onPress={() => setPicking(!picking)}
+              style={styles.box}
+            >
+              <Text style={selectedNames.length ? styles.boxValue : styles.boxPlaceholder}>
+                {selectedNames.length
+                  ? selectedNames.join(", ")
+                  : "Pick at least one - clients can only book what’s selected here"}
+              </Text>
+            </Pressable>
+            {picking ? (
+              services?.length === 0 ? (
+                <View style={styles.noServices}>
+                  <Text style={[type.body, { color: colors.muted }]}>
+                    Add your services first, then pick them here.
+                  </Text>
+                  <Button
+                    title="Go to My services"
+                    variant="secondary"
+                    onPress={() => router.push("/business/services")}
+                  />
+                </View>
+              ) : (
+                <View style={styles.chips}>
+                  {services?.map((s) => (
+                    <Chip
+                      key={s.id}
+                      label={s.name}
+                      selected={form.serviceIds.includes(s.id)}
+                      onPress={() => toggleService(s.id)}
+                    />
+                  ))}
+                </View>
+              )
+            ) : null}
+            {errors.services ? <Text style={styles.error}>{errors.services}</Text> : null}
+          </View>
+
+          <View style={styles.group}>
+            <Text style={styles.label}>Photo</Text>
+            <UploadBox
+              label="Photo"
+              uri={photo.uri}
+              busy={photo.uploading}
+              height={83}
+              onPress={() => void photo.change()}
+            />
+          </View>
+
           <TextField
+            variant="card"
             label="About"
-            placeholder="Specialities, experience, what clients love."
+            placeholder="A short introduction for clients"
             value={form.about}
             onChangeText={(about) => setForm({ ...form, about })}
             error={errors.about}
@@ -228,36 +278,17 @@ export default function TeamMemberScreen() {
             style={styles.multiline}
           />
 
-          <View style={styles.group}>
-            <Text style={styles.label}>Services offered · {form.serviceIds.length} selected</Text>
-            {services?.length === 0 ? (
-              <Card>
-                <Text style={[type.body, { color: colors.muted }]}>
-                  Add your services first, then pick them here.
-                </Text>
-                <Button
-                  title="Go to My services"
-                  variant="secondary"
-                  onPress={() => router.push("/business/services")}
-                />
-              </Card>
-            ) : (
-              <View style={styles.chips}>
-                {services?.map((s) => (
-                  <Chip
-                    key={s.id}
-                    label={s.name}
-                    selected={form.serviceIds.includes(s.id)}
-                    onPress={() => toggleService(s.id)}
-                  />
-                ))}
-              </View>
-            )}
-            {errors.services ? <Text style={styles.error}>{errors.services}</Text> : null}
-          </View>
-
           {photo.error ? <Text style={styles.error}>{photo.error}</Text> : null}
           {errors.form ? <Text style={styles.error}>{errors.form}</Text> : null}
+
+          <Button
+            title={isNew ? "Save and add to team" : "Save changes"}
+            variant="blue"
+            compact
+            onPress={() => void save()}
+            loading={saving}
+            disabled={!canSave}
+          />
 
           {!isNew ? (
             <Pressable
@@ -266,27 +297,45 @@ export default function TeamMemberScreen() {
               onPress={toggleActive}
               style={styles.link}
             >
-              <Text style={[styles.linkText, { color: isActive ? colors.danger : colors.brand }]}>
+              <Text
+                style={[styles.linkText, { color: isActive ? colors.danger : colors.inputBlue }]}
+              >
                 {isActive ? "Deactivate" : "Reactivate"}
               </Text>
             </Pressable>
           ) : null}
-        </>
+        </View>
       ) : errors.form ? (
         <Text style={styles.error}>{errors.form}</Text>
       ) : null}
-    </Screen>
+    </CardScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  top: { flexDirection: "row", alignItems: "flex-end", gap: space(4) },
-  name: { flex: 1 },
-  multiline: { height: 96, paddingTop: space(3), textAlignVertical: "top" },
+  fields: { gap: space(3), paddingHorizontal: space(5), marginTop: space(1) },
   group: { gap: space(2) },
-  label: { fontFamily: fonts.bold, fontSize: 14, color: colors.ink },
+  label: { fontFamily: fonts.bold, fontSize: 15, color: "#3A3A3A" },
+  box: {
+    minHeight: 52,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    borderColor: colors.inputBlue,
+    paddingHorizontal: space(3),
+    paddingVertical: space(2),
+    justifyContent: "center",
+  },
+  boxPlaceholder: {
+    fontFamily: fonts.medium,
+    fontSize: 15,
+    lineHeight: 19,
+    color: colors.placeholder,
+  },
+  boxValue: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 19, color: colors.ink },
+  noServices: { gap: space(2) },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: space(2) },
+  multiline: { maxHeight: 120, paddingTop: 12, textAlignVertical: "top" },
   error: { ...type.caption, color: colors.danger },
-  link: { minHeight: minTouch, justifyContent: "center", alignSelf: "flex-start" },
+  link: { minHeight: minTouch, justifyContent: "center", alignSelf: "center" },
   linkText: { fontFamily: fonts.bold, fontSize: 15 },
 });
