@@ -1,7 +1,17 @@
 export { formatKes } from "./money";
 export { normalizeKenyanPhone } from "./phone";
 export { WEB_BASE_URL, bookingLink } from "./links";
-export { mediaUrl, parseGoogleMapsLink, resolveMapsLink, type LatLng } from "./maps";
+export {
+  GOOGLE_MAPS_URL,
+  inspectMapsLink,
+  isGoogleMapsUrl,
+  mapsEmbedUrl,
+  mediaUrl,
+  parseGoogleMapsLink,
+  resolveMapsLink,
+  type LatLng,
+  type MapsLinkInfo,
+} from "./maps";
 export { toSalonSlug } from "./slug";
 export {
   BOOKING_ERROR_CODES,

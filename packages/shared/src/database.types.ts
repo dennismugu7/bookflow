@@ -163,13 +163,13 @@ isOneToOne: false
                   ]
                 },"salons": {
                   Row: {
-                    "about": string | null,"address": string | null,"banner_path": string | null,"created_at": string,"id": string,"is_published": boolean,"latitude": number | null,"logo_path": string | null,"longitude": number | null,"name": string,"phone": string | null,"slug": string,"tagline": string | null,"timezone": string,"updated_at": string
+                    "about": string | null,"address": string | null,"banner_path": string | null,"created_at": string,"id": string,"is_published": boolean,"latitude": number | null,"logo_path": string | null,"longitude": number | null,"maps_url": string | null,"name": string,"phone": string | null,"slug": string,"tagline": string | null,"timezone": string,"updated_at": string
                   }
                   Insert: {
-                    "about"?: string | null,"address"?: string | null,"banner_path"?: string | null,"created_at"?: string,"id"?: string,"is_published"?: boolean,"latitude"?: number | null,"logo_path"?: string | null,"longitude"?: number | null,"name": string,"phone"?: string | null,"slug": string,"tagline"?: string | null,"timezone"?: string,"updated_at"?: string
+                    "about"?: string | null,"address"?: string | null,"banner_path"?: string | null,"created_at"?: string,"id"?: string,"is_published"?: boolean,"latitude"?: number | null,"logo_path"?: string | null,"longitude"?: number | null,"maps_url"?: string | null,"name": string,"phone"?: string | null,"slug": string,"tagline"?: string | null,"timezone"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "about"?: string | null,"address"?: string | null,"banner_path"?: string | null,"created_at"?: string,"id"?: string,"is_published"?: boolean,"latitude"?: number | null,"logo_path"?: string | null,"longitude"?: number | null,"name"?: string,"phone"?: string | null,"slug"?: string,"tagline"?: string | null,"timezone"?: string,"updated_at"?: string
+                    "about"?: string | null,"address"?: string | null,"banner_path"?: string | null,"created_at"?: string,"id"?: string,"is_published"?: boolean,"latitude"?: number | null,"logo_path"?: string | null,"longitude"?: number | null,"maps_url"?: string | null,"name"?: string,"phone"?: string | null,"slug"?: string,"tagline"?: string | null,"timezone"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     
