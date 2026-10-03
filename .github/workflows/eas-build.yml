@@ -41,6 +41,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # --no-wait: the build runs on EAS servers; the job only queues it.
+      # The profile's EAS environment (eas.json) supplies EXPO_PUBLIC_SUPABASE_*; see eas-env-sync.yml.
       - run: eas build --platform android --profile "$PROFILE" --non-interactive --no-wait
         env:
           PROFILE: ${{ inputs.profile }}

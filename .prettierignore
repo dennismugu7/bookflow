@@ -11,3 +11,5 @@ apps/web/CLAUDE.md
 apps/owner/AGENTS.md
 supabase/
 packages/shared/src/database.types.ts
+# Lead-owned acceptance tests are kept verbatim (CLAUDE.md rule 9).
+**/*.acceptance.test.ts

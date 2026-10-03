@@ -85,6 +85,14 @@ Entry format: **Context → Challenge → What we did → Outcome.** Decisions w
 ### Hardware break
 - The laptop was shut down for a RAM upgrade (16 GB to 32 GB), which ended the Claude Code session. Nothing was lost: the rules live in `CLAUDE.md`, each task lives in a spec in `docs/specs/`, and the state lives in git. A fresh session picked up from the repo alone.
 
+### Phase 1c: client sign-in, zero cost per booking (PRs #6 to #9)
+- **What we did:** clients confirm with Google or a 6-digit email code; the phone they type is stored as unverified, and a database guard means only the confirm functions can ever mark a phone verified. 182 database assertions.
+- **Challenge 1:** `supabase config push` would have overwritten dozens of settings we never chose (MFA, pooler, storage). **Fix:** a workflow that sends only the fields we manage to the Management API.
+- **Challenge 2:** Supabase's free plan rejects custom email templates without your own email sender, and the default email sends a link, which breaks the booking flow on phones. Creating a dedicated Gmail failed ("phone number used too many times").
+- **Fix:** reused the `mugu-labs.com` domain, already verified in Resend. Codes now come from `support@mugu-labs.com` on Resend's free tier. Evidence: [`evidence/2026-10-03-first-code-email.png`](evidence/2026-10-03-first-code-email.png).
+- **Pattern worth noting:** three external sign-ups failed in one day (Meta, a Google account, the free email limits). Each time the fix was to find a route that didn't depend on that approval, rather than wait.
+- **Milestone:** Phase 1 complete on day 2 (planned for 12 to 23 Oct).
+
 ---
 
 ## Evidence to capture as we go

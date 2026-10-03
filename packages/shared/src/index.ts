@@ -1,5 +1,7 @@
 export { formatKes } from "./money";
 export { normalizeKenyanPhone } from "./phone";
+export { WEB_BASE_URL, bookingLink } from "./links";
+export { toSalonSlug } from "./slug";
 export {
   BOOKING_ERROR_CODES,
   bookingErrorKind,

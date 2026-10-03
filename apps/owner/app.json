@@ -11,7 +11,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "bookflow",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "android": {
       "package": "com.mugulabs.bookflow",
       "adaptiveIcon": {
@@ -31,7 +31,9 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
-      ]
+      ],
+      "expo-secure-store",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
