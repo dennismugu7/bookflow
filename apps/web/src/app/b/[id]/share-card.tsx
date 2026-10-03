@@ -35,7 +35,7 @@ export function ShareCard({ salonName, link }: { salonName: string; link: string
           id="share-link"
           readOnly
           value={link.replace(/^https:\/\//, "")}
-          className="min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none"
+          className="min-w-0 flex-1 bg-transparent text-[14px] outline-none"
         />
         <button
           type="button"
@@ -52,7 +52,7 @@ export function ShareCard({ salonName, link }: { salonName: string; link: string
           href={whatsappShareUrl(message, link)}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex min-h-12 flex-1 items-center justify-center rounded-ds bg-whatsapp text-base font-semibold text-white"
+          className="flex min-h-12 flex-1 items-center justify-center rounded-ds bg-whatsapp text-base font-semibold text-ink"
         >
           WhatsApp
         </a>
