@@ -20,23 +20,22 @@ export const colors = {
   dangerTint: "#FCE8E6",
 } as const;
 
-/** Plus Jakarta Sans; React Native needs one family per weight. */
+/** Urbanist (400–700; see docs/design/README.md); React Native needs one family per weight. */
 export const fonts = {
-  regular: "PlusJakartaSans_400Regular",
-  medium: "PlusJakartaSans_500Medium",
-  semibold: "PlusJakartaSans_600SemiBold",
-  bold: "PlusJakartaSans_700Bold",
-  extrabold: "PlusJakartaSans_800ExtraBold",
+  regular: "Urbanist_400Regular",
+  medium: "Urbanist_500Medium",
+  semibold: "Urbanist_600SemiBold",
+  bold: "Urbanist_700Bold",
 } as const;
 
 export const type = {
-  display: { fontFamily: fonts.extrabold, fontSize: 28, lineHeight: 34 },
+  display: { fontFamily: fonts.bold, fontSize: 28, lineHeight: 34 },
   title: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 28 },
   heading: { fontFamily: fonts.bold, fontSize: 17, lineHeight: 22 },
   body: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
   bodyStrong: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 22 },
   caption: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 18 },
-  figure: { fontFamily: fonts.extrabold, fontSize: 32, lineHeight: 38 },
+  figure: { fontFamily: fonts.bold, fontSize: 32, lineHeight: 38 },
 } as const;
 
 export const radius = 12;

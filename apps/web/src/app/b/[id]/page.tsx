@@ -1,11 +1,49 @@
-import { formatKes } from "@bookflow/shared";
+import { bookingLink, formatKes } from "@bookflow/shared";
+import { CalendarPlus } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { SalonHeader } from "../../../components/salon-header";
+import { formatClock, formatShortDateTime } from "../../../lib/format";
 import { directionsUrl, getMyBooking } from "../../../lib/my-booking";
-import { formatDuration, formatLongDate, formatTime } from "../../../lib/time";
+import { getPublicSalon } from "../../../lib/salon";
+import { ShareCard } from "./share-card";
 
 export const metadata: Metadata = { title: "Your booking · Bookflow", robots: { index: false } };
+
+/** Our own calendar-with-a-check illustration (about 96 px), in brand colours. */
+function BookedIllustration() {
+  return (
+    <svg viewBox="0 0 96 96" className="size-24" aria-hidden="true">
+      <rect x="14" y="20" width="62" height="60" rx="10" fill="#ECE8FB" />
+      <rect x="14" y="20" width="62" height="16" rx="8" fill="#3A1FA8" />
+      <rect x="14" y="30" width="62" height="6" fill="#3A1FA8" />
+      {[26, 38, 50, 62].map((x) => (
+        <rect key={x} x={x} y="14" width="4" height="12" rx="2" fill="#16131F" />
+      ))}
+      {[46, 56, 66].map((y) =>
+        [24, 36, 48, 60].map((x) => (
+          <rect key={`${x}-${y}`} x={x} y={y} width="6" height="5" rx="1.5" fill="#C9C5D6" />
+        )),
+      )}
+      <circle cx="70" cy="70" r="18" fill="#5B45E0" />
+      <path
+        d="M61 70l6 6 12-13"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="4.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M82 18l4-6M86 26l7-2M78 12l1-7"
+        stroke="#F0A030"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 export default async function BookingPage(props: PageProps<"/b/[id]">) {
   const { id } = await props.params;
@@ -24,84 +62,67 @@ export default async function BookingPage(props: PageProps<"/b/[id]">) {
   }
 
   const tz = booking.salon.timezone;
+  const salon = await getPublicSalon(booking.salon.slug);
   const directions = directionsUrl(booking.salon.maps_url, booking.salon.address);
+  const services = booking.services.map((s) => s.name).join(", ");
 
   return (
-    <main className="mx-auto flex w-full max-w-[560px] flex-col gap-6 px-4 py-8">
-      <div className="flex flex-col items-center gap-3 text-center">
-        <div
-          className="flex size-16 items-center justify-center rounded-full bg-success-tint"
-          aria-hidden="true"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            className="size-8 text-success"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-          >
-            <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
-        <h1 className="text-[28px] leading-tight font-extrabold">You&apos;re booked</h1>
-        <p className="text-[15px] text-muted">{booking.salon.name} has your booking.</p>
+    <main className="mx-auto flex w-full max-w-[560px] flex-col pb-10">
+      <SalonHeader
+        name={booking.salon.name}
+        address={booking.salon.address}
+        logoUrl={salon?.logoUrl ?? null}
+      />
+
+      <div className="flex flex-col items-center gap-2 px-4 pt-6 pb-8 text-center">
+        <BookedIllustration />
+        <h1 className="mt-2 text-[24px] font-bold">
+          You&apos;re all set! <span aria-hidden="true">🎉</span>
+        </h1>
+        <p className="text-[16px] text-muted">See you soon!</p>
       </div>
 
-      <section
-        aria-label="Booking details"
-        className="flex flex-col gap-3 rounded-ds bg-surface p-4"
-      >
-        <p className="text-[17px] font-bold">{booking.salon.name}</p>
-        <p className="text-[15px]">
-          {formatLongDate(booking.starts_at, tz)} · {formatTime(booking.starts_at, tz)} –{" "}
-          {formatTime(booking.ends_at, tz)}
+      <section aria-label="Booking details" className="bg-surface px-4 py-5">
+        <p className="text-[16px] font-bold">
+          {formatShortDateTime(booking.starts_at, tz)} – {formatClock(booking.ends_at, tz)}
         </p>
-        <p className="text-[13px] text-muted">With {booking.staff_name}</p>
-        {booking.salon.address ? (
-          <p className="text-[13px] text-muted">{booking.salon.address}</p>
-        ) : null}
-        <ul className="flex flex-col gap-1 border-t border-line pt-3">
-          {booking.services.map((s, i) => (
-            <li key={i} className="flex justify-between gap-4 text-[15px]">
-              <span>
-                {s.name}{" "}
-                <span className="text-[13px] text-muted">· {formatDuration(s.duration_min)}</span>
-              </span>
-              <span>{formatKes(s.price_kes)}</span>
-            </li>
-          ))}
-        </ul>
-        <div className="flex justify-between gap-4 border-t border-line pt-3 text-[17px] font-bold">
-          <span>Total</span>
-          <span>{formatKes(booking.total_kes)}</span>
-        </div>
-        <p className="text-[13px] text-muted">Pay at the salon.</p>
+        <p className="mt-1 text-[15px]">
+          {services} – with {booking.staff_name}
+        </p>
+        <p className="mt-1 text-[14px] text-muted">
+          {formatKes(booking.total_kes)} · Pay at the salon
+        </p>
       </section>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex gap-3 px-4 pt-5">
+        <a
+          href={`/b/${booking.id}/ics`}
+          className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full border border-line bg-white text-[15px] font-semibold"
+        >
+          <CalendarPlus className="size-5" aria-hidden="true" /> Add to calendar
+        </a>
         {directions ? (
           <a
             href={directions}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex min-h-[52px] items-center justify-center rounded-ds bg-brand text-base font-bold text-white"
+            className="flex min-h-12 flex-1 items-center justify-center rounded-full bg-ink text-[15px] font-semibold text-white"
           >
             Get directions
           </a>
         ) : null}
-        <a
-          href={`/b/${booking.id}/ics`}
-          className="flex min-h-[52px] items-center justify-center rounded-ds border border-line text-base font-bold"
-        >
-          Add to calendar
-        </a>
-        <Link
-          href={`/s/${booking.salon.slug}`}
-          className="min-h-11 self-center py-3 text-[15px] font-semibold text-brand"
-        >
-          Back to {booking.salon.name}
-        </Link>
       </div>
+
+      <div className="px-4 pt-6">
+        <ShareCard salonName={booking.salon.name} link={bookingLink(booking.salon.slug)} />
+      </div>
+
+      <Link
+        href={`/s/${booking.salon.slug}`}
+        className="mt-4 min-h-11 self-center py-3 text-[15px] font-semibold text-brand"
+      >
+        Back to {booking.salon.name}
+      </Link>
     </main>
   );
 }

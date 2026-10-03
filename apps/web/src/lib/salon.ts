@@ -12,6 +12,7 @@ export type SalonStaff = {
   id: string;
   name: string;
   title: string | null;
+  bio: string | null;
   photoUrl: string | null;
   serviceIds: string[];
 };
@@ -65,7 +66,7 @@ export const getPublicSalon = cache(async (slug: string): Promise<PublicSalon | 
       .order("created_at"),
     supabase
       .from("staff")
-      .select("id, display_name, title, photo_path, updated_at, staff_services(service_id)")
+      .select("id, display_name, title, bio, photo_path, updated_at, staff_services(service_id)")
       .eq("salon_id", salon.id)
       .eq("is_active", true)
       .order("sort_order")
@@ -102,6 +103,7 @@ export const getPublicSalon = cache(async (slug: string): Promise<PublicSalon | 
         id: s.id,
         name: s.display_name,
         title: s.title,
+        bio: s.bio,
         photoUrl: media(s.photo_path, s.updated_at),
         serviceIds: s.staff_services.map((x) => x.service_id).filter((id) => bookable.has(id)),
       }))
