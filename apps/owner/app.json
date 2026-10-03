@@ -3,7 +3,7 @@
     "name": "Bookflow Owner",
     "slug": "bookflow-owner",
     "owner": "mugulabs",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -11,7 +11,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "bookflow",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "android": {
       "package": "com.mugulabs.bookflow",
       "adaptiveIcon": {
@@ -31,7 +31,9 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
-      ]
+      ],
+      "expo-secure-store",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,

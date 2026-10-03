@@ -63,11 +63,11 @@ jobs:
       - name: Publish to the preview channel
         if: steps.token.outputs.available == 'true' && github.event_name == 'push'
         working-directory: apps/owner
-        run: eas update --platform android --channel preview --message "$(git log -1 --pretty=%s)" --non-interactive
+        run: eas update --platform android --channel preview --environment preview --message "$(git log -1 --pretty=%s)" --non-interactive
 
       - name: Publish a PR preview and comment the QR code
         if: steps.token.outputs.available == 'true' && github.event_name == 'pull_request'
         uses: expo/expo-github-action/preview@v9
         with:
           working-directory: apps/owner
-          command: eas update --platform android --auto --branch pr-${{ github.event.pull_request.number }} --non-interactive
+          command: eas update --platform android --auto --branch pr-${{ github.event.pull_request.number }} --environment preview --non-interactive

@@ -22,4 +22,4 @@ The login step is built so **"Verify with WhatsApp" can be added later** as a th
 - Zero cost per booking; no dependency on Meta or an SMS provider for launch.
 - Someone could enter another person's phone. Mitigations: unverified phones never merge into another person's client record; verified and unverified phones are separate; owners see the "not verified" badge; holds are rate-limited and bot-checked.
 - Automated reminders aren't in v1. Owners can tap **Message** to remind a client from their own WhatsApp at no cost.
-- Launch needs a free email sender for codes: Supabase's built-in email only reaches the project team. To be decided before launch: Gmail SMTP or a free provider tier.
+- Code emails need our own sender (Supabase's free plan only allows custom email templates with custom SMTP). **Resolved 2026-10-03:** Resend's free tier (3,000 emails a month, 100 a day) sending as `support@mugu-labs.com` from the already-verified `mugu-labs.com` domain. Settings are deployed by the `auth-config` workflow, which sends only the fields we manage.
