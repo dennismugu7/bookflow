@@ -39,24 +39,25 @@ export default async function ConfirmPage(props: PageProps<"/s/[slug]/confirm">)
   const meta = (user?.user_metadata ?? {}) as { full_name?: string; name?: string };
 
   return (
-    <div className="min-h-full flex-1 bg-surface">
+    <div className="min-h-full flex-1 bg-white">
       <main className="mx-auto w-full max-w-[560px] pb-16">
-        <h1 className="sr-only">Confirm your booking</h1>
         <SalonHeader
           name={salon.name}
+          tagline={salon.tagline}
           address={salon.address}
           logoUrl={salon.logoUrl}
           backHref={pickTime}
-          close={<CloseButton salonHref={`/s/${slug}`} />}
+          close={<CloseButton salonHref={`/s/${slug}`} tile />}
         />
         <ConfirmSteps
           slug={slug}
+          salonName={salon.name}
           expiresAt={choice.expiresAt}
           pickTimeHref={pickTime}
           signInFailed={params.signin === "failed"}
           hold={{
             when: formatShortDateTime(choice.startsAt, salon.timezone),
-            what: `${services.map((s) => s.name).join(", ")} – ${formatKes(total)}`,
+            what: `${services.map((s) => s.name).join(", ")} - ${formatKes(total)}`,
           }}
           seenBy={
             professional && choice.heldStaffId

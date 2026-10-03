@@ -1,17 +1,22 @@
 @import "tailwindcss";
 
-/* Design-system tokens (docs/design/bookflow-design-system.png). The design is light only. */
+/*
+ * Tokens. Colours come from Dennis's originals (ADR 0009); where an original colour is too light for
+ * WCAG AA text contrast, the nearest shade of the same hue that passes is used (noted per token).
+ * The design is light only.
+ */
 :root {
   --brand: #3a1fa8;
-  --select: #5b45e0;
-  --ink: #16131f;
-  --muted: #5e5a6b;
-  --surface: #f6f5fa;
+  --select: #6950f6;
+  --ink: #0d0d0d;
+  /* originals: #808080–#828282 */
+  --muted: #707070;
+  --surface: #f5f5f5;
   --success: #1e7f4f;
   --attention: #f0a030;
   --danger: #b42318;
-  --border: #e2e0ea;
-  --border-strong: #c9c5d6;
+  --border: #e6e6e6;
+  --border-strong: #d6d6d6;
   --success-tint: #e3f3ea;
   --attention-tint: #fcefd9;
   --attention-text: #7a4a00;
@@ -19,6 +24,14 @@
   --danger-tint: #fce8e6;
   --lavender: #eeebfb;
   --whatsapp: #25d366;
+  --price: #2d4227;
+  /* originals: #00bf63 and #a39cc6 */
+  --open: #008746;
+  --until: #776dab;
+  --link: #7465c0;
+  --read-more: #004aad;
+  --day-dot: #78d23f;
+  --sand: #fcfcfb;
   color-scheme: light;
 }
 
@@ -41,6 +54,13 @@
   --color-danger-tint: var(--danger-tint);
   --color-lavender: var(--lavender);
   --color-whatsapp: var(--whatsapp);
+  --color-price: var(--price);
+  --color-open: var(--open);
+  --color-until: var(--until);
+  --color-link: var(--link);
+  --color-read-more: var(--read-more);
+  --color-day-dot: var(--day-dot);
+  --color-sand: var(--sand);
   --radius-ds: 12px;
 }
 
@@ -68,5 +88,17 @@ body {
   }
   to {
     transform: translateY(0);
+  }
+}
+
+/* Pressed feedback within a frame on every tappable thing (fix 3a-2). */
+@utility press {
+  transition:
+    transform 80ms ease-out,
+    filter 80ms ease-out;
+  -webkit-tap-highlight-color: transparent;
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+    filter: brightness(0.92);
   }
 }

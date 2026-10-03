@@ -1,59 +1,77 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
-import { initials } from "../lib/format";
+import { shortArea } from "../lib/short-area";
 
-type Props = {
+type Identity = {
   name: string;
+  tagline: string | null;
   address: string | null;
   logoUrl: string | null;
+};
+
+/**
+ * Name, tagline and area stacked tightly, with the logo just right of that block
+ * (originals 01, 16, 18 and 21). `as` lets the salon page make the name its h1.
+ */
+export function SalonIdentity({
+  name,
+  tagline,
+  address,
+  logoUrl,
+  as: Name = "p",
+}: Identity & { as?: "h1" | "p" }) {
+  const area = shortArea(address);
+  return (
+    <div className="flex items-center gap-[30px]">
+      <div className="min-w-0">
+        <Name className="text-[22px] leading-7 font-semibold">{name}</Name>
+        {tagline ? (
+          <p className="mt-0.5 text-[16px] leading-5 font-medium text-ink">{tagline}</p>
+        ) : null}
+        {area ? (
+          <p className="mt-1.5 text-[11px] leading-4 font-medium tracking-[0.08em] text-muted">
+            {area}
+          </p>
+        ) : null}
+      </div>
+      {logoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- Supabase public URLs; no image optimiser on the free plan
+        <img
+          src={logoUrl}
+          alt={`${name} logo`}
+          className="h-[68px] w-auto max-w-[80px] shrink-0 object-contain"
+        />
+      ) : null}
+    </div>
+  );
+}
+
+type Props = Identity & {
   /** Back arrow target; omit to hide it. */
   backHref?: string;
   /** The × button; omit to hide it. */
   close?: React.ReactNode;
 };
 
-/** Salon name, address and logo, with optional back and ×, as on the confirm and booked pages. */
-export function SalonHeader({ name, address, logoUrl, backHref, close }: Props) {
+/**
+ * The salon header on confirm (16, 18) and "You're all set" (21): back arrow top left, × top right
+ * and the identity block share one row.
+ */
+export function SalonHeader({ backHref, close, ...identity }: Props) {
   return (
-    <header className="bg-white px-4 pt-3 pb-4">
-      {backHref || close ? (
-        <div className="mb-2 flex items-center justify-between">
-          {backHref ? (
-            <Link
-              href={backHref}
-              aria-label="Back"
-              className="-ml-2 flex size-11 items-center justify-center rounded-full"
-            >
-              <ArrowLeft className="size-6" />
-            </Link>
-          ) : (
-            <span />
-          )}
-          {close ?? null}
-        </div>
+    <header className="relative bg-white pt-[23px] pr-[56px] pb-4 pl-[53px]">
+      {backHref ? (
+        <Link
+          href={backHref}
+          aria-label="Back"
+          className="press absolute top-0 left-0 flex h-[45px] w-[44px] items-center justify-center bg-surface"
+        >
+          <ArrowLeft className="size-[26px]" strokeWidth={2.5} />
+        </Link>
       ) : null}
-      <div className="flex items-center gap-4">
-        <div className="min-w-0 flex-1">
-          <p className="text-[20px] leading-tight font-bold">{name}</p>
-          {address ? <p className="mt-1 truncate text-[13px] text-muted">{address}</p> : null}
-        </div>
-        {logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- Supabase public URLs; no image optimiser on the free plan
-          <img
-            src={logoUrl}
-            alt={`${name} logo`}
-            className="size-14 shrink-0 rounded-ds object-cover"
-          />
-        ) : (
-          <span
-            aria-hidden="true"
-            className="flex size-14 shrink-0 items-center justify-center rounded-ds bg-lavender text-lg font-bold text-brand"
-          >
-            {initials(name)}
-          </span>
-        )}
-      </div>
+      {close ? <div className="absolute top-0 right-0">{close}</div> : null}
+      <SalonIdentity {...identity} />
     </header>
   );
 }

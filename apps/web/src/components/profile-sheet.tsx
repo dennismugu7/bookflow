@@ -57,7 +57,7 @@ export function ProfileSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby="profile-name"
-        className="relative max-h-[90vh] w-full max-w-[560px] overflow-y-auto rounded-t-[24px] bg-surface motion-safe:animate-[sheet-up_200ms_ease-out]"
+        className="relative flex max-h-[calc(100dvh-6px)] min-h-[calc(100dvh-6px)] w-full max-w-[560px] flex-col overflow-y-auto rounded-t-[30px] bg-surface motion-safe:animate-[sheet-up_200ms_ease-out]"
         onTouchStart={(e) => {
           touchStart.current = e.touches[0]?.clientY ?? null;
         }}
@@ -68,36 +68,37 @@ export function ProfileSheet({
           touchStart.current = null;
         }}
       >
-        <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-line-strong" aria-hidden="true" />
         <button
           ref={closeButton}
           type="button"
           aria-label="Close"
           onClick={onClose}
-          className="absolute top-3 left-3 flex size-11 items-center justify-center rounded-full"
+          className="press absolute top-5 left-[19px] flex size-11 items-center justify-center rounded-full"
         >
-          <X className="size-6" />
+          <X className="size-5" strokeWidth={2.75} />
         </button>
-        <div className="flex flex-col items-center gap-2 px-6 pt-12 pb-8 text-center">
+        <div className="flex flex-col items-center px-6 pt-[110px] pb-16 text-center">
           {profile.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- Supabase public URLs
-            <img src={profile.photoUrl} alt="" className="size-40 rounded-full object-cover" />
+            <img src={profile.photoUrl} alt="" className="size-[205px] rounded-full object-cover" />
           ) : (
             <span
               aria-hidden="true"
-              className="flex size-40 items-center justify-center rounded-full bg-lavender text-5xl font-bold text-brand"
+              className="flex size-[205px] items-center justify-center rounded-full bg-lavender text-6xl font-bold text-brand"
             >
               {initials(profile.name)}
             </span>
           )}
-          <h2 id="profile-name" className="mt-4 text-[24px] font-bold">
+          <h2 id="profile-name" className="mt-7 text-[22px] leading-7 font-bold">
             {profile.name}
           </h2>
-          {profile.title ? <p className="text-[16px]">{profile.title}</p> : null}
+          {profile.title ? (
+            <p className="mt-2 text-[16px] leading-6 font-medium">{profile.title}</p>
+          ) : null}
         </div>
-        <div className="bg-white px-6 pt-6 pb-[max(32px,env(safe-area-inset-bottom))]">
-          <h3 className="text-[18px] font-bold">About</h3>
-          <p className="mt-2 text-[15px] leading-relaxed whitespace-pre-line">
+        <div className="flex-1 bg-white px-[26px] pt-5 pb-[max(32px,env(safe-area-inset-bottom))]">
+          <h3 className="text-[17px] leading-6 font-bold">About</h3>
+          <p className="mt-1 pl-[3px] text-[13px] leading-[15px] font-medium whitespace-pre-line">
             {profile.bio ?? `${profile.name} hasn't added an introduction yet.`}
           </p>
         </div>

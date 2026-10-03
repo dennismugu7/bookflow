@@ -3,7 +3,7 @@
 import { formatKes } from "@bookflow/shared";
 import { ArrowLeft, ArrowRight, ShoppingCart, Shuffle } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CloseButton } from "../../../../components/close-button";
@@ -11,9 +11,12 @@ import { ProfileSheet, type Profile } from "../../../../components/profile-sheet
 import {
   AddCircle,
   BottomBar,
+  FlowTopBar,
   Initials,
   SelectedCheck,
+  ServiceText,
   cardClass,
+  flowTitle,
   pillOutline,
   pillPrimary,
 } from "../../../../components/ui";
@@ -31,7 +34,7 @@ type Props = {
   salon: { slug: string; name: string; timezone: string };
   services: SalonService[];
   staff: SalonStaff[];
-  initial: { serviceIds: string[]; staffId: string | null; step: Step };
+  initial: { serviceIds: string[]; staffId: string | null };
   turnstileSiteKey: string | null;
 };
 
@@ -41,14 +44,29 @@ const TITLES: Record<Step, string> = {
   time: "Pick a time",
 };
 
+function isStep(value: string | null | undefined): value is Step {
+  return value === "services" || value === "pro" || value === "time";
+}
+
+/** How many steps this tab has moved forward inside the flow, kept in the history entry. */
+function historyDepth(): number {
+  const state = window.history.state as { bfDepth?: number } | null;
+  return state?.bfDepth ?? 0;
+}
+
 export function BookFlow({ salon, services, staff, initial, turnstileSiteKey }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
   const [serviceIds, setServiceIds] = useState(initial.serviceIds);
   const [chosenStaffId, setChosenStaffId] = useState<string | null>(initial.staffId);
-  const [step, setStep] = useState<Step>(initial.step);
   const [profile, setProfile] = useState<Profile | null>(null);
   const closeProfile = useCallback(() => setProfile(null), []);
+
+  // The step lives in the URL and changes in the browser only (history.pushState, which Next keeps
+  // in sync with useSearchParams), so moving between steps never waits for the server.
+  const urlStep = searchParams.get("step");
+  const step: Step = serviceIds.length > 0 && isStep(urlStep) ? urlStep : "services";
 
   const chosen = useMemo(
     () => serviceIds.map((id) => services.find((s) => s.id === id)).filter((s) => s !== undefined),
@@ -73,11 +91,15 @@ export function BookFlow({ salon, services, staff, initial, turnstileSiteKey }: 
         ? chosenStaffId
         : null;
 
+  const urlFor = useCallback(
+    (next: Step) => `/s/${salon.slug}/book?${choiceQuery({ serviceIds, staffId })}&step=${next}`,
+    [salon.slug, serviceIds, staffId],
+  );
+
   // Keep the choices in the URL so a refresh or the Google round-trip doesn't lose them.
   useEffect(() => {
-    const query = `${choiceQuery({ serviceIds, staffId })}&step=${step}`;
-    router.replace(`/s/${salon.slug}/book?${query}`, { scroll: false });
-  }, [router, salon.slug, serviceIds, staffId, step]);
+    window.history.replaceState({ bfDepth: historyDepth() }, "", urlFor(step));
+  }, [urlFor, step]);
 
   // Coming back here (e.g. to change the time) frees any hold this visitor still has.
   useEffect(() => {
@@ -88,84 +110,100 @@ export function BookFlow({ salon, services, staff, initial, turnstileSiteKey }: 
     window.scrollTo({ top: 0 });
   }, [step]);
 
-  const back = () => setStep(step === "time" && showPro ? "pro" : "services");
+  const forward = (next: Step) =>
+    window.history.pushState({ bfDepth: historyDepth() + 1 }, "", urlFor(next));
+
+  // The back arrow does what the phone's back button does. A tab that arrived mid-flow (say from
+  // the confirm page's back arrow) has no earlier step in its history, so it steps back in place.
+  const back = () => {
+    if (historyDepth() > 0) window.history.back();
+    else
+      window.history.replaceState(
+        { bfDepth: 0 },
+        "",
+        urlFor(step === "time" && showPro ? "pro" : "services"),
+      );
+  };
 
   return (
     <div className="min-h-full flex-1 bg-surface">
-      <main className="mx-auto w-full max-w-[560px] px-4 pt-3 pb-32">
-        <div className="flex items-center justify-between">
+      <main className="mx-auto w-full max-w-[560px] px-[22px] pb-32">
+        <FlowTopBar
+          back={
+            step === "services" ? (
+              <Link
+                href={`/s/${salon.slug}`}
+                aria-label={`Back to ${salon.name}`}
+                className="press flex size-11 items-center justify-center"
+              >
+                <ArrowLeft className="size-7" strokeWidth={2.5} />
+              </Link>
+            ) : (
+              <button
+                type="button"
+                aria-label="Back"
+                onClick={back}
+                className="press flex size-11 items-center justify-center"
+              >
+                <ArrowLeft className="size-7" strokeWidth={2.5} />
+              </button>
+            )
+          }
+          close={<CloseButton salonHref={`/s/${salon.slug}`} />}
+        />
+        <h1 className={flowTitle}>{TITLES[step]}</h1>
+        <div className={step === "pro" ? "mt-[33px]" : "mt-6"}>
           {step === "services" ? (
-            <Link
-              href={`/s/${salon.slug}`}
-              aria-label={`Back to ${salon.name}`}
-              className="-ml-2 flex size-11 items-center justify-center rounded-full"
-            >
-              <ArrowLeft className="size-6" />
-            </Link>
+            <ServicesStep
+              services={services}
+              selected={serviceIds}
+              toggle={(id) =>
+                setServiceIds((ids) =>
+                  ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id],
+                )
+              }
+            />
+          ) : step === "pro" ? (
+            <ProStep
+              people={qualified}
+              staffId={staffId}
+              choose={setChosenStaffId}
+              viewProfile={setProfile}
+            />
           ) : (
-            <button
-              type="button"
-              aria-label="Back"
-              onClick={back}
-              className="-ml-2 flex size-11 items-center justify-center rounded-full"
-            >
-              <ArrowLeft className="size-6" />
-            </button>
+            <TimeStep
+              salon={salon}
+              supabase={supabase}
+              serviceIds={serviceIds}
+              staffId={staffId}
+              turnstileSiteKey={turnstileSiteKey}
+              summary={{ total, count: chosen.length, minutes }}
+              onHeld={(startsAt, held) =>
+                router.push(
+                  `/s/${salon.slug}/confirm?${choiceQuery({
+                    serviceIds,
+                    staffId,
+                    startsAt,
+                    expiresAt: held.expiresAt,
+                    heldStaffId: held.staffId,
+                  })}`,
+                )
+              }
+            />
           )}
-          <CloseButton salonHref={`/s/${salon.slug}`} />
         </div>
-        <h1 className="mt-3 mb-5 text-[28px] leading-tight font-bold">{TITLES[step]}</h1>
-
-        {step === "services" ? (
-          <ServicesStep
-            services={services}
-            selected={serviceIds}
-            toggle={(id) =>
-              setServiceIds((ids) =>
-                ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id],
-              )
-            }
-          />
-        ) : step === "pro" ? (
-          <ProStep
-            people={qualified}
-            staffId={staffId}
-            choose={setChosenStaffId}
-            viewProfile={setProfile}
-          />
-        ) : (
-          <TimeStep
-            salon={salon}
-            supabase={supabase}
-            serviceIds={serviceIds}
-            staffId={staffId}
-            turnstileSiteKey={turnstileSiteKey}
-            summary={{ total, line: cartSummary(chosen.length, minutes) }}
-            onHeld={(startsAt, held) =>
-              router.push(
-                `/s/${salon.slug}/confirm?${choiceQuery({
-                  serviceIds,
-                  staffId,
-                  startsAt,
-                  expiresAt: held.expiresAt,
-                  heldStaffId: held.staffId,
-                })}`,
-              )
-            }
-          />
-        )}
       </main>
 
       {step !== "time" ? (
         <BottomBar label="Your booking">
-          <Total total={total} line={cartSummary(chosen.length, minutes)} />
+          <Total total={total} count={chosen.length} minutes={minutes} />
           <button
             type="button"
             disabled={chosen.length === 0}
-            onClick={() => setStep(step === "services" && showPro ? "pro" : "time")}
+            onClick={() => forward(step === "services" && showPro ? "pro" : "time")}
             className={pillPrimary}
           >
-            Continue <ArrowRight className="size-5" aria-hidden="true" />
+            Continue <ArrowRight className="size-6" strokeWidth={2.25} aria-hidden="true" />
           </button>
         </BottomBar>
       ) : null}
@@ -175,12 +213,16 @@ export function BookFlow({ salon, services, staff, initial, turnstileSiteKey }: 
   );
 }
 
-function Total({ total, line }: { total: number; line: string }) {
+/** "from KES 400" over "🛒 1 item • 10 mins" (originals 09, 12). */
+function Total({ total, count, minutes }: { total: number; count: number; minutes: number }) {
   return (
     <div className="min-w-0 flex-1" aria-live="polite">
-      <p className="text-[18px] font-bold">{formatKes(total)}</p>
-      <p className="flex items-center gap-1 text-[13px] text-muted">
-        <ShoppingCart className="size-3.5" aria-hidden="true" /> {line}
+      <p className="text-[20px] leading-[26px] font-bold">
+        from <span className="text-price">{formatKes(total)}</span>
+      </p>
+      <p className="mt-1 flex items-center gap-1.5 text-[15px] leading-5 font-medium text-muted">
+        <ShoppingCart className="size-[18px]" strokeWidth={1.75} aria-hidden="true" />
+        {cartSummary(count, minutes).replace(" · ", "  •  ")}
       </p>
     </div>
   );
@@ -196,7 +238,7 @@ function ServicesStep({
   toggle: (id: string) => void;
 }) {
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className="flex flex-col gap-[13px]">
       {services.map((service) => {
         const on = selected.includes(service.id);
         return (
@@ -205,18 +247,20 @@ function ServicesStep({
               type="button"
               aria-pressed={on}
               onClick={() => toggle(service.id)}
-              className={`${cardClass(on)} flex w-full items-center gap-3 p-4 text-left`}
+              className={`${cardClass(on)} press flex w-full items-center gap-3 pt-[14px] pr-[17px] pb-3 pl-5 text-left`}
             >
-              <span className="min-w-0 flex-1">
-                <span className="block text-[16px] font-semibold">{service.name}</span>
-                <span className="mt-1 block text-[14px] text-muted">
-                  {formatDuration(service.duration_min)}
+              <ServiceText
+                name={service.name}
+                duration={formatDuration(service.duration_min)}
+                price={formatKes(service.price_kes)}
+              />
+              {on ? (
+                <span className="self-end">
+                  <SelectedCheck />
                 </span>
-                <span className="mt-1 block text-[16px] font-semibold">
-                  {formatKes(service.price_kes)}
-                </span>
-              </span>
-              {on ? <SelectedCheck /> : <AddCircle />}
+              ) : (
+                <AddCircle />
+              )}
             </button>
           </li>
         );
@@ -236,18 +280,21 @@ function ProStep({
   choose: (id: string | null) => void;
   viewProfile: (p: Profile) => void;
 }) {
+  const row = "flex items-center gap-[14px] p-[17px]";
   return (
-    <ul className="flex flex-col gap-3">
-      <li className={`${cardClass(staffId === null)} flex items-center gap-4 p-4`}>
+    <ul className="flex flex-col gap-[13px]">
+      <li className={`${cardClass(staffId === null)} ${row}`}>
         <span
           aria-hidden="true"
-          className="flex size-14 shrink-0 items-center justify-center rounded-full bg-lavender text-select"
+          className="flex size-[85px] shrink-0 items-center justify-center rounded-full bg-lavender text-select"
         >
-          <Shuffle className="size-6" />
+          <Shuffle className="size-8" strokeWidth={1.75} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[16px] font-semibold">Any professional</span>
-          <span className="block truncate text-[14px] text-muted">Maximum availability</span>
+          <span className="block text-[19px] leading-6 font-medium">Any professional</span>
+          <span className="mt-1 block truncate text-[15px] leading-5 font-medium text-muted">
+            Maximum availability
+          </span>
         </span>
         <SelectButton
           selected={staffId === null}
@@ -258,26 +305,30 @@ function ProStep({
       {people.map((person) => {
         const on = staffId === person.id;
         return (
-          <li key={person.id} className={`${cardClass(on)} flex items-center gap-4 p-4`}>
+          <li key={person.id} className={`${cardClass(on)} ${row}`}>
             {person.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- Supabase public URLs
               <img
                 src={person.photoUrl}
                 alt=""
-                className="size-14 shrink-0 rounded-full object-cover"
+                className="size-[85px] shrink-0 rounded-full object-cover"
               />
             ) : (
-              <Initials text={initials(person.name)} className="size-14 text-lg" />
+              <Initials text={initials(person.name)} className="size-[85px] text-2xl" />
             )}
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[16px] font-semibold">{person.name}</span>
+              <span className="block truncate text-[19px] leading-6 font-medium">
+                {person.name}
+              </span>
               {person.title ? (
-                <span className="block truncate text-[14px] text-muted">{person.title}</span>
+                <span className="mt-1 block truncate text-[15px] leading-5 font-medium text-muted">
+                  {person.title}
+                </span>
               ) : null}
               <button
                 type="button"
                 onClick={() => viewProfile(person)}
-                className="min-h-11 text-[14px] font-semibold text-ink underline underline-offset-2"
+                className="press -mb-2.5 min-h-11 text-[16px] font-medium"
                 aria-label={`View ${person.name}'s profile`}
               >
                 View profile
@@ -305,7 +356,12 @@ function SelectButton({
       <SelectedCheck />
     </span>
   ) : (
-    <button type="button" onClick={onSelect} aria-label={`Select ${label}`} className={pillOutline}>
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-label={`Select ${label}`}
+      className={`${pillOutline} h-[43px] border-line shadow-[0_2px_4px_rgba(0,0,0,0.12)]`}
+    >
       Select
     </button>
   );
@@ -325,7 +381,7 @@ function TimeStep({
   serviceIds: string[];
   staffId: string | null;
   turnstileSiteKey: string | null;
-  summary: { total: number; line: string };
+  summary: { total: number; count: number; minutes: number };
   onHeld: (startsAt: string, held: { expiresAt: string; staffId?: string }) => void;
 }) {
   const days = useMemo(() => dayStrip(new Date(), salon.timezone), [salon.timezone]);
@@ -432,8 +488,13 @@ function TimeStep({
 
   return (
     <>
-      <section aria-label="Date" className="-mx-4">
-        <div className="flex gap-2 overflow-x-auto px-4 pb-1" role="radiogroup" aria-label="Date">
+      {/* No original for this step: the cards, pills and bar of 08–12 (screen map). */}
+      <section aria-label="Date" className="-mx-[22px]">
+        <div
+          className="flex gap-[10px] overflow-x-auto px-[22px] pb-1"
+          role="radiogroup"
+          aria-label="Date"
+        >
           {days.map((day) => {
             const slots = byDay[day.date];
             const none = !loading && (slots === "error" || !slots || slots.length === 0);
@@ -449,35 +510,35 @@ function TimeStep({
                   setPicked({ key, date: day.date });
                   setTime(undefined);
                 }}
-                className={`flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-ds ${
-                  on ? "bg-ink text-white" : "border border-line bg-white"
-                } ${none && !on ? "opacity-40" : ""}`}
+                className={`${cardClass(on)} press flex h-[72px] w-[60px] shrink-0 flex-col items-center justify-center ${
+                  none && !on ? "opacity-40" : ""
+                }`}
               >
-                <span className="text-[12px] font-medium">{day.weekday}</span>
-                <span className="text-[18px] font-bold">{day.dayOfMonth}</span>
+                <span className="text-[14px] text-muted">{day.weekday}</span>
+                <span className="text-[21px] font-semibold">{day.dayOfMonth}</span>
               </button>
             );
           })}
         </div>
       </section>
 
-      <section aria-label="Time" aria-busy={loading} className="mt-5">
+      <section aria-label="Time" aria-busy={loading} className="mt-6">
         {loading ? (
-          <div className="grid grid-cols-3 gap-2" aria-label="Loading times">
+          <div className="grid grid-cols-3 gap-[10px]" aria-label="Loading times">
             {Array.from({ length: 9 }, (_, i) => (
-              <div key={i} className="h-11 animate-pulse rounded-full bg-white" />
+              <div key={i} className="h-[42px] animate-pulse rounded-full bg-white" />
             ))}
           </div>
         ) : daySlots === "error" ? (
-          <p className="text-[15px] text-danger">
+          <p className="text-[16px] text-danger">
             Couldn&apos;t load times. Check your connection and try again.
           </p>
         ) : times.length === 0 ? (
-          <p className="rounded-[16px] bg-white p-4 text-[15px] text-muted">
+          <p className={`${cardClass(false)} p-5 text-[16px] text-muted`}>
             No free times on this day
           </p>
         ) : (
-          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Time">
+          <div className="grid grid-cols-3 gap-[10px]" role="radiogroup" aria-label="Time">
             {times.map((startsAt) => {
               const on = selectedTime === startsAt;
               return (
@@ -487,8 +548,10 @@ function TimeStep({
                   role="radio"
                   aria-checked={on}
                   onClick={() => setTime(startsAt)}
-                  className={`min-h-11 rounded-full text-[15px] font-semibold ${
-                    on ? "bg-select text-white" : "border border-line bg-white"
+                  className={`press h-[42px] rounded-full text-[16px] font-medium ${
+                    on
+                      ? "bg-select text-white"
+                      : "border-[1.5px] border-line-strong bg-white text-ink"
                   }`}
                 >
                   {formatTime(startsAt, salon.timezone)}
@@ -498,12 +561,12 @@ function TimeStep({
           </div>
         )}
         {!turnstileSiteKey ? (
-          <p className="mt-3 text-[15px] text-danger">
+          <p className="mt-3 text-[16px] text-danger">
             Online booking is temporarily unavailable. Try again later.
           </p>
         ) : null}
         {error ? (
-          <p role="alert" className="mt-3 text-[15px] text-danger">
+          <p role="alert" className="mt-3 text-[16px] text-danger">
             {error}
           </p>
         ) : null}
@@ -511,7 +574,7 @@ function TimeStep({
       </section>
 
       <BottomBar label="Your booking">
-        <Total total={summary.total} line={summary.line} />
+        <Total total={summary.total} count={summary.count} minutes={summary.minutes} />
         <button
           type="button"
           disabled={!selectedTime || holding || !turnstileSiteKey}

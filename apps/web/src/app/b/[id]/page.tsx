@@ -1,44 +1,62 @@
-import { bookingLink, formatKes } from "@bookflow/shared";
+import { bookingLink } from "@bookflow/shared";
 import { CalendarPlus } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { SalonHeader } from "../../../components/salon-header";
-import { formatClock, formatShortDateTime } from "../../../lib/format";
+import { firstName, formatShortDateTime } from "../../../lib/format";
 import { directionsUrl, getMyBooking } from "../../../lib/my-booking";
 import { getPublicSalon } from "../../../lib/salon";
 import { ShareCard } from "./share-card";
 
 export const metadata: Metadata = { title: "Your booking · Bookflow", robots: { index: false } };
 
-/** Our own calendar-with-a-check illustration (about 96 px), in brand colours. */
+/** Our own line drawing of a calendar with a big check, in the style of original 21. */
 function BookedIllustration() {
   return (
-    <svg viewBox="0 0 96 96" className="size-24" aria-hidden="true">
-      <rect x="14" y="20" width="62" height="60" rx="10" fill="#ECE8FB" />
-      <rect x="14" y="20" width="62" height="16" rx="8" fill="#3A1FA8" />
-      <rect x="14" y="30" width="62" height="6" fill="#3A1FA8" />
-      {[26, 38, 50, 62].map((x) => (
-        <rect key={x} x={x} y="14" width="4" height="12" rx="2" fill="#16131F" />
-      ))}
-      {[46, 56, 66].map((y) =>
-        [24, 36, 48, 60].map((x) => (
-          <rect key={`${x}-${y}`} x={x} y={y} width="6" height="5" rx="1.5" fill="#C9C5D6" />
-        )),
-      )}
-      <circle cx="70" cy="70" r="18" fill="#5B45E0" />
+    <svg viewBox="2 2 92 84" className="h-[85px] w-[93px]" aria-hidden="true" fill="none">
+      <path d="M17 31l57-4 4 52-55 4z" fill="#F9C2AE" />
       <path
-        d="M61 70l6 6 12-13"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="4.5"
+        d="M14 28l57-4 4 50-56 5z"
+        fill="#fff"
+        stroke="#111"
+        strokeWidth="2.2"
+        strokeLinejoin="round"
+      />
+      <path d="M14 38l58-4" stroke="#111" strokeWidth="2" />
+      {[26, 36, 46, 56].map((x) => (
+        <path
+          key={x}
+          d={`M${x} 31c-3-1-3-8 1-8s3 6 1 8`}
+          stroke="#111"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          fill="#F3A98E"
+        />
+      ))}
+      {[47, 55, 63, 71].map((y) => (
+        <path key={y} d={`M19 ${y}l52-3`} stroke="#111" strokeWidth="0.8" opacity="0.6" />
+      ))}
+      {[27, 37, 47, 57].map((x) => (
+        <path key={x} d={`M${x} 42l1 34`} stroke="#111" strokeWidth="0.8" opacity="0.6" />
+      ))}
+      <path
+        d="M31 58l10 12 32-44"
+        stroke="#F3A98E"
+        strokeWidth="9"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M82 18l4-6M86 26l7-2M78 12l1-7"
-        stroke="#F0A030"
-        strokeWidth="3"
+        d="M31 58l10 12 32-44"
+        stroke="#111"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M80 16l4-6M84 24l7-2M76 10l1-7M8 40l-6-3M9 49l-6 1M10 57l-5 3"
+        stroke="#111"
+        strokeWidth="1.8"
         strokeLinecap="round"
       />
     </svg>
@@ -70,34 +88,32 @@ export default async function BookingPage(props: PageProps<"/b/[id]">) {
     <main className="mx-auto flex w-full max-w-[560px] flex-col pb-10">
       <SalonHeader
         name={booking.salon.name}
+        tagline={salon?.tagline ?? null}
         address={booking.salon.address}
         logoUrl={salon?.logoUrl ?? null}
       />
 
-      <div className="flex flex-col items-center gap-2 px-4 pt-6 pb-8 text-center">
+      <div className="flex flex-col items-center px-4 pt-[30px] text-center">
         <BookedIllustration />
-        <h1 className="mt-2 text-[24px] font-bold">
+        <h1 className="text-[24px] leading-[30px] font-bold">
           You&apos;re all set! <span aria-hidden="true">🎉</span>
         </h1>
-        <p className="text-[16px] text-muted">See you soon!</p>
+        <p className="mt-[37px] text-[18px] leading-6 font-medium">See you soon!</p>
       </div>
 
-      <section aria-label="Booking details" className="bg-surface px-4 py-5">
-        <p className="text-[16px] font-bold">
-          {formatShortDateTime(booking.starts_at, tz)} – {formatClock(booking.ends_at, tz)}
+      <section aria-label="Booking details" className="mt-[45px] bg-surface px-7 py-[19px]">
+        <p className="text-[15px] leading-6 font-bold">
+          {formatShortDateTime(booking.starts_at, tz)}
         </p>
-        <p className="mt-1 text-[15px]">
-          {services} – with {booking.staff_name}
-        </p>
-        <p className="mt-1 text-[14px] text-muted">
-          {formatKes(booking.total_kes)} · Pay at the salon
+        <p className="mt-0.5 text-[16px] leading-6 font-medium">
+          {services} - with {firstName(booking.staff_name)}
         </p>
       </section>
 
-      <div className="flex gap-3 px-4 pt-5">
+      <div className="flex gap-2.5 px-[7px] pt-[17px]">
         <a
           href={`/b/${booking.id}/ics`}
-          className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full border border-line bg-white text-[15px] font-semibold"
+          className="press flex h-[42px] flex-1 items-center justify-center gap-2.5 rounded-[10px] border border-line-strong bg-white text-[16px] font-semibold"
         >
           <CalendarPlus className="size-5" aria-hidden="true" /> Add to calendar
         </a>
@@ -106,23 +122,16 @@ export default async function BookingPage(props: PageProps<"/b/[id]">) {
             href={directions}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex min-h-12 flex-1 items-center justify-center rounded-full bg-ink text-[15px] font-semibold text-white"
+            className="press flex h-[42px] flex-1 items-center justify-center rounded-[10px] bg-ink text-[16px] font-semibold text-white"
           >
             Get directions
           </a>
         ) : null}
       </div>
 
-      <div className="px-4 pt-6">
+      <div className="mx-[31px] mt-[26px] bg-sand pb-4">
         <ShareCard salonName={booking.salon.name} link={bookingLink(booking.salon.slug)} />
       </div>
-
-      <Link
-        href={`/s/${booking.salon.slug}`}
-        className="mt-4 min-h-11 self-center py-3 text-[15px] font-semibold text-brand"
-      >
-        Back to {booking.salon.name}
-      </Link>
     </main>
   );
 }
