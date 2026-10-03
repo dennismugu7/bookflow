@@ -1,4 +1,4 @@
-import { parseGoogleMapsLink } from "@bookflow/shared";
+import { resolveMapsLink } from "@bookflow/shared";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
@@ -40,8 +40,32 @@ export default function LocationScreen() {
       });
   }, [salonId]);
 
-  const parsed = link.trim() ? parseGoogleMapsLink(link.trim()) : null;
-  const linkUnreadable = link.trim().length > 0 && parsed === null;
+  // "checking" while a short link is followed; the pin or null once known.
+  const [resolved, setResolved] = useState<Pin | "checking">(null);
+
+  useEffect(() => {
+    const url = link.trim();
+    if (!url) {
+      setResolved(null);
+      return;
+    }
+    let current = true;
+    setResolved("checking");
+    // Wait for typing or pasting to settle before following a short link.
+    const timer = setTimeout(() => {
+      void resolveMapsLink(url).then((result) => {
+        if (current) setResolved(result);
+      });
+    }, 300);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [link]);
+
+  const checking = resolved === "checking";
+  const parsed = checking ? null : resolved;
+  const linkUnreadable = link.trim().length > 0 && !checking && parsed === null;
 
   async function save() {
     if (!salonId || address === undefined) return;
@@ -75,7 +99,7 @@ export default function LocationScreen() {
           title="Save location"
           onPress={() => void save()}
           loading={saving}
-          disabled={address === undefined}
+          disabled={address === undefined || checking}
         />
       }
     >
@@ -100,7 +124,11 @@ export default function LocationScreen() {
             keyboardType="url"
             hint="In Google Maps, open your salon, tap Share and copy the link."
           />
-          {parsed ? (
+          {checking ? (
+            <Text style={styles.checking} accessibilityLiveRegion="polite">
+              Checking link…
+            </Text>
+          ) : parsed ? (
             <Text style={styles.found} accessibilityLiveRegion="polite">
               Pin found ✓
             </Text>
@@ -133,6 +161,7 @@ export default function LocationScreen() {
 }
 
 const styles = StyleSheet.create({
+  checking: { ...type.caption, color: colors.muted },
   found: { ...type.bodyStrong, color: colors.success },
   notFound: { ...type.caption, color: colors.attentionText },
   link: { minHeight: minTouch, justifyContent: "center", alignSelf: "flex-start" },

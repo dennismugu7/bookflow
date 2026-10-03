@@ -1,21 +1,15 @@
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { pickAndUploadImage, publicMediaUrl, removeImage } from "../../../lib/media";
+import { useImageSlot } from "../../../lib/media";
 import { useSession } from "../../../lib/session";
-import { validateBrand, type BrandErrors, type MediaKind } from "../../../lib/setup";
+import { validateBrand, type BrandErrors } from "../../../lib/setup";
 import { getSupabase } from "../../../lib/supabase";
 import { colors, space, type } from "../../../theme";
 import { Button, Card, Header, ImageSlot, Screen, TextField } from "../../../ui";
 
-type Brand = {
-  name: string;
-  tagline: string;
-  about: string;
-  logoPath: string | null;
-  bannerPath: string | null;
-};
+type Brand = { name: string; tagline: string; about: string };
 
 export default function BrandScreen() {
   const { membership, reloadMembership } = useSession();
@@ -23,13 +17,38 @@ export default function BrandScreen() {
   const [brand, setBrand] = useState<Brand>();
   const [errors, setErrors] = useState<BrandErrors & { form?: string }>({});
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState<MediaKind>();
+
+  // Each image saves its path as soon as it has uploaded, independent of "Save brand".
+  const saveLogo = useCallback(
+    async (path: string) => {
+      const { error } = await getSupabase()
+        .from("salons")
+        .update({ logo_path: path })
+        .eq("id", salonId!);
+      if (error) throw error;
+    },
+    [salonId],
+  );
+  const saveBanner = useCallback(
+    async (path: string) => {
+      const { error } = await getSupabase()
+        .from("salons")
+        .update({ banner_path: path })
+        .eq("id", salonId!);
+      if (error) throw error;
+    },
+    [salonId],
+  );
+  const logo = useImageSlot(salonId, "logo", saveLogo);
+  const banner = useImageSlot(salonId, "banner", saveBanner);
+  const loadLogo = logo.load;
+  const loadBanner = banner.load;
 
   useEffect(() => {
     if (!salonId) return;
     void getSupabase()
       .from("salons")
-      .select("name, tagline, about, logo_path, banner_path")
+      .select("name, tagline, about, logo_path, banner_path, updated_at")
       .eq("id", salonId)
       .single()
       .then(({ data, error }) => {
@@ -37,37 +56,11 @@ export default function BrandScreen() {
           setErrors({ form: "Couldn't load your brand. Go back and try again." });
           return;
         }
-        setBrand({
-          name: data.name,
-          tagline: data.tagline ?? "",
-          about: data.about ?? "",
-          logoPath: data.logo_path,
-          bannerPath: data.banner_path,
-        });
+        setBrand({ name: data.name, tagline: data.tagline ?? "", about: data.about ?? "" });
+        loadLogo(data.logo_path, data.updated_at);
+        loadBanner(data.banner_path, data.updated_at);
       });
-  }, [salonId]);
-
-  async function changeImage(kind: "logo" | "banner") {
-    if (!salonId || !brand) return;
-    setUploading(kind);
-    setErrors({});
-    try {
-      const path = await pickAndUploadImage(salonId, kind);
-      if (!path) return;
-      const change = kind === "logo" ? { logo_path: path } : { banner_path: path };
-      const { error } = await getSupabase().from("salons").update(change).eq("id", salonId);
-      if (error) throw error;
-      const old = kind === "logo" ? brand.logoPath : brand.bannerPath;
-      setBrand(
-        (b) => b && (kind === "logo" ? { ...b, logoPath: path } : { ...b, bannerPath: path }),
-      );
-      void removeImage(old);
-    } catch {
-      setErrors({ form: "Couldn't upload the photo. Check your connection and try again." });
-    } finally {
-      setUploading(undefined);
-    }
-  }
+  }, [salonId, loadLogo, loadBanner]);
 
   async function save() {
     if (!salonId || !brand) return;
@@ -92,7 +85,8 @@ export default function BrandScreen() {
     router.back();
   }
 
-  const empty = brand && !brand.logoPath && !brand.bannerPath && !brand.tagline && !brand.about;
+  const empty = brand && !logo.uri && !banner.uri && !brand.tagline && !brand.about;
+  const imageError = logo.error ?? banner.error;
 
   return (
     <Screen
@@ -115,17 +109,17 @@ export default function BrandScreen() {
           <ImageSlot
             label="Banner"
             shape="banner"
-            uri={publicMediaUrl(brand.bannerPath)}
-            busy={uploading === "banner"}
-            onPress={() => void changeImage("banner")}
+            uri={banner.uri}
+            busy={banner.uploading}
+            onPress={() => void banner.change()}
           />
           <View style={styles.logoRow}>
             <ImageSlot
               label="Logo"
               shape="square"
-              uri={publicMediaUrl(brand.logoPath)}
-              busy={uploading === "logo"}
-              onPress={() => void changeImage("logo")}
+              uri={logo.uri}
+              busy={logo.uploading}
+              onPress={() => void logo.change()}
             />
             <Text style={[type.caption, styles.logoHint]}>
               Square works best. We resize photos before uploading.
@@ -158,6 +152,7 @@ export default function BrandScreen() {
           />
         </>
       ) : null}
+      {imageError ? <Text style={styles.formError}>{imageError}</Text> : null}
       {errors.form ? <Text style={styles.formError}>{errors.form}</Text> : null}
     </Screen>
   );
