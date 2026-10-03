@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 /**
  * The whole client journey against a local Supabase (`pnpm exec supabase start`) seeded with
  * e2e/seed-booking.sql: salon page → time → hold → email code (read from the local mailbox) →
- * details → "You're booked". Opt-in, because it needs the full local stack and Cloudflare's
+ * details → "You're all set!". Opt-in, because it needs the full local stack and Cloudflare's
  * Turnstile test keys: E2E_BOOKING=1 pnpm --filter web test:e2e
  */
 test.skip(!process.env.E2E_BOOKING, "needs the local Supabase stack; set E2E_BOOKING=1");
@@ -36,17 +36,24 @@ test("a client books with an email code", async ({ page }) => {
 
   await page.goto("/s/e2e-salon");
   await expect(page.getByRole("heading", { name: "E2E Salon" })).toBeVisible();
-  await page.getByRole("checkbox", { name: /Trim/ }).check();
-  await page.getByRole("link", { name: "Choose a time" }).click();
+  await page.getByRole("link", { name: "Book Trim" }).click();
 
-  await expect(page.getByRole("heading", { name: "Choose a time" })).toBeVisible();
-  const firstTime = page.getByRole("button", { name: /^\d{1,2}:\d{2} (am|pm)$/ }).first();
-  await firstTime.click();
+  // Trim is preselected; with one professional the flow goes straight to the time.
+  await expect(page.getByRole("heading", { name: "Select services" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Trim/, pressed: true })).toBeVisible();
+  await page.getByRole("button", { name: "Continue" }).click();
+
+  await expect(page.getByRole("heading", { name: "Pick a time" })).toBeVisible();
+  await page
+    .getByRole("radio", { name: /^\d{1,2}:\d{2} (am|pm)$/ })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Hold this time" }).click();
 
   await expect(page.getByRole("heading", { name: "Confirm your booking" })).toBeVisible({
     timeout: 20_000,
   });
-  await expect(page.getByText(/We're holding this time for \d:\d{2}/)).toBeVisible();
+  await expect(page.getByText(/held for \d:\d{2}/)).toBeVisible();
   await expect(page.getByText("Pay at the salon. No payment is taken online.")).toBeVisible();
 
   // The hold token lives only in an httpOnly cookie that page scripts can't read (ADR 0008).
@@ -59,15 +66,17 @@ test("a client books with an email code", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
   await page.getByLabel("6-digit code").fill(await latestCode(email));
 
-  await expect(page.getByRole("heading", { name: "Almost done" })).toBeVisible({ timeout: 20_000 });
-  await page.getByLabel("What should we call you?").fill("Wanjiru Otieno");
+  await expect(page.getByRole("heading", { name: "What should we call you?" })).toBeVisible({
+    timeout: 20_000,
+  });
+  await page.getByLabel("Your name").fill("Wanjiru Otieno");
   await page.getByLabel("Phone number").fill("700 000 041");
   await page.getByRole("button", { name: "Confirm booking" }).click();
 
-  await expect(page.getByRole("heading", { name: "You're booked" })).toBeVisible({
+  await expect(page.getByRole("heading", { name: /You're all set!/ })).toBeVisible({
     timeout: 20_000,
   });
-  await expect(page.getByText("With Njeri")).toBeVisible();
+  await expect(page.getByText("Trim – with Njeri")).toBeVisible();
   await expect(page.getByRole("link", { name: "Add to calendar" })).toBeVisible();
 
   const ics = await page.request.get(`${new URL(page.url()).pathname}/ics`);

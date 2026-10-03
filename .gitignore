@@ -59,3 +59,6 @@ supabase/.branches/
 
 # Vercel
 *.pem
+
+# Local design references (not for the public repo: third-party photos)
+/design-ref/

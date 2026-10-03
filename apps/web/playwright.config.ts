@@ -11,7 +11,10 @@ export default defineConfig({
   },
   projects: [{ name: "mobile-chrome", use: { ...devices["Pixel 7"] } }],
   webServer: {
-    command: `pnpm exec next dev --port ${port}`,
+    // E2E_PROD=1 runs the production build (run `pnpm build` first): no dev overlay, real performance.
+    command: process.env.E2E_PROD
+      ? `pnpm exec next start --port ${port}`
+      : `pnpm exec next dev --port ${port}`,
     url: `http://localhost:${port}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

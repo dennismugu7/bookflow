@@ -1,5 +1,6 @@
 "use client";
 
+import { Clock } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useState } from "react";
@@ -14,12 +15,17 @@ type Props = {
   expiresAt: string;
   pickTimeHref: string;
   signInFailed: boolean;
+  /** Banner lines: "Mon 5 Oct, 10:45" and "Silk press – KES 1,500". */
+  hold: { when: string; what: string };
+  /** "Njeri will see this on the day." */
+  seenBy: string;
   user: { email: string; name: string } | null;
 };
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const button =
-  "flex min-h-[52px] w-full items-center justify-center rounded-ds text-base font-bold disabled:opacity-50";
+  "flex min-h-[52px] w-full items-center justify-center rounded-full text-base font-semibold disabled:opacity-40";
+const card = "mx-4 mt-4 flex flex-col gap-4 rounded-[16px] bg-white p-5";
 const input =
   "h-[52px] w-full rounded-ds border border-line bg-white px-4 text-[15px] outline-none focus:border-2 focus:border-select";
 
@@ -32,13 +38,21 @@ function useNow(intervalMs = 1000) {
   return now;
 }
 
-export function ConfirmSteps({ slug, expiresAt, pickTimeHref, signInFailed, user }: Props) {
+export function ConfirmSteps({
+  slug,
+  expiresAt,
+  pickTimeHref,
+  signInFailed,
+  hold,
+  seenBy,
+  user,
+}: Props) {
   const now = useNow();
   const left = countdown(expiresAt, now);
 
   if (left.seconds === 0) {
     return (
-      <section className="mt-6 flex flex-col gap-3" aria-live="polite">
+      <section className={card} aria-live="polite">
         <h2 className="text-[22px] font-bold">Your hold expired</h2>
         <p className="text-[15px] text-muted">
           We hold a time for 10 minutes. Pick a time again to continue.
@@ -52,15 +66,23 @@ export function ConfirmSteps({ slug, expiresAt, pickTimeHref, signInFailed, user
 
   return (
     <>
-      <p
-        className="mt-4 rounded-ds bg-attention-tint px-4 py-3 text-[15px] font-bold text-attention-text"
-        role="timer"
-        aria-live="off"
-      >
-        We&apos;re holding this time for {left.label}
+      <div className="flex items-center gap-4 bg-gradient-to-r from-[#FBD34D] to-[#F0A030] px-5 py-3 text-ink">
+        <Clock className="size-7 shrink-0" aria-hidden="true" />
+        <div className="min-w-0 text-[15px]">
+          <p>
+            {hold.when} · held for{" "}
+            <strong role="timer" aria-live="off" aria-label={`${left.label} left`}>
+              {left.label}
+            </strong>
+          </p>
+          <p className="truncate">{hold.what}</p>
+        </div>
+      </div>
+      <p className="mx-4 mt-2 text-[13px] text-muted">
+        Pay at the salon. No payment is taken online.
       </p>
       {user ? (
-        <Details slug={slug} user={user} pickTimeHref={pickTimeHref} />
+        <Details slug={slug} user={user} pickTimeHref={pickTimeHref} seenBy={seenBy} />
       ) : (
         <SignIn signInFailed={signInFailed} />
       )}
@@ -144,7 +166,7 @@ function SignIn({ signInFailed }: { signInFailed: boolean }) {
 
   if (sentTo) {
     return (
-      <section className="mt-6 flex flex-col gap-4" aria-labelledby="code-heading">
+      <section className={card} aria-labelledby="code-heading">
         <div>
           <h2 id="code-heading" className="text-[22px] font-bold">
             Check your email
@@ -220,7 +242,7 @@ function SignIn({ signInFailed }: { signInFailed: boolean }) {
   }
 
   return (
-    <section className="mt-6 flex flex-col gap-4" aria-labelledby="signin-heading">
+    <section className={card} aria-labelledby="signin-heading">
       <div>
         <h2 id="signin-heading" className="text-[22px] font-bold">
           Sign in to confirm
@@ -277,10 +299,12 @@ function Details({
   slug,
   user,
   pickTimeHref,
+  seenBy,
 }: {
   slug: string;
   user: { email: string; name: string };
   pickTimeHref: string;
+  seenBy: string;
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -294,7 +318,7 @@ function Details({
 
   if (state.next === "expired") {
     return (
-      <section className="mt-6 flex flex-col gap-3" aria-live="polite">
+      <section className={card} aria-live="polite">
         <h2 className="text-[22px] font-bold">Your hold expired</h2>
         <p className="text-[15px] text-muted">{state.message}</p>
         <Link href={pickTimeHref} className={`${button} bg-ink text-white`}>
@@ -307,15 +331,13 @@ function Details({
   const shownPhoneError = phoneError ?? state.fieldErrors?.phone;
 
   return (
-    <section className="mt-6 flex flex-col gap-4" aria-labelledby="details-heading">
+    <section className={card} aria-labelledby="details-heading">
       <p className="text-[13px] font-semibold text-success">Signed in as {user.email}</p>
       <div>
         <h2 id="details-heading" className="text-[22px] font-bold">
-          Almost done
+          What should we call you?
         </h2>
-        <p className="mt-1 text-[15px] text-muted">
-          The salon will see these details on your booking.
-        </p>
+        <p className="mt-1 text-[15px] text-muted">{seenBy}</p>
       </div>
       <form
         action={formAction}
@@ -330,7 +352,7 @@ function Details({
         <input type="hidden" name="slug" value={slug} />
         <div className="flex flex-col gap-2">
           <label htmlFor="fullName" className="text-sm font-bold">
-            What should we call you?
+            Your name
           </label>
           <input
             id="fullName"

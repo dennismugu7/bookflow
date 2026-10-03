@@ -1,12 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Urbanist } from "next/font/google";
 import "./globals.css";
 
 import { WEB_BASE_URL } from "@bookflow/shared";
 
-const jakarta = Plus_Jakarta_Sans({
+// Urbanist replaced Plus Jakarta Sans on 2026-10-03 (docs/design/README.md).
+const urbanist = Urbanist({
   subsets: ["latin"],
-  variable: "--font-jakarta",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-urbanist",
   display: "swap",
 });
 
@@ -20,7 +22,7 @@ export const viewport: Viewport = { themeColor: "#ffffff", width: "device-width"
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${jakarta.variable} h-full antialiased`}>
+    <html lang="en" className={`${urbanist.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );

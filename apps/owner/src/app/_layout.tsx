@@ -1,11 +1,10 @@
 import {
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
+  Urbanist_400Regular,
+  Urbanist_500Medium,
+  Urbanist_600SemiBold,
+  Urbanist_700Bold,
   useFonts,
-} from "@expo-google-fonts/plus-jakarta-sans";
+} from "@expo-google-fonts/urbanist";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -46,11 +45,10 @@ export default function RootLayout() {
  */
 function RootNavigator() {
   const [fontsLoaded, fontError] = useFonts({
-    PlusJakartaSans_400Regular,
-    PlusJakartaSans_500Medium,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold,
+    Urbanist_400Regular,
+    Urbanist_500Medium,
+    Urbanist_600SemiBold,
+    Urbanist_700Bold,
   });
   const { session, membership, membershipError, reloadMembership } = useSession();
 
@@ -111,7 +109,7 @@ function ConfigError({ message }: { message: string }) {
 }
 
 const styles = StyleSheet.create({
-  // System font: this screen can appear before Plus Jakarta Sans has loaded.
+  // System font: this screen can appear before Urbanist has loaded.
   plainTitle: { fontSize: 22, fontWeight: "700", color: colors.ink },
   plainBody: { fontSize: 15, color: colors.muted },
   plainCaption: { fontSize: 13, color: colors.muted },

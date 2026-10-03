@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@bookflow/shared": "workspace:*",
-    "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
+    "@expo-google-fonts/urbanist": "^0.4.2",
     "@expo/vector-icons": "^15.1.1",
     "@supabase/supabase-js": "^2.117.2",
     "expo": "~57.0.26",
