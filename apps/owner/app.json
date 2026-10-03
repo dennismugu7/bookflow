@@ -3,7 +3,7 @@
     "name": "Bookflow Owner",
     "slug": "bookflow-owner",
     "owner": "mugulabs",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -33,7 +33,15 @@
         }
       ],
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Bookflow uses your photos for your salon's logo, banner and team photos.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -5,7 +5,9 @@ import { getSupabase } from "./supabase";
 
 export type Membership = {
   role: "owner" | "staff";
-  salon: { id: string; name: string; slug: string; timezone: string };
+  /** The staff profile this login acts as, if any. */
+  staffId: string | null;
+  salon: { id: string; name: string; slug: string; timezone: string; isPublished: boolean };
 };
 
 type SessionState = {
@@ -50,7 +52,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // RLS returns only this user's rows; salons the user owns are readable even when unpublished.
     const { data, error } = await getSupabase()
       .from("salon_members")
-      .select("role, salon:salons(id, name, slug, timezone)")
+      .select("role, staff_id, salon:salons(id, name, slug, timezone, is_published)")
       .eq("user_id", userId)
       .order("created_at")
       .limit(1)
@@ -59,7 +61,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setMembershipError(true);
       return;
     }
-    setMembership(data?.salon ? { role: data.role, salon: data.salon } : null);
+    setMembership(
+      data?.salon
+        ? {
+            role: data.role,
+            staffId: data.staff_id,
+            salon: {
+              id: data.salon.id,
+              name: data.salon.name,
+              slug: data.salon.slug,
+              timezone: data.salon.timezone,
+              isPublished: data.salon.is_published,
+            },
+          }
+        : null,
+    );
   }, [userId]);
 
   useEffect(() => {
