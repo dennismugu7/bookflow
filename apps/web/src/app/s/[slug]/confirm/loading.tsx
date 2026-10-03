@@ -11,10 +11,10 @@ export default function ConfirmLoading() {
           Loading
         </p>
         <div className="relative h-[121px] pt-[29px] pl-[53px]" aria-hidden="true">
-          <span className="absolute top-0 left-0 flex h-[45px] w-[44px] items-center justify-center bg-surface">
+          <span className="absolute top-0 left-0 flex size-11 items-center justify-center">
             <ArrowLeft className="size-6" strokeWidth={2.25} />
           </span>
-          <span className="absolute top-0 right-0 flex h-[51px] w-[52px] items-center justify-center bg-surface">
+          <span className="absolute top-0 right-0 flex size-11 items-center justify-center">
             <X className="size-6" strokeWidth={2.25} />
           </span>
           <span className={`${bar} h-6 w-36`} />

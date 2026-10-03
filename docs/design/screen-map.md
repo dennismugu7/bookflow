@@ -36,6 +36,7 @@ The images are in `design-ref/` (git-ignored; ask Dennis if missing). **For layo
 - No "Returning clients skip this" footnote on `18` until returning clients really skip that step (phase 3b) (Dennis, 2026-10-03).
 - `18` asks for "First name"; the value is stored as the client's `full_name` (Dennis, 2026-10-03).
 - On "You're all set", "Get directions" takes the black button slot until "View booking" exists (phase 3b) (Dennis, 2026-10-03).
+- The back arrow and × on confirm have no grey square behind them (the shade in `16`/`18` was a mistake); they keep a 44 px tap area with a soft pressed tint (Dennis, 2026-10-03).
 
 ## Owner app (`apps/owner`), images in `design-ref/original-owner/`
 To be added before the next owner UI task.

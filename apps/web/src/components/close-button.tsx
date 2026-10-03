@@ -8,7 +8,7 @@ import { useEffect } from "react";
  * × in the booking flow: leaves for the salon page at once and releases any hold this visitor has
  * in the background (`keepalive` lets the request finish after the page changes).
  */
-export function CloseButton({ salonHref, tile = false }: { salonHref: string; tile?: boolean }) {
+export function CloseButton({ salonHref }: { salonHref: string }) {
   const router = useRouter();
   useEffect(() => {
     router.prefetch(salonHref);
@@ -23,9 +23,7 @@ export function CloseButton({ salonHref, tile = false }: { salonHref: string; ti
         );
         router.push(salonHref);
       }}
-      className={`press flex items-center justify-center ${
-        tile ? "h-[51px] w-[52px] bg-surface" : "size-11"
-      }`}
+      className="press flex size-11 items-center justify-center rounded-full active:bg-ink/5"
     >
       <X className="size-[26px]" strokeWidth={2.5} />
     </button>

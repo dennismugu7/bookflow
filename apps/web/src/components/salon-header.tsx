@@ -22,13 +22,12 @@ export function SalonIdentity({
   as: Name = "p",
 }: Identity & { as?: "h1" | "p" }) {
   const area = shortArea(address);
+  const line = tagline?.trim() || null;
   return (
     <div className="flex items-center gap-[30px]">
       <div className="min-w-0">
         <Name className="text-[22px] leading-7 font-semibold">{name}</Name>
-        {tagline ? (
-          <p className="mt-0.5 text-[16px] leading-5 font-medium text-ink">{tagline}</p>
-        ) : null}
+        {line ? <p className="mt-0.5 text-[16px] leading-5 font-medium text-ink">{line}</p> : null}
         {area ? (
           <p className="mt-1.5 text-[11px] leading-4 font-medium tracking-[0.08em] text-muted">
             {area}
@@ -65,7 +64,7 @@ export function SalonHeader({ backHref, close, ...identity }: Props) {
         <Link
           href={backHref}
           aria-label="Back"
-          className="press absolute top-0 left-0 flex h-[45px] w-[44px] items-center justify-center bg-surface"
+          className="press absolute top-0 left-0 flex size-11 items-center justify-center rounded-full active:bg-ink/5"
         >
           <ArrowLeft className="size-[26px]" strokeWidth={2.5} />
         </Link>

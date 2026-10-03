@@ -47,7 +47,7 @@ export default async function ConfirmPage(props: PageProps<"/s/[slug]/confirm">)
           address={salon.address}
           logoUrl={salon.logoUrl}
           backHref={pickTime}
-          close={<CloseButton salonHref={`/s/${slug}`} tile />}
+          close={<CloseButton salonHref={`/s/${slug}`} />}
         />
         <ConfirmSteps
           slug={slug}
