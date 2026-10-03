@@ -46,8 +46,8 @@ jobs:
       - name: Write the variables to EAS
         run: |
           for environment in preview development; do
-            eas env:create "$environment" --name EXPO_PUBLIC_SUPABASE_URL --value "$SUPABASE_URL" \
-              --visibility plaintext --scope project --force --non-interactive
-            eas env:create "$environment" --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "$SUPABASE_ANON_KEY" \
-              --visibility plaintext --scope project --force --non-interactive
+            eas env:set "$environment" --name EXPO_PUBLIC_SUPABASE_URL --value "$SUPABASE_URL" \
+              --visibility plaintext --scope project --non-interactive
+            eas env:set "$environment" --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "$SUPABASE_ANON_KEY" \
+              --visibility plaintext --scope project --non-interactive
           done
