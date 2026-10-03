@@ -39,30 +39,28 @@ select extensions.dblink_exec('setup', $fixtures$
   values ('0a000000-0000-4000-8000-0000000000aa', '0b000000-0000-4000-8000-0000000000aa', '0c000000-0000-4000-8000-0000000000aa');
 $fixtures$);
 
--- Visitor A holds 10:00 and keeps the transaction open.
+-- Visitor A's hold (made by our server, ADR 0008) holds 10:00 and keeps the transaction open.
 select extensions.dblink_connect('visitor_a', (select conn from race_conn));
 select extensions.dblink_exec('visitor_a', $$
   begin;
-  set local role anon;
-  set local request.headers = '{"x-forwarded-for":"192.0.2.201"}';
+  set local role service_role;
 $$);
 select * from extensions.dblink('visitor_a', $$
   select hold_id::text from public.create_hold('race-salon', array['0c000000-0000-4000-8000-0000000000aa']::uuid[],
     ((current_date + 7) + time '10:00') at time zone 'Africa/Nairobi',
-    '0b000000-0000-4000-8000-0000000000aa', 'race-visitor-a-000001')
+    '0b000000-0000-4000-8000-0000000000aa', 'race-visitor-a-000001', '192.0.2.201')
 $$) as t (hold_id text);
 
 -- Visitor B asks for the same slot before A commits. A's row is invisible to B's availability
 -- check, so B gets as far as the insert and must wait on the exclusion constraint.
 select extensions.dblink_connect('visitor_b', (select conn from race_conn));
 select extensions.dblink_exec('visitor_b', $$
-  set request.headers = '{"x-forwarded-for":"192.0.2.202"}';
-  set role anon;
+  set role service_role;
 $$);
 select extensions.dblink_send_query('visitor_b', $$
   select hold_id::text from public.create_hold('race-salon', array['0c000000-0000-4000-8000-0000000000aa']::uuid[],
     ((current_date + 7) + time '10:00') at time zone 'Africa/Nairobi',
-    '0b000000-0000-4000-8000-0000000000aa', 'race-visitor-b-000001')
+    '0b000000-0000-4000-8000-0000000000aa', 'race-visitor-b-000001', '192.0.2.202')
 $$);
 select pg_sleep(0.5);
 

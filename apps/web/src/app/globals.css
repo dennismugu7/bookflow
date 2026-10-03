@@ -1,24 +1,59 @@
 @import "tailwindcss";
 
+/* Design-system tokens (docs/design/bookflow-design-system.png). The design is light only. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --brand: #3a1fa8;
+  --select: #5b45e0;
+  --ink: #16131f;
+  --muted: #5e5a6b;
+  --surface: #f6f5fa;
+  --success: #1e7f4f;
+  --attention: #f0a030;
+  --danger: #b42318;
+  --border: #e2e0ea;
+  --border-strong: #c9c5d6;
+  --success-tint: #e3f3ea;
+  --attention-tint: #fcefd9;
+  --attention-text: #7a4a00;
+  --brand-tint: #ece8fb;
+  --danger-tint: #fce8e6;
+  color-scheme: light;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
+  --color-brand: var(--brand);
+  --color-select: var(--select);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-surface: var(--surface);
+  --color-success: var(--success);
+  --color-attention: var(--attention);
+  --color-danger: var(--danger);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-success-tint: var(--success-tint);
+  --color-attention-tint: var(--attention-tint);
+  --color-attention-text: var(--attention-text);
+  --color-brand-tint: var(--brand-tint);
+  --color-danger-tint: var(--danger-tint);
+  --radius-ds: 12px;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: system-ui, sans-serif;
+  background: #ffffff;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

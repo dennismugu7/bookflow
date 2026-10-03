@@ -48,7 +48,6 @@ values ('a0000000-0000-4000-8000-000000000001', 'Name Set By Owner', '+254700000
 
 set local role anon;
 set local request.jwt.claims = '{"role":"anon"}';
-set local request.headers = '{"x-forwarded-for":"192.0.2.50"}';
 
 -- Availability ----------------------------------------------------------------
 
@@ -92,26 +91,34 @@ select throws_ok($$ select * from public.get_availability('late-salon',
 
 -- Holds -------------------------------------------------------------------------
 
+-- Holds are created by our server with the secret key and the client's address (ADR 0008).
+reset role;
+set local role service_role;
+set local request.jwt.claims = '{"role":"service_role"}';
+
 select throws_ok($$ select * from public.create_hold('late-salon', array['c0000000-0000-4000-8000-000000000001']::uuid[],
   ((current_date + 7) + time '12:00') at time zone 'Africa/Nairobi',
-  'b0000000-0000-4000-8000-000000000001', 'has spaces and !punctuation') $$,
+  'b0000000-0000-4000-8000-000000000001', 'has spaces and !punctuation', '192.0.2.50') $$,
   'BF400', null, 'a token with unsupported characters is rejected');
 
 select throws_ok($$ select * from public.create_hold('draft-salon', array['c0000000-0000-4000-8000-000000000004']::uuid[],
   ((current_date + 7) + time '12:00') at time zone 'Africa/Nairobi',
-  'b0000000-0000-4000-8000-000000000004', 'draft-token-0000000001') $$,
+  'b0000000-0000-4000-8000-000000000004', 'draft-token-0000000001', '192.0.2.50') $$,
   'BF404', null, 'an unpublished salon cannot be held');
 
 select lives_ok($$ select * from public.create_hold('late-salon', array['c0000000-0000-4000-8000-000000000001']::uuid[],
   ((current_date + 7) + time '12:00') at time zone 'Africa/Nairobi',
-  'b0000000-0000-4000-8000-000000000001', 'first-visitor-00000001') $$,
+  'b0000000-0000-4000-8000-000000000001', 'first-visitor-00000001', '192.0.2.50') $$,
   'a visitor holds 12:00');
 select lives_ok($$ select public.release_hold('first-visitor-00000001') $$, 'and releases it');
 select lives_ok($$ select * from public.create_hold('late-salon', array['c0000000-0000-4000-8000-000000000001']::uuid[],
   ((current_date + 7) + time '12:00') at time zone 'Africa/Nairobi',
-  'b0000000-0000-4000-8000-000000000001', 'second-visitor-0000001') $$,
+  'b0000000-0000-4000-8000-000000000001', 'second-visitor-0000001', '192.0.2.50') $$,
   'a released time can be held by someone else');
 
+reset role;
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
 select throws_ok($$ select count(*) from private.hold_log $$,
   '42501', null, 'visitors cannot read the hold log');
 

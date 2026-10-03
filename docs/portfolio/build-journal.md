@@ -93,6 +93,25 @@ Entry format: **Context → Challenge → What we did → Outcome.** Decisions w
 - **Pattern worth noting:** three external sign-ups failed in one day (Meta, a Google account, the free email limits). Each time the fix was to find a route that didn't depend on that approval, rather than wait.
 - **Milestone:** Phase 1 complete on day 2 (planned for 12 to 23 Oct).
 
+### Phase 2a: owner sign-in and the app shell (PRs #10 and #11)
+- **What we did:** owners sign in with a 6-digit email code (no passwords to leak or reset), create their salon with a live preview of its booking link, and share it from the phone's share sheet. The theme comes straight from the design system; the session is stored in Android's secure storage, split into chunks because each item holds at most 2 KB.
+- **Challenge:** the first over-the-air update was published before the Supabase settings reached EAS, so the app opened unconfigured. The settings-sync workflow had also skipped installing dependencies. **Fix:** PR #11, then the update was re-published.
+- **Lesson:** configuration should be a precondition the pipeline checks, not an order of steps someone has to remember. The workflows now fail with a clear message when a value is missing.
+
+### Phase 2b: set up the salon and go live (PR #12)
+- **What we did:** brand (logo and banner, resized on the phone before upload), services, team, opening hours and location. **Publishing is checked by the database:** `set_salon_published` refuses a salon without bookable services, a team and hours, and a trigger blocks any direct change to `is_published`, so no screen can skip the checks. Photos go into a public bucket where each salon's folder is writable only by its owner.
+- **Testing on the phone found two bugs** that the automated tests couldn't: a picked image stayed grey until you left the screen, and links shared from the Google Maps app weren't understood.
+
+### Fix 1: image previews and short Maps links (PR #13)
+- **Images:** the slot only rendered the uploaded file. **Fix:** show the local file at once, then switch to the uploaded one with a cache-busting version so a replaced logo never shows the old copy.
+- **Maps:** we followed the short `maps.app.goo.gl` link and read coordinates from where it led. All tests passed.
+
+### Fix 2: Google Maps links point to a place, not coordinates (PR #14)
+- **What happened:** Dennis pasted a real link from his phone and it still failed. The real redirect goes to `/maps/place/<name>/data=…` with a place ID and **no coordinates at all**. Fix 1's tests passed because their sample URLs had coordinates, so the tests encoded our assumption rather than Google's behaviour.
+- **Decision:** we don't need coordinates. We store the owner's own link (it opens the exact place for directions), show the place name so the owner can confirm it's right, and the web page uses Google's keyless map embed. Free, and simpler than what we had.
+- **Lesson:** a test fixture is a claim about the outside world. Capture a real sample before writing one. The acceptance test now uses the actual redirect captured from Dennis's phone.
+- **Milestone:** Phase 2b complete and verified on the phone on day 2 (3 Oct), about 10 days ahead of plan.
+
 ---
 
 ## Evidence to capture as we go

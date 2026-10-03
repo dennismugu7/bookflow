@@ -1,3 +1,4 @@
+import type { Database } from "@bookflow/shared";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
@@ -8,7 +9,7 @@ export async function createClient() {
   const env = getEnv();
   const cookieStore = await cookies();
 
-  return createServerClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+  return createServerClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -19,7 +20,7 @@ export async function createClient() {
             cookieStore.set(name, value, options);
           }
         } catch {
-          // Server Components can't set cookies. Session refresh will live in the proxy once auth lands.
+          // Server Components can't set cookies; src/proxy.ts refreshes the session instead.
         }
       },
     },

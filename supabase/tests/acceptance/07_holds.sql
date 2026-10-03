@@ -1,5 +1,5 @@
 begin;
-select plan(15);
+select plan(19);
 
 insert into public.salons (id, slug, name, is_published, timezone)
 values ('a0000000-0000-4000-8000-000000000001', 'salon-a', 'Salon A', true, 'Africa/Nairobi');
@@ -14,38 +14,59 @@ insert into public.staff_services (salon_id, staff_id, service_id) values
   ('a0000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000001', 'c0000000-0000-4000-8000-000000000001'),
   ('a0000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000002', 'c0000000-0000-4000-8000-000000000001');
 
+-- Holds are created only by the server (ADR 0008).
 set local role anon;
 set local request.jwt.claims = '{"role":"anon"}';
-set local request.headers = '{"x-forwarded-for":"203.0.113.9, 10.0.0.1"}';
+select throws_ok($$ select * from public.create_hold('salon-a', array['c0000000-0000-4000-8000-000000000001']::uuid[],
+  ((current_date + 7) + time '10:00') at time zone 'Africa/Nairobi',
+  'b0000000-0000-4000-8000-000000000001', 'test-token-0000000009', '203.0.113.9') $$,
+  '42501', null, 'visitors cannot create holds directly');
+reset role;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"d0000000-0000-4000-8000-000000000001","role":"authenticated"}';
+select throws_ok($$ select * from public.create_hold('salon-a', array['c0000000-0000-4000-8000-000000000001']::uuid[],
+  ((current_date + 7) + time '10:00') at time zone 'Africa/Nairobi',
+  'b0000000-0000-4000-8000-000000000001', 'test-token-0000000009', '203.0.113.9') $$,
+  '42501', null, 'signed-in users cannot create holds directly');
+reset role;
+
+set local role service_role;
+set local request.jwt.claims = '{"role":"service_role"}';
 
 select lives_ok($$ select * from public.create_hold('salon-a', array['c0000000-0000-4000-8000-000000000001']::uuid[],
   ((current_date + 7) + time '10:00') at time zone 'Africa/Nairobi',
-  'b0000000-0000-4000-8000-000000000001', 'test-token-0000000001') $$,
-  'a visitor can hold a free slot');
+  'b0000000-0000-4000-8000-000000000001', 'test-token-0000000001', '203.0.113.9') $$,
+  'the server can hold a free slot');
 
 select throws_ok($$ select * from public.create_hold('salon-a', array['c0000000-0000-4000-8000-000000000001']::uuid[],
   ((current_date + 7) + time '10:00') at time zone 'Africa/Nairobi',
-  'b0000000-0000-4000-8000-000000000001', 'test-token-0000000002') $$,
+  'b0000000-0000-4000-8000-000000000001', 'test-token-0000000002', '203.0.113.9') $$,
   'BF409', null, 'a held slot cannot be held again');
 
 select is((select h.staff_id from public.create_hold('salon-a', array['c0000000-0000-4000-8000-000000000001']::uuid[],
   ((current_date + 7) + time '10:00') at time zone 'Africa/Nairobi',
-  null, 'test-token-0000000003') as h),
+  null, 'test-token-0000000003', '203.0.113.9') as h),
   'b0000000-0000-4000-8000-000000000002'::uuid, 'any professional picks the next free staff member');
 
 select throws_ok($$ select * from public.create_hold('salon-a', array['c0000000-0000-4000-8000-000000000001']::uuid[],
   ((current_date + 7) + time '09:00') at time zone 'Africa/Nairobi',
-  'b0000000-0000-4000-8000-000000000001', 'test-token-0000000004') $$,
+  'b0000000-0000-4000-8000-000000000001', 'test-token-0000000004', '203.0.113.9') $$,
   'BF409', null, 'a time outside working hours cannot be held');
 
 select throws_ok($$ select * from public.create_hold('salon-a', array['c0000000-0000-4000-8000-000000000001']::uuid[],
   ((current_date + 7) + time '15:00') at time zone 'Africa/Nairobi',
-  'b0000000-0000-4000-8000-000000000001', 'short') $$,
+  'b0000000-0000-4000-8000-000000000001', 'short', '203.0.113.9') $$,
   'BF400', null, 'a short hold token is rejected');
+
+select throws_ok($$ select * from public.create_hold('salon-a', array['c0000000-0000-4000-8000-000000000001']::uuid[],
+  ((current_date + 7) + time '15:00') at time zone 'Africa/Nairobi',
+  'b0000000-0000-4000-8000-000000000001', 'test-token-0000000005', 'not-an-ip') $$,
+  'BF400', null, 'an invalid client address is rejected');
 
 select lives_ok($$ select * from public.create_hold('salon-a', array['c0000000-0000-4000-8000-000000000001']::uuid[],
   ((current_date + 7) + time '14:00') at time zone 'Africa/Nairobi',
-  'b0000000-0000-4000-8000-000000000001', 'test-token-0000000001') $$,
+  'b0000000-0000-4000-8000-000000000001', 'test-token-0000000001', '203.0.113.9') $$,
   'the same visitor can pick a different time');
 
 reset role;
@@ -81,21 +102,25 @@ select is((select status::text from public.bookings
   where hold_token_hash = encode(sha256('test-token-0000000003'::bytea), 'hex')),
   'expired', 'a released hold no longer blocks');
 
-set local role anon;
-set local request.jwt.claims = '{"role":"anon"}';
-set local request.headers = '{"x-forwarded-for":"198.51.100.7"}';
+set local role service_role;
+set local request.jwt.claims = '{"role":"service_role"}';
 
 select is((select count(*)::int
   from generate_series(0, 9) as i,
   lateral public.create_hold('salon-a', array['c0000000-0000-4000-8000-000000000001']::uuid[],
     (((current_date + 8) + time '10:00') at time zone 'Africa/Nairobi') + i * interval '30 minutes',
-    'b0000000-0000-4000-8000-000000000001', 'rate-limit-token-00000' || lpad(i::text, 2, '0'))),
+    'b0000000-0000-4000-8000-000000000001', 'rate-limit-token-00000' || lpad(i::text, 2, '0'), '198.51.100.7')),
   10, 'ten holds from one address within an hour are allowed');
 
 select throws_ok($$ select * from public.create_hold('salon-a', array['c0000000-0000-4000-8000-000000000001']::uuid[],
   ((current_date + 8) + time '16:00') at time zone 'Africa/Nairobi',
-  'b0000000-0000-4000-8000-000000000001', 'rate-limit-token-0000099') $$,
+  'b0000000-0000-4000-8000-000000000001', 'rate-limit-token-0000099', '198.51.100.7') $$,
   'BF429', null, 'the eleventh hold from one address within an hour is refused');
+
+select lives_ok($$ select * from public.create_hold('salon-a', array['c0000000-0000-4000-8000-000000000001']::uuid[],
+  ((current_date + 8) + time '16:00') at time zone 'Africa/Nairobi',
+  'b0000000-0000-4000-8000-000000000001', 'rate-limit-token-0000100', '198.51.100.8') $$,
+  'another address is limited separately');
 
 reset role;
 select * from finish();
