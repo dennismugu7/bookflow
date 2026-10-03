@@ -30,6 +30,12 @@ The images are in `design-ref/` (git-ignored; ask Dennis if missing). **For layo
 - The area line ("Kilimani, Nairobi") is derived from the address with `shortArea()`.
 - "Pick a time" has no design; follow the patterns above.
 - The share card has no feedback row.
+- Where an original colour fails WCAG AA text contrast, use the nearest darker shade of the same hue ("Open" #008746, "until" #776dab, greys #707070); the WhatsApp button keeps #25d366 with dark text instead of white (Dennis, 2026-10-03).
+- The third section tab is "Hours & location", not "Other" (Dennis, 2026-10-03).
+- "Any professional" starts selected on Select professional, unlike `10` (Dennis, 2026-10-03).
+- No "Returning clients skip this" footnote on `18` until returning clients really skip that step (phase 3b) (Dennis, 2026-10-03).
+- `18` asks for "First name"; the value is stored as the client's `full_name` (Dennis, 2026-10-03).
+- On "You're all set", "Get directions" takes the black button slot until "View booking" exists (phase 3b) (Dennis, 2026-10-03).
 
 ## Owner app (`apps/owner`), images in `design-ref/original-owner/`
 To be added before the next owner UI task.
