@@ -288,7 +288,7 @@ isOneToOne: false
 { Args: { "p_full_name": string,"p_hold_token": string,"p_phone": string }; Returns: string
                            },
 "create_hold":
-{ Args: { "p_hold_token": string,"p_salon_slug": string,"p_service_ids": (string)[],"p_staff_id": string,"p_starts_at": string }; Returns: {
+{ Args: { "p_client_ip": string,"p_hold_token": string,"p_salon_slug": string,"p_service_ids": (string)[],"p_staff_id": string,"p_starts_at": string }; Returns: {
               "expires_at": string,"hold_id": string,"staff_id": string
             }[]
                            },
@@ -299,6 +299,9 @@ isOneToOne: false
 { Args: { "p_date": string,"p_salon_slug": string,"p_service_ids": (string)[],"p_staff_id"?: string }; Returns: {
               "ends_at": string,"staff_id": string,"starts_at": string
             }[]
+                           },
+"get_my_booking":
+{ Args: { "p_booking_id": string }; Returns: Json
                            },
 "release_hold":
 { Args: { "p_hold_token": string }; Returns: undefined

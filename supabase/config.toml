@@ -166,6 +166,7 @@ site_url = "https://bookflow-web-pearl.vercel.app"
 additional_redirect_urls = [
   "http://localhost:3000/**",
   "https://*-dennismugu7-6048s-projects.vercel.app/**",
+  "https://bookflow-web-pearl.vercel.app/**",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
