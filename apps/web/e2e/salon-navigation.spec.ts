@@ -27,6 +27,22 @@ test("the section tabs stay at the top and follow the scroll", async ({ page }) 
   }
 });
 
+test("the salon header shows name, tagline and area on the salon and confirm pages", async ({
+  page,
+}) => {
+  // The confirm page renders its header from the URL alone; no hold is needed to look at it.
+  const confirm = `${SALON}/confirm?services=${SILK_PRESS}&staff=any&start=2026-12-01T07:00:00Z&expires=2099-01-01T00:00:00Z`;
+  for (const url of [SALON, confirm]) {
+    await page.goto(url);
+    const header = page.locator("main").first();
+    await expect(header.getByText("Amani Beauty Studio", { exact: true })).toBeVisible();
+    await expect(
+      header.getByText("Natural hair, braids and silk presses", { exact: true }),
+    ).toBeVisible();
+    await expect(header.getByText("Kilimani, Nairobi", { exact: true })).toBeVisible();
+  }
+});
+
 /**
  * Clicks (or goes back) inside the page and resolves with the milliseconds until the step title
  * shows `title`, timed with performance.now() so Playwright's own round-trips don't count.
