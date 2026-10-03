@@ -24,6 +24,7 @@ Roles on this project: **Lead** (Claude in Cowork) writes specs in `docs/specs/`
 8. Prefer small, boring, well-known libraries. Ask before adding a dependency that isn't in a spec.
 9. **Acceptance tests belong to the lead.** Each spec has an 'Acceptance tests' section. Copy those cases verbatim into files named `*.acceptance.test.ts` (TypeScript) or `supabase/tests/acceptance/*.sql` (pgTAP). Never weaken, skip, delete or edit them. If one looks wrong, stop and ask. You may add as many extra tests of your own as you like.
 10. **This repo is public.** Never commit real personal data, real phone numbers, screenshots with client data, or secrets. Seed and test data use fake names and numbers in the `+2547000000xx` range.
+11. **UI copies the designs (ADR 0009).** For anything visual, the design image wins over spec text: layout, spacing, sizes, type, colours, copy. Find the images for each screen in `docs/design/screen-map.md` (files in git-ignored `design-ref/`; never commit them). Allowed differences are only the "Approved deviations" listed there. Before opening a UI PR: capture each changed screen at 390×844 with fake seed data, build a design | live side-by-side in `design-ref/compare/`, fix every unapproved difference, and add a differences table to the PR.
 
 ## Domain conventions
 - Money: integer amounts in KES (no decimals), column suffix `_kes`. Display as `KES 1,200`.
