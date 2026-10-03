@@ -18,6 +18,22 @@ export const colors = {
   attentionText: "#7A4A00",
   brandTint: "#ECE8FB",
   dangerTint: "#FCE8E6",
+  // Sampled from Dennis's owner designs (design-ref/original-owner, ADR 0009).
+  blue: "#0075FF",
+  inputBlue: "#1A73E8",
+  sheetInput: "#93C5F2",
+  welcomeGreen: "#2EE07E",
+  fabTeal: "#4DD0D9",
+  fabBlue: "#2196F3",
+  openDot: "#7ACC48",
+  avatarGreen: "#3CC42A",
+  forest: "#2E4A27",
+  band: "#F4F4F4",
+  cardBorder: "#E6E6E6",
+  text: "#333333",
+  placeholder: "#9AA5B4",
+  chipBlueTint: "#D3E6FC",
+  chipBlueText: "#2A63B8",
 } as const;
 
 /** Urbanist (400–700; see docs/design/README.md); React Native needs one family per weight. */

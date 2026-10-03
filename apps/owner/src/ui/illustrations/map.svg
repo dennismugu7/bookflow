@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 312" width="560" height="312">
+  <!-- A generic street pattern behind the pin (design 59); not a real map of any place. -->
+  <rect width="560" height="312" fill="#F1F2F5"/>
+  <g fill="#D8EFD9">
+    <rect x="30" y="20" width="70" height="48" rx="6"/>
+    <rect x="420" y="210" width="90" height="60" rx="6"/>
+    <rect x="250" y="250" width="40" height="40" rx="6"/>
+  </g>
+  <g stroke="#FFFFFF" stroke-width="6" fill="none">
+    <path d="M0 60h560M0 130h560M0 200h560M0 268h560"/>
+    <path d="M60 0v312M150 0v312M240 0v312M330 0v312M420 0v312M510 0v312"/>
+  </g>
+  <g stroke="#DCE1E8" stroke-width="2" fill="none">
+    <path d="M0 95h560M0 165h560M0 235h560M105 0v312M195 0v312M285 0v312M375 0v312M465 0v312"/>
+  </g>
+  <path d="M-10 300C120 230 200 120 330 90s190-40 240-80" stroke="#C5D1DE" stroke-width="16" fill="none"/>
+  <path d="M120 -10c30 90 70 170 160 210s170 70 210 120" stroke="#FFFFFF" stroke-width="12" fill="none"/>
+  <g transform="translate(280 150)">
+    <ellipse cx="0" cy="38" rx="16" ry="5" fill="#000" opacity="0.15"/>
+    <path d="M0 38C-6 22-28 6-28-14a28 28 0 0 1 56 0C28 6 6 22 0 38z" fill="#16131F"/>
+    <circle cx="0" cy="-14" r="10" fill="#FFFFFF"/>
+  </g>
+</svg>

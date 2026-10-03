@@ -10,14 +10,23 @@ type Props = {
   footer?: ReactNode;
   /** Tab screens sit above the tab bar, so they skip the bottom inset. */
   edges?: Edge[];
+  background?: string;
+  /** Space between sections; the default suits most screens. */
+  gap?: number;
 };
 
 /** Safe-area page with scrolling content, keyboard avoidance and an optional pinned footer. */
-export function Screen({ children, footer, edges = ["top", "bottom"] }: Props) {
+export function Screen({ children, footer, edges = ["top", "bottom"], background, gap }: Props) {
   return (
-    <SafeAreaView style={styles.safe} edges={edges}>
+    <SafeAreaView
+      style={[styles.safe, background ? { backgroundColor: background } : null]}
+      edges={edges}
+    >
       <KeyboardAvoidingView style={styles.flex} behavior="height">
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={[styles.content, gap !== undefined && { gap, padding: space(4) }]}
+          keyboardShouldPersistTaps="handled"
+        >
           {children}
         </ScrollView>
         {footer ? <View style={styles.footer}>{footer}</View> : null}

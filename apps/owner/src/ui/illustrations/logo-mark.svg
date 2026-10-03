@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 410" width="300" height="410">
+  <!-- The Bookflow "B" mark (designs 01, 08–11): white stem and top bowl, mint lower bowl and bevel. -->
+  <defs>
+    <mask id="holes">
+      <rect width="300" height="410" fill="#fff"/>
+      <path d="M76 76H122A46 46 0 0 1 122 168L76 178Z" fill="#000"/>
+      <path d="M76 262H182A36 36 0 0 1 182 334H76Z" fill="#000"/>
+    </mask>
+  </defs>
+  <g mask="url(#holes)">
+    <path d="M76 196H192A107 107 0 0 1 192 410H76Z" fill="#9EEFE6"/>
+    <rect width="76" height="410" fill="#ECFBFA"/>
+    <path d="M0 0H122A117 117 0 0 1 200 204C160 222 120 228 76 232V0Z" fill="#ECFBFA"/>
+    <path d="M0 410L76 334V410Z" fill="#9EEFE6"/>
+  </g>
+</svg>
