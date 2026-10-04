@@ -1,6 +1,6 @@
 import Feather from "@expo/vector-icons/Feather";
-import { router, useFocusEffect, type Href } from "expo-router";
-import { useCallback, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams, type Href } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import { nextFreeSlot } from "../../../lib/agenda";
@@ -79,6 +79,20 @@ function Day({ membership }: { membership: Membership }) {
   const { agenda, error, refreshing, refresh, reload } = useAgenda(salon.id, date);
   const [openId, setOpenId] = useState<string>();
   const actions = useBookingActions(salon.timezone, reload, () => setOpenId(undefined));
+
+  // A tapped notification (owner-v5 04) opens its booking once today's list has been reloaded,
+  // if it is still on it (cancelled bookings are not).
+  const { booking: tapped, at } = useLocalSearchParams<{ booking?: string; at?: string }>();
+  const [loadedTap, setLoadedTap] = useState<string>();
+  const [handledTap, setHandledTap] = useState<string>();
+  useEffect(() => {
+    if (at) void reload().then(() => setLoadedTap(at));
+  }, [at, reload]);
+  useEffect(() => {
+    if (!loadedTap || loadedTap === handledTap || !agenda) return;
+    setHandledTap(loadedTap);
+    if (tapped && agenda.bookings.some((b) => b.id === tapped)) setOpenId(tapped);
+  }, [loadedTap, handledTap, agenda, tapped]);
 
   // Only owners add bookings (owner_create_booking).
   const fill = isOwner ? (start: Date) => router.push(newBooking(start, "gap")) : undefined;

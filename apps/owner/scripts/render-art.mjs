@@ -18,6 +18,7 @@ const ART = {
   "logo-mark": 64,
   "brand-background": 390,
   "calendar-tick": 49,
+  "google-g": 22,
 };
 // HTML sources (CSS gradients SVG can't match), rendered at their own size.
 const HTML_ART = { "welcome-background": { width: 390, height: 844, scale: 2 } };

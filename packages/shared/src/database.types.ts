@@ -321,11 +321,20 @@ isOneToOne: false
 "get_my_client_profile":
 { Args: { "p_salon_slug": string }; Returns: Json
                            },
+"get_notification_prefs":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "get_range_agenda":
 { Args: { "p_from": string,"p_salon_id": string,"p_to": string }; Returns: Json
                            },
 "owner_create_booking":
 { Args: { "p_client_id"?: string,"p_client_name"?: string,"p_client_phone"?: string,"p_salon_id": string,"p_service_ids": (string)[],"p_staff_id": string,"p_starts_at": string }; Returns: string
+                           },
+"queue_morning_summaries":
+{ Args: { "p_at"?: string }; Returns: number
+                           },
+"register_push_token":
+{ Args: { "p_token": string }; Returns: undefined
                            },
 "release_hold":
 { Args: { "p_hold_token": string }; Returns: undefined
@@ -333,11 +342,17 @@ isOneToOne: false
 "salon_setup_status":
 { Args: { "p_salon_id": string }; Returns: Json
                            },
+"set_notification_prefs":
+{ Args: { "p_cancellations": boolean,"p_morning_summary": boolean,"p_new_bookings": boolean }; Returns: Json
+                           },
 "set_opening_hours":
 { Args: { "p_hours": Json,"p_salon_id": string }; Returns: undefined
                            },
 "set_salon_published":
 { Args: { "p_published": boolean,"p_salon_id": string }; Returns: undefined
+                           },
+"unregister_push_token":
+{ Args: { "p_token": string }; Returns: undefined
                            },
 "update_booking_status":
 { Args: { "p_booking_id": string,"p_reason"?: string,"p_status": Database["public"]['Enums']["booking_status"] }; Returns: undefined

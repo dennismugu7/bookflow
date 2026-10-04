@@ -1,6 +1,7 @@
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 
+import { unregisterThisPhone } from "./push";
 import { getSupabase } from "./supabase";
 
 export type Membership = {
@@ -84,6 +85,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [reloadMembership]);
 
   const signOut = useCallback(async () => {
+    await unregisterThisPhone();
     await getSupabase().auth.signOut();
   }, []);
 

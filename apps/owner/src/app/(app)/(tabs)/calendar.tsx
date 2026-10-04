@@ -1,5 +1,5 @@
-import { router } from "expo-router";
-import { useMemo, useRef, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PanResponder, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -106,6 +106,31 @@ function Calendar({ membership }: { membership: Membership }) {
   };
 
   const error = view === "list" ? list.error : grid.error;
+
+  // A tapped notification (owner-v5 04): Day view on its date, then its sheet once that day has
+  // been reloaded, if the booking is still on it (cancelled bookings are not).
+  const reloadGrid = grid.reload;
+  const tap = useLocalSearchParams<{ date?: string; booking?: string; at?: string }>();
+  const [pendingTap, setPendingTap] = useState<{ at: string; booking?: string }>();
+  const [handledTap, setHandledTap] = useState<string>();
+  useEffect(() => {
+    if (!tap.at || tap.at === handledTap || !tap.date) return;
+    setHandledTap(tap.at);
+    setOpenId(undefined);
+    setSheetId(undefined);
+    setView("day");
+    setDate(tap.date);
+    setPendingTap(undefined);
+    const at = tap.at;
+    const booking = tap.booking;
+    void reloadGrid().then(() => setPendingTap({ at, booking }));
+  }, [tap.at, tap.date, tap.booking, handledTap, setView, reloadGrid]);
+  useEffect(() => {
+    if (!pendingTap || !range || view !== "day" || days[0]?.date !== date) return;
+    setPendingTap(undefined);
+    if (pendingTap.booking && days[0].bookings.some((b) => b.id === pendingTap.booking))
+      setSheetId(pendingTap.booking);
+  }, [pendingTap, range, view, days, date]);
 
   return (
     <SafeAreaView style={styles.page} edges={["top"]}>
