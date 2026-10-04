@@ -3,6 +3,7 @@
 import { Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { card } from "../../../components/ui";
 import { whatsappShareUrl } from "../../../lib/format";
 
 /** WhatsApp's mark (handset in a speech bubble), path from Simple Icons, CC0. */
@@ -26,10 +27,7 @@ export function ShareCard({ salonName, link }: { salonName: string; link: string
   const message = `Book at ${salonName} in a minute, no app needed:`;
 
   return (
-    <section
-      aria-labelledby="share-heading"
-      className="mx-1.5 rounded-[12px] border border-line bg-white px-[14px] pt-[17px] pb-[14px]"
-    >
+    <section aria-labelledby="share-heading" className={`${card} px-[14px] pt-[17px] pb-[14px]`}>
       <h2 id="share-heading" className="text-[15.5px] leading-5 font-medium">
         Know someone who&apos;d love <strong className="font-bold">{salonName}</strong>?
       </h2>

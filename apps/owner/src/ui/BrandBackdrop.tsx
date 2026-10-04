@@ -3,7 +3,7 @@ import { Image, StyleSheet, View, type StyleProp, type ViewStyle } from "react-n
 
 import { brandBackground } from "./illustrations";
 
-/** The indigo gradient behind the splash, welcome and sign-in sheet (01–05), filling the screen. */
+/** The indigo gradient behind the welcome and sign-in sheet (02–05), filling the screen. */
 export function BrandBackdrop({
   style,
   children,

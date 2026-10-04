@@ -54,6 +54,13 @@ Phase 3b deviations (Dennis, 2026-10-04):
 - "Pay at the salon. No payment is taken online." also shows for first-time clients on `18`.
 - "Confirmed" pill text is #1a7347 (the mockup's #1e7f4f fails AA on its tint).
 
+### Client web, white pages and navigation (Dennis, 2026-10-04)
+These override the originals and mockups above:
+- Every client page has a plain white background: no grey or tinted page backgrounds or bands (salon sections, booking steps, confirm, the summary on "You're all set", My bookings, the profile sheet). Content that sat on a band is a white card with a 1 px #E7E6EC border and 14 px corners, inside the page margins. All cards (service, professional, date, booking) use that border and radius; the selected state keeps the 2.5 px purple border. The booking steps' bottom bar has a 1 px #E7E6EC top line. The hold banner keeps its yellow-orange gradient (it isn't a page band).
+- "Continue with Google" is Google's blue sign-in button: #4285F4, the official multicolour G in a white rounded square on the left, white text, 48 px high, 8 px corners. White on #4285F4 is 3.6:1, below AA for normal text; kept because Google's branding requires it.
+- My bookings has a back arrow top left: back to the previous page in this tab, or to the last salon opened in this browser when there's none (the home page if no salon yet).
+- "You're all set" has an outline "Browse more services" button under Add to calendar / View booking, opening the salon page.
+
 ## Owner app (`apps/owner`), images in `design-ref/original-owner/`
 
 Files are numbered as Dennis made them (`NN-name.png`). The current app on Dennis's phone is in `design-ref/live-owner/` (2026-10-03).
@@ -87,6 +94,7 @@ Files are numbered as Dennis made them (`NN-name.png`). The current app on Denni
 - Calendar and Clients stay "Coming soon" until Phase 4.
 - The "By proceeding, you agree to the Terms of Service and Privacy Policy" line on `03` is left out until those pages exist (release phase) (Dennis, 2026-10-04).
 - Account shows the signed-in email as the name, and its initials in the avatar, until Profile stores an owner name (Dennis, 2026-10-04).
+- Splash: only Android's system splash (the B on purple) shows, until the app knows the first screen; there's no second full-screen `01` stage (Dennis, 2026-10-04).
 - Location shows a real map from 0.4.0 (Dennis, 2026-10-04): Google's embed, with our drawn map while it loads or when offline; tapping it opens Google Maps.
 - Kept for existing behaviour (Dennis, 2026-10-04): the "Working alone? Add me as a team member" link on My team; Booking link (share, Live badge) and Unpublish salon under Account "General"; duration chips 20/30/45/60/90 + Custom as in `48` (15 min via Custom).
 

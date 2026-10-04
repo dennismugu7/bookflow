@@ -77,6 +77,8 @@ test("a client books with an email code", async ({ page }) => {
   });
   await expect(page.getByText("Trim – with Njeri")).toBeVisible();
   await expect(page.getByRole("link", { name: "Add to calendar" })).toBeVisible();
+  const browse = page.getByRole("link", { name: "Browse more services" });
+  await expect(browse).toHaveAttribute("href", "/s/e2e-salon");
 
   const ics = await page.request.get(`${new URL(page.url()).pathname}/ics`);
   expect(ics.status()).toBe(200);

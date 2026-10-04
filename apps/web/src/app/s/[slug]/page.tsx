@@ -2,6 +2,7 @@ import { bookingLink, mapsEmbedUrl } from "@bookflow/shared";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { RememberSalon } from "../../../components/back-button";
 import { MyBookingsLink } from "../../../components/my-bookings-link";
 import { SalonIdentity } from "../../../components/salon-header";
 import { initials } from "../../../lib/format";
@@ -57,6 +58,7 @@ export default async function SalonPage(props: PageProps<"/s/[slug]">) {
 
   return (
     <main className="mx-auto w-full max-w-[560px] pb-[110px]">
+      <RememberSalon slug={salon.slug} />
       {/* Hero: banner at 4:3 with a share button (original 01) */}
       <div className="relative">
         {salon.bannerUrl ? (
@@ -106,7 +108,7 @@ export default async function SalonPage(props: PageProps<"/s/[slug]">) {
           <h2 id="services-heading" className={`${sectionHeading} px-10 pt-[33px] pb-4`}>
             Services
           </h2>
-          <div className="bg-surface px-[22px] pt-2 pb-[15px]">
+          <div className="px-[22px] pt-2 pb-[15px]">
             {count > 0 ? (
               <ServicesSection slug={salon.slug} services={salon.services} />
             ) : (

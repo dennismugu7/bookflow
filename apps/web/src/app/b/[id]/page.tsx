@@ -3,7 +3,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { MyBookingsLink } from "../../../components/my-bookings-link";
+import { RememberSalon } from "../../../components/back-button";
 import { SalonHeader } from "../../../components/salon-header";
+import { card } from "../../../components/ui";
 import { firstName, formatClock, formatShortDateTime } from "../../../lib/format";
 import { directionsUrl, getMyBooking } from "../../../lib/my-booking";
 import { getPublicSalon, salonArea } from "../../../lib/salon";
@@ -90,6 +92,7 @@ export default async function BookingPage(props: PageProps<"/b/[id]">) {
 
   return (
     <main className="mx-auto flex w-full max-w-[560px] flex-col pb-10">
+      <RememberSalon slug={booking.salon.slug} />
       <SalonHeader
         name={booking.salon.name}
         tagline={salon?.tagline ?? null}
@@ -105,7 +108,10 @@ export default async function BookingPage(props: PageProps<"/b/[id]">) {
         <p className="mt-[37px] text-[18px] leading-6 font-medium">See you soon!</p>
       </div>
 
-      <section aria-label="Booking details" className="mt-[45px] bg-mist px-5 py-[13px]">
+      <section
+        aria-label="Booking details"
+        className={`${card} mx-5 mt-[45px] px-[17px] py-[13px]`}
+      >
         <p className="text-[16px] leading-5 font-bold">
           {formatShortDateTime(booking.starts_at, tz)} – {formatClock(booking.ends_at, tz)}
         </p>
@@ -144,8 +150,16 @@ export default async function BookingPage(props: PageProps<"/b/[id]">) {
           View booking
         </Link>
       </div>
+      <div className="px-5 pt-2.5">
+        <Link
+          href={`/s/${booking.salon.slug}`}
+          className="press flex h-[47px] w-full items-center justify-center rounded-[12px] border border-line-strong bg-white text-[15px] font-medium"
+        >
+          Browse more services
+        </Link>
+      </div>
 
-      <div className="mx-[31px] mt-[26px] bg-sand pb-4">
+      <div className="mx-5 mt-[26px]">
         <ShareCard salonName={booking.salon.name} link={bookingLink(booking.salon.slug)} />
       </div>
       <MyBookingsLink className="mt-6" />

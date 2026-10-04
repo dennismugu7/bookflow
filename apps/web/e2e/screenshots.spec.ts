@@ -84,7 +84,8 @@ test("fidelity screenshots", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Pick a time" })).toBeVisible();
   // A full weekday shows more times than late today.
   await page.getByRole("radio", { name: /^Mon / }).first().click();
-  await page.getByRole("radio", { name: "10:30 am" }).click();
+  // Other screenshot runs may have booked some times; take the first free one.
+  await page.getByRole("radiogroup", { name: "Time" }).getByRole("radio").first().click();
   await shot(page, "13-pick-a-time", "10-select-professional");
   await page.getByRole("button", { name: "Hold this time" }).click();
 

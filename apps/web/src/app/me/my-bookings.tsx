@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
+import { BackButton } from "../../components/back-button";
+import { card } from "../../components/ui";
 import { directionsUrl } from "../../lib/directions";
 import { firstName } from "../../lib/format";
 import {
@@ -55,9 +57,12 @@ export function MyBookings({ email, bookings }: { email: string; bookings: MyBoo
 
   return (
     <>
-      <header className="flex items-center justify-between gap-4 px-5 pt-[17px]">
+      <header className="flex items-center gap-1 pt-[17px] pr-5 pl-2">
+        <BackButton />
         <h1 className="shrink-0 text-[26px] leading-9 font-bold">My bookings</h1>
-        <p className="min-w-0 truncate text-[13px] font-medium text-muted">{email}</p>
+        <p className="ml-3 min-w-0 flex-1 truncate text-right text-[13px] font-medium text-muted">
+          {email}
+        </p>
       </header>
 
       <div
@@ -182,7 +187,7 @@ function BookingCard({
 }) {
   const status = STATUS[booking.status] ?? STATUS.confirmed!;
   return (
-    <article className="flex gap-[13px] rounded-[16px] border border-line bg-white pt-[14px] pr-[17px] pb-[11px] pl-4">
+    <article className={`${card} flex gap-[13px] pt-[14px] pr-[17px] pb-[11px] pl-4`}>
       <span aria-hidden="true" className="mb-[3px] w-[3.5px] shrink-0 rounded-full bg-action" />
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-3">
