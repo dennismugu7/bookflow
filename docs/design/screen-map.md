@@ -118,3 +118,10 @@ Mockups in `docs/design/owner-v3/` (fake data), adapted from originals 13 to 19 
 | Cancel sheet | `owner-v3/03-cancel.png` |
 | No-show sheet | `owner-v3/04-no-show.png` |
 | New booking (walk-in or phone) | `owner-v3/05-add-booking.png` |
+
+Phase 4a deviations (Dennis, 2026-10-04):
+- The "Share your booking link" pill stays at the end of the Today list, under the last booking or gap.
+- Call and WhatsApp use real phone and WhatsApp icons, not the ✆ / ◎ glyphs in `02`.
+- Sheet copy says "their" instead of "her" (`03`, `04`): clients can be anyone.
+- "… will see it as cancelled in their bookings." shows only for web bookings; walk-ins have no account to see it. "This can't be undone." always shows.
+- "Phone not verified" is hidden when the client has no phone (walk-ins).
