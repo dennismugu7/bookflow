@@ -161,12 +161,17 @@ function Details({
       </p>
     ) : null;
 
+  // Mockup 05; shown to first-time clients too (Dennis, 2026-10-04).
+  const payNote = (
+    <p className="px-5 pt-2 text-[13px] leading-[18px] font-medium text-muted">
+      Pay at the salon. No payment is taken online.
+    </p>
+  );
+
   if (profile && !editing && !state.fieldErrors) {
     return (
       <>
-        <p className="px-5 pt-2 text-[13px] leading-[18px] font-medium text-muted">
-          Pay at the salon. No payment is taken online.
-        </p>
+        {payNote}
         <section
           className="mx-5 mt-[13px] rounded-[16px] border border-line bg-white px-[17px] pt-3 pb-[14px]"
           aria-labelledby="details-heading"
@@ -212,7 +217,8 @@ function Details({
 
   return (
     <>
-      <div className="mt-[27px] bg-sand px-[11px] pt-1 pb-2">
+      {payNote}
+      <div className="mt-[13px] bg-sand px-[11px] pt-1 pb-2">
         <section
           className="rounded-[16px] border border-line bg-white px-[21px] pt-5 pb-6"
           aria-labelledby="details-heading"

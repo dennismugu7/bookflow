@@ -48,6 +48,12 @@ Mockups in `docs/design/client-v2/` (fake data):
 | Confirm, returning client | `client-v2/05-returning.png` |
 | You're all set (View booking replaces the Get directions button) | `client-v2/06-booked.png` |
 
+Phase 3b deviations (Dennis, 2026-10-04):
+- Text black and grey keep the existing tokens (#0d0d0d, #707070), not the mockups' #16131f / #6b6878.
+- Booking cards always say "with <stylist>"; "any professional" isn't stored.
+- "Pay at the salon. No payment is taken online." also shows for first-time clients on `18`.
+- "Confirmed" pill text is #1a7347 (the mockup's #1e7f4f fails AA on its tint).
+
 ## Owner app (`apps/owner`), images in `design-ref/original-owner/`
 
 Files are numbered as Dennis made them (`NN-name.png`). The current app on Dennis's phone is in `design-ref/live-owner/` (2026-10-03).
