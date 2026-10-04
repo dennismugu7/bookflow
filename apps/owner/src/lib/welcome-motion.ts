@@ -1,21 +1,27 @@
 // The welcome animation's timeline (docs/design/owner-v2/10-welcome-animation.html), as data for
-// React Native's Animated: one progress value runs 0 → 1 every LOOP_MS and each track maps it.
+// React Native's Animated: one progress value runs from 0 and each track maps it. The keyframes
+// are the HTML's 6-second loop; the app plays it once and holds the final frame (Dennis,
+// 2026-10-04).
 
 export const LOOP_MS = 6000;
 
-/** Point of the loop shown, still, when the phone's "Remove animations" is on. */
-export const REST_AT = 0.8;
+/**
+ * The final frame, held after the one play and shown still when "Remove animations" is on: after
+ * the last movement (76 %) and before the loop's fade-out (88 %).
+ */
+export const FINAL_AT = 0.8;
 
-/** The three examples each loop cycles through, as in the HTML. */
-export const EXAMPLES = [
-  { services: "Silk press, braids & more", time: "10:30", who: "Silk press · Wanjiru" },
-  { services: "Nails, lashes & brows", time: "11:00", who: "Gel nails · Akinyi" },
-  { services: "Fades, beard & trims", time: "9:30", who: "Fade & beard · Brian" },
-] as const;
-
-export function nextExample(index: number): number {
-  return (index + 1) % EXAMPLES.length;
+/** Time left to play from `progress` to the final frame; 0 once it is there. */
+export function remainingMs(progress: number): number {
+  return Math.max(0, FINAL_AT - progress) * LOOP_MS;
 }
+
+/** The HTML's first example (hair), the only one the app shows. */
+export const EXAMPLE = {
+  services: "Silk press, braids & more",
+  time: "10:30",
+  who: "Silk press · Wanjiru",
+} as const;
 
 /** "Sat 4 Oct", as on the Today card in the animation. */
 export function welcomeDay(date: Date = new Date(), timeZone?: string): string {

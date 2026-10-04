@@ -13,11 +13,10 @@ import {
 } from "react-native";
 
 import {
-  EXAMPLES,
-  LOOP_MS,
-  REST_AT,
+  EXAMPLE,
+  FINAL_AT,
   TRACKS,
-  nextExample,
+  remainingMs,
   welcomeDay,
   type Track,
 } from "../lib/welcome-motion";
@@ -34,13 +33,13 @@ const RING = "rgba(91,69,224,0.6)";
 const useNativeDriver = Platform.OS !== "web";
 
 /**
- * The welcome screen's 6-second loop (owner-v2 10): a link is shared → a client taps a time → the
- * booking lands in Today, with a different example each loop. Built on Animated only, so it ships
- * over the air. Still on its final frame when "Remove animations" is on; paused when not focused.
+ * The welcome screen's animation (owner-v2 10): a link is shared → a client taps a time → the
+ * booking lands in Today. It plays once each time the screen opens, then holds the final frame
+ * (Dennis, 2026-10-04). Built on Animated only, so it ships over the air. Shows the final frame,
+ * still, when "Remove animations" is on; pauses when the screen loses focus.
  */
-export function WelcomeLoop({ style }: { style?: StyleProp<ViewStyle> }) {
+export function WelcomeAnimation({ style }: { style?: StyleProp<ViewStyle> }) {
   const progress = useRef(new Animated.Value(0)).current;
-  const [example, setExample] = useState(0);
   const [reduceMotion, setReduceMotion] = useState<boolean>();
 
   useEffect(() => {
@@ -57,35 +56,25 @@ export function WelcomeLoop({ style }: { style?: StyleProp<ViewStyle> }) {
     useCallback(() => {
       if (reduceMotion === undefined) return;
       if (reduceMotion) {
-        progress.setValue(REST_AT);
+        progress.setValue(FINAL_AT);
         return;
       }
-      let running = true;
-      const run = (from: number) => {
+      // Resume where it paused; once at the final frame, there is nothing left to play.
+      progress.stopAnimation((from) => {
+        const duration = remainingMs(from);
+        if (duration === 0) return;
         Animated.timing(progress, {
-          toValue: 1,
-          duration: (1 - from) * LOOP_MS,
+          toValue: FINAL_AT,
+          duration,
           easing: Easing.linear,
           useNativeDriver,
-        }).start(({ finished }) => {
-          if (!finished || !running) return;
-          // Every card is faded out at the loop's end, so the next example swaps in unseen.
-          setExample(nextExample);
-          progress.setValue(0);
-          run(0);
-        });
-      };
-      // Resume where it paused.
-      progress.stopAnimation((value) => run(value < 1 ? value : 0));
-      return () => {
-        running = false;
-        progress.stopAnimation();
-      };
+        }).start();
+      });
+      return () => progress.stopAnimation();
     }, [progress, reduceMotion]),
   );
 
   const at = (track: Track) => progress.interpolate(track);
-  const current = EXAMPLES[example]!;
 
   return (
     <View
@@ -101,7 +90,7 @@ export function WelcomeLoop({ style }: { style?: StyleProp<ViewStyle> }) {
         ]}
       >
         <Text style={styles.bubbleTitle}>Book with Amani Beauty Studio</Text>
-        <Text style={styles.bubbleText}>{current.services}</Text>
+        <Text style={styles.bubbleText}>{EXAMPLE.services}</Text>
         <Text style={styles.bubbleLink}>bookflow.app/s/amani</Text>
       </Animated.View>
       <Animated.View
@@ -122,10 +111,10 @@ export function WelcomeLoop({ style }: { style?: StyleProp<ViewStyle> }) {
           <Text style={styles.chipText}>8:00</Text>
         </View>
         <View style={styles.chip}>
-          <Text style={styles.chipText}>{current.time}</Text>
+          <Text style={styles.chipText}>{EXAMPLE.time}</Text>
           {/* Purple fill and white text fade in over the white chip. */}
           <Animated.View style={[styles.chipPicked, { opacity: at(TRACKS.pick) }]}>
-            <Text style={[styles.chipText, styles.chipTextPicked]}>{current.time}</Text>
+            <Text style={[styles.chipText, styles.chipTextPicked]}>{EXAMPLE.time}</Text>
           </Animated.View>
         </View>
         <View style={styles.chip}>
@@ -166,8 +155,8 @@ export function WelcomeLoop({ style }: { style?: StyleProp<ViewStyle> }) {
           ]}
         >
           <View style={[styles.bar, styles.barNew]} />
-          <Text style={styles.rowTime}>{current.time}</Text>
-          <Text style={styles.rowText}>{current.who}</Text>
+          <Text style={styles.rowTime}>{EXAMPLE.time}</Text>
+          <Text style={styles.rowText}>{EXAMPLE.who}</Text>
           <Text style={styles.badge}>New</Text>
         </Animated.View>
       </Animated.View>

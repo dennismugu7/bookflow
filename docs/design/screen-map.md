@@ -88,4 +88,6 @@ Mockups in `docs/design/owner-v2/` (fake data). For these screens, copy the mock
 | Today, no bookings | `owner-v2/09-today-options.png`, option **A** |
 | Welcome (gradient + animation) | `owner-v2/10-welcome-frames.png`, `10-welcome-animation.mp4`, `10-welcome-animation.html` |
 
+Welcome animation plays once, then holds the last frame. Dennis, 2026-10-04.
+
 Everywhere in the owner app: white pages without framed view cards, a fixed top bar with a back arrow, a grey field outline at rest that turns blue while typing, and one blue round add button.

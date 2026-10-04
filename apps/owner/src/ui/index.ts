@@ -15,4 +15,4 @@ export { Chip } from "./Chip";
 export { Splash } from "./Splash";
 export { UploadBox } from "./UploadBox";
 export { BrandBackdrop } from "./BrandBackdrop";
-export { WelcomeLoop } from "./WelcomeLoop";
+export { WelcomeAnimation } from "./WelcomeAnimation";

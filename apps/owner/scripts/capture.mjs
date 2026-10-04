@@ -276,8 +276,9 @@ const go = async (page, route, ms = 2500) => {
   await settle(page, ms);
 };
 
-// Welcome (owner-v2 10): three moments of the loop on a fake clock, as in 10-welcome-frames.png
-// (three 390 px phones, 15 px apart), and the still frame when "Remove animations" is on.
+// Welcome (owner-v2 10) on a fake clock, against 10-welcome-frames.png (three 390 px phones, 15 px
+// apart): two moments of the one play, the held final frame, and the still frame when "Remove
+// animations" is on. The app plays the sequence once (Dennis, 2026-10-04).
 {
   const frame = (n) => ({ x: n * 405, y: 0, width: 390 });
   const context = await browser.newContext(device);
@@ -286,7 +287,7 @@ const go = async (page, route, ms = 2500) => {
   await page.clock.install({ time: new Date("2026-10-03T07:00:00Z") });
   await page.clock.pauseAt(new Date("2026-10-03T07:00:01Z"));
   await page.goto(APP);
-  // Time stands still, so step it until the screen (and with it the loop) has started.
+  // Time stands still, so step it until the screen (and with it the animation) has started.
   const create = page.getByRole("button", { name: "Create for free" });
   for (let i = 0; i < 2000 && !(await create.isVisible()); i++) await page.clock.runFor(16);
   if (!(await create.isVisible())) throw new Error("welcome did not load");
@@ -298,12 +299,13 @@ const go = async (page, route, ms = 2500) => {
   await shot(page, "owner2-10a-welcome-link", "v2/10-welcome-frames", frame(0));
   await at(4800 - 1260); // 80 %: the time picked, the new booking in Today
   await shot(page, "owner2-10b-welcome-booked", "v2/10-welcome-frames", frame(1));
-  await at(6000 + 960 - 4800); // the next loop, 16 %: the nails example
-  await shot(page, "owner2-10c-welcome-next", "v2/10-welcome-frames", frame(2));
-  if (!(await page.getByText("Nails, lashes & brows").isVisible())) {
-    throw new Error("the loop did not move on to the next example");
+  await at(12000); // two loops' worth later: still the final frame, unchanged
+  await shot(page, "owner2-10c-welcome-held", "v2/10-welcome-frames", frame(1));
+  const evidence = (name) => readFileSync(path.join(OUT, `${name}.png`));
+  if (!evidence("owner2-10b-welcome-booked").equals(evidence("owner2-10c-welcome-held"))) {
+    throw new Error("the welcome animation moved after its final frame");
   }
-  console.log("ok: the welcome loop runs and cycles its examples");
+  console.log("ok: the welcome animation plays once, then holds its final frame");
   await context.close();
 
   const still = await browser.newContext({ ...device, reducedMotion: "reduce" });

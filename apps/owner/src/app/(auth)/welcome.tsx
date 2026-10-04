@@ -2,14 +2,14 @@ import { router } from "expo-router";
 import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { colors, fonts, minTouch } from "../../theme";
-import { WelcomeLoop, welcomeBackground } from "../../ui";
+import { WelcomeAnimation, welcomeBackground } from "../../ui";
 
 // The mockup is a 390 × 844 screen; shorter phones pull everything up in proportion.
 const MOCKUP_HEIGHT = 844;
 
 /**
  * First screen when signed out (owner-v2 10): the light-blue gradient, the wordmark and the
- * looping animation. Both choices lead to the same email-code sign-in.
+ * animation, played once. Both choices lead to the same email-code sign-in.
  */
 export default function WelcomeScreen() {
   const { height } = useWindowDimensions();
@@ -29,7 +29,7 @@ export default function WelcomeScreen() {
         </Text>
         <Text style={styles.subtitle}>Share your link. Bookings land.</Text>
       </View>
-      <WelcomeLoop style={[styles.stage, { top: 210 * k }]} />
+      <WelcomeAnimation style={[styles.stage, { top: 210 * k }]} />
       <View style={[styles.actions, { bottom: 120 * k - SIGN_IN_SLACK }]}>
         <Pressable
           accessibilityRole="button"
