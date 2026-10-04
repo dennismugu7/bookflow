@@ -3,10 +3,11 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { CloseButton } from "../../../../components/close-button";
+import { MyBookingsLink } from "../../../../components/my-bookings-link";
 import { SalonHeader } from "../../../../components/salon-header";
 import { choiceQuery, readChoice } from "../../../../lib/booking-query";
 import { firstName, formatShortDateTime } from "../../../../lib/format";
-import { getPublicSalon } from "../../../../lib/salon";
+import { getPublicSalon, salonArea } from "../../../../lib/salon";
 import { createClient } from "../../../../lib/supabase/server";
 import { ConfirmSteps } from "./confirm-steps";
 
@@ -37,6 +38,11 @@ export default async function ConfirmPage(props: PageProps<"/s/[slug]/confirm">)
     data: { user },
   } = await supabase.auth.getUser();
   const meta = (user?.user_metadata ?? {}) as { full_name?: string; name?: string };
+  const [area, saved] = await Promise.all([
+    salonArea(salon.address, salon.mapsUrl),
+    user ? supabase.rpc("get_my_client_profile", { p_salon_slug: slug }) : null,
+  ]);
+  const profile = saved?.data as { full_name?: string; phone?: string } | null | undefined;
 
   return (
     <div className="min-h-full flex-1 bg-white">
@@ -44,7 +50,7 @@ export default async function ConfirmPage(props: PageProps<"/s/[slug]/confirm">)
         <SalonHeader
           name={salon.name}
           tagline={salon.tagline}
-          address={salon.address}
+          area={area}
           logoUrl={salon.logoUrl}
           backHref={pickTime}
           close={<CloseButton salonHref={`/s/${slug}`} />}
@@ -65,7 +71,13 @@ export default async function ConfirmPage(props: PageProps<"/s/[slug]/confirm">)
               : "The salon will see this."
           }
           user={user ? { email: user.email ?? "", name: meta.full_name ?? meta.name ?? "" } : null}
+          profile={
+            profile?.full_name && profile.phone
+              ? { fullName: profile.full_name, phone: profile.phone }
+              : null
+          }
         />
+        <MyBookingsLink className="mt-8" />
       </main>
     </div>
   );

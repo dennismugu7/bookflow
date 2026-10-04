@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeKenyanPhone } from "./phone";
+import { formatKenyanPhone, normalizeKenyanPhone } from "./phone";
 
 describe("normalizeKenyanPhone (extra cases)", () => {
   it("keeps a valid international number", () => {
@@ -17,4 +17,13 @@ describe("normalizeKenyanPhone (extra cases)", () => {
       expect(normalizeKenyanPhone(input)).toBeNull();
     },
   );
+});
+
+describe("formatKenyanPhone", () => {
+  it("shows a Kenyan number in local format", () => {
+    expect(formatKenyanPhone("+254700000041")).toBe("0700 000 041");
+  });
+  it("leaves other numbers alone", () => {
+    expect(formatKenyanPhone("+442079460000")).toBe("+442079460000");
+  });
 });

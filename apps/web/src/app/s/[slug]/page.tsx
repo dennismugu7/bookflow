@@ -2,10 +2,11 @@ import { bookingLink, mapsEmbedUrl } from "@bookflow/shared";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { MyBookingsLink } from "../../../components/my-bookings-link";
 import { SalonIdentity } from "../../../components/salon-header";
 import { initials } from "../../../lib/format";
 import { directionsUrl } from "../../../lib/my-booking";
-import { getPublicSalon, mapQuery } from "../../../lib/salon";
+import { getPublicSalon, mapQuery, salonArea } from "../../../lib/salon";
 import { isoWeekday, salonDate } from "../../../lib/time";
 import {
   AboutText,
@@ -46,7 +47,10 @@ export default async function SalonPage(props: PageProps<"/s/[slug]">) {
   const salon = await getPublicSalon(slug);
   if (!salon) notFound();
 
-  const query = await mapQuery(salon);
+  const [query, area] = await Promise.all([
+    mapQuery(salon),
+    salonArea(salon.address, salon.mapsUrl),
+  ]);
   const directions = directionsUrl(salon.mapsUrl, salon.address);
   const today = isoWeekday(salonDate(new Date(), salon.timezone));
   const count = salon.services.length;
@@ -79,7 +83,7 @@ export default async function SalonPage(props: PageProps<"/s/[slug]">) {
             as="h1"
             name={salon.name}
             tagline={salon.tagline}
-            address={salon.address}
+            area={area}
             logoUrl={salon.logoUrl}
           />
           <div className="mt-4">
@@ -196,6 +200,7 @@ export default async function SalonPage(props: PageProps<"/s/[slug]">) {
             </div>
           ) : null}
         </section>
+        <MyBookingsLink className="mt-8" />
       </div>
 
       <BookNowBar slug={salon.slug} count={count} />

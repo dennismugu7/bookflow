@@ -75,7 +75,7 @@ test("a client books with an email code", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /You're all set!/ })).toBeVisible({
     timeout: 20_000,
   });
-  await expect(page.getByText("Trim - with Njeri")).toBeVisible();
+  await expect(page.getByText("Trim – with Njeri")).toBeVisible();
   await expect(page.getByRole("link", { name: "Add to calendar" })).toBeVisible();
 
   const ics = await page.request.get(`${new URL(page.url()).pathname}/ics`);

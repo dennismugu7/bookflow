@@ -281,7 +281,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "confirm_booking":
+            "cancel_my_booking":
+{ Args: { "p_booking_id": string,"p_reason"?: string }; Returns: undefined
+                           },
+"confirm_booking":
 { Args: { "p_full_name": string,"p_hold_token": string }; Returns: string
                            },
 "confirm_booking_contact":
@@ -302,6 +305,12 @@ isOneToOne: false
                            },
 "get_my_booking":
 { Args: { "p_booking_id": string }; Returns: Json
+                           },
+"get_my_bookings":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"get_my_client_profile":
+{ Args: { "p_salon_slug": string }; Returns: Json
                            },
 "release_hold":
 { Args: { "p_hold_token": string }; Returns: undefined

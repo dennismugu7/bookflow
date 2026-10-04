@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CloseButton } from "../../../../components/close-button";
+import { MyBookingsLink } from "../../../../components/my-bookings-link";
 import { ProfileSheet, type Profile } from "../../../../components/profile-sheet";
 import {
   AddCircle,
@@ -192,6 +193,7 @@ export function BookFlow({ salon, services, staff, initial, turnstileSiteKey }: 
             />
           )}
         </div>
+        <MyBookingsLink className="mt-6" />
       </main>
 
       {step !== "time" ? (

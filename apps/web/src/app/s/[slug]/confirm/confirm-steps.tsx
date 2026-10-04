@@ -1,10 +1,20 @@
 "use client";
 
+import { formatKenyanPhone } from "@bookflow/shared";
 import { Clock } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useState } from "react";
 
+import {
+  SignIn,
+  heading,
+  input,
+  fieldLabel,
+  lead,
+  primary,
+  useNow,
+} from "../../../../components/sign-in";
 import { firstName } from "../../../../lib/format";
 import { phoneFromField } from "../../../../lib/phone-field";
 import { createClient } from "../../../../lib/supabase/client";
@@ -22,41 +32,16 @@ type Props = {
   /** "Njeri will see this on the day." */
   seenBy: string;
   user: { email: string; name: string } | null;
+  /** The signed-in client's saved name and phone at this salon (returning client, mockup 05). */
+  profile: Profile | null;
 };
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-/** Rectangular buttons and fields of originals 16 and 18 (not pills). */
-const button =
-  "press flex h-[42px] w-full items-center justify-center gap-2.5 rounded-[10px] text-[15px] font-semibold disabled:opacity-40";
-const outline = `${button} border border-line-strong bg-white font-medium`;
-const primary = `${button} bg-ink text-white`;
-const input =
-  "h-10 w-full rounded-[8px] border border-line-strong bg-white px-4 text-[16px] outline-none placeholder:text-muted focus:border-2 focus:border-select";
-const fieldLabel = "text-[13px] font-semibold text-muted";
-const heading = "text-[19px] leading-6 font-semibold";
-const lead = "mt-1.5 text-[14px] leading-5 font-medium text-muted";
+type Profile = { fullName: string; phone: string };
 
-function useNow(intervalMs = 1000) {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), intervalMs);
-    return () => clearInterval(timer);
-  }, [intervalMs]);
-  return now;
-}
-
-/** Google's "G" as an outline, like the icon in original 16. */
-function GoogleMark() {
-  return (
-    <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true" fill="none">
-      <path
-        d="M20.4 12.2c0-.6 0-1.2-.2-1.7H12v3.3h4.7a4 4 0 0 1-1.7 2.6M12 3a9 9 0 1 0 6.4 15.4M17.9 6.1A8.9 8.9 0 0 0 12 3"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+/** "+254712345678" → "712 345 678", for the phone field that already shows "+254". */
+function phoneForField(e164: string): string {
+  const local = formatKenyanPhone(e164);
+  return local.startsWith("0") ? local.slice(1) : "";
 }
 
 export function ConfirmSteps({
@@ -68,6 +53,7 @@ export function ConfirmSteps({
   hold,
   seenBy,
   user,
+  profile,
 }: Props) {
   const now = useNow();
   const left = countdown(expiresAt, now);
@@ -99,244 +85,45 @@ export function ConfirmSteps({
         </div>
       </div>
       {user ? (
-        <Details slug={slug} user={user} pickTimeHref={pickTimeHref} seenBy={seenBy} />
+        <Details
+          slug={slug}
+          user={user}
+          profile={profile}
+          pickTimeHref={pickTimeHref}
+          seenBy={seenBy}
+        />
       ) : (
-        <SignIn salonName={salonName} signInFailed={signInFailed} />
+        <SignIn
+          title="Confirm your booking"
+          lead="Sign in so you can view, change or cancel it later. It's free and takes a few seconds."
+          footnote={`By continuing you agree to ${salonName}'s booking and cancellation terms.`}
+          signInFailed={signInFailed}
+        />
       )}
     </>
-  );
-}
-
-function SignIn({ salonName, signInFailed }: { salonName: string; signInFailed: boolean }) {
-  const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
-  const [email, setEmail] = useState("");
-  const [sentTo, setSentTo] = useState<string>();
-  const [sentAt, setSentAt] = useState(0);
-  const [code, setCode] = useState("");
-  const [focused, setFocused] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | undefined>(
-    signInFailed ? "Google sign-in didn't finish. Try again or use your email." : undefined,
-  );
-  const now = useNow();
-  const resendIn = Math.max(0, Math.ceil((sentAt + 60_000 - now.getTime()) / 1000));
-
-  async function google() {
-    setError(undefined);
-    const next = `${window.location.pathname}${window.location.search}`;
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-      },
-    });
-    if (oauthError) setError("Couldn't open Google sign-in. Try again or use your email.");
-  }
-
-  async function sendCode(address: string) {
-    if (!EMAIL.test(address)) {
-      setError("Enter a valid email address.");
-      return;
-    }
-    setBusy(true);
-    setError(undefined);
-    const { error: sendError } = await supabase.auth.signInWithOtp({
-      email: address,
-      options: { shouldCreateUser: true },
-    });
-    setBusy(false);
-    if (sendError) {
-      setError(
-        sendError.status === 429
-          ? "Wait a minute before asking for another code."
-          : "Couldn't send the code. Check the address and try again.",
-      );
-      return;
-    }
-    setSentTo(address);
-    setSentAt(Date.now());
-    setCode("");
-  }
-
-  async function verify(token: string) {
-    if (!sentTo || token.length !== 6) return;
-    setBusy(true);
-    setError(undefined);
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      email: sentTo,
-      token,
-      type: "email",
-    });
-    setBusy(false);
-    if (verifyError) {
-      setError(
-        verifyError.status === 429
-          ? "Too many tries. Wait a minute and try again."
-          : "That code is wrong or has expired. Check the latest email or ask for a new code.",
-      );
-      setCode("");
-      return;
-    }
-    // The session cookie is set; the server now renders the details step.
-    router.refresh();
-  }
-
-  if (sentTo) {
-    const active = Math.min(code.length, 5);
-    return (
-      <section className="px-[35px] pt-[52px]" aria-labelledby="code-heading">
-        <h1 id="code-heading" className={heading}>
-          Check your email
-        </h1>
-        <p className={lead}>
-          We sent a 6-digit code to <strong className="text-ink">{sentTo}</strong>. It&apos;s from
-          Bookflow and expires in 10 minutes.
-        </p>
-        <form
-          className="mt-6 flex flex-col"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void verify(code);
-          }}
-        >
-          <label htmlFor="otp" className={fieldLabel}>
-            6-digit code
-          </label>
-          {/* Six boxes as in the sign-in design; one invisible input on top takes typing and paste. */}
-          <div className="relative mt-2 flex gap-2">
-            {Array.from({ length: 6 }, (_, i) => (
-              <span
-                key={i}
-                aria-hidden="true"
-                className={`flex h-[52px] flex-1 items-center justify-center rounded-[10px] bg-white text-[22px] font-bold ${
-                  focused && i === active ? "border-2 border-select" : "border border-line-strong"
-                }`}
-              >
-                {code[i] ?? ""}
-              </span>
-            ))}
-            <input
-              id="otp"
-              className="absolute inset-0 h-full w-full caret-transparent opacity-0"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              value={code}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              onChange={(e) => {
-                const next = e.target.value.replace(/\D/g, "").slice(0, 6);
-                setCode(next);
-                if (next.length === 6) void verify(next);
-              }}
-              autoFocus
-            />
-          </div>
-          <p className="mt-2 text-[13px] text-muted">Tip: you can paste the whole code.</p>
-          <button type="submit" disabled={busy || code.length !== 6} className={`${primary} mt-5`}>
-            {busy ? "Checking…" : "Verify"}
-          </button>
-        </form>
-        {error ? (
-          <p role="alert" className="mt-3 text-[15px] text-danger">
-            {error}
-          </p>
-        ) : null}
-        <div className="mt-3 flex items-center justify-between gap-4 text-[15px]">
-          <button
-            type="button"
-            disabled={resendIn > 0 || busy}
-            onClick={() => void sendCode(sentTo)}
-            className="press min-h-11 text-muted enabled:font-semibold enabled:text-brand"
-          >
-            {resendIn > 0 ? `Resend code in 0:${String(resendIn).padStart(2, "0")}` : "Resend code"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSentTo(undefined);
-              setError(undefined);
-            }}
-            className="press min-h-11 font-semibold text-brand underline"
-          >
-            Use a different email
-          </button>
-        </div>
-        <p className="mt-10 text-center text-[13px] text-muted">
-          Can&apos;t find it? Check your spam or promotions folder.
-        </p>
-      </section>
-    );
-  }
-
-  return (
-    <section className="px-[35px] pt-[52px]" aria-labelledby="signin-heading">
-      <h1 id="signin-heading" className={heading}>
-        Confirm your booking
-      </h1>
-      <p className={lead}>
-        Sign in so you can view, change or cancel it later. It&apos;s free and takes a few seconds.
-      </p>
-      <button type="button" onClick={() => void google()} className={`${outline} mt-6`}>
-        <GoogleMark /> Continue with Google
-      </button>
-      <div className="my-4 flex items-center gap-3 text-[13px] text-muted">
-        <span className="h-px flex-1 bg-line" />
-        or use your email
-        <span className="h-px flex-1 bg-line" />
-      </div>
-      <form
-        className="flex flex-col"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void sendCode(email.trim().toLowerCase());
-        }}
-      >
-        <label htmlFor="email" className={fieldLabel}>
-          Email
-        </label>
-        <input
-          id="email"
-          type="email"
-          className={`${input} mt-2`}
-          placeholder="you@example.com"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <button type="submit" disabled={busy} className={`${primary} mt-3`}>
-          {busy ? "Sending…" : "Email me a code"}
-        </button>
-      </form>
-      {error ? (
-        <p role="alert" className="mt-3 text-[15px] text-danger">
-          {error}
-        </p>
-      ) : null}
-      <p className="mt-10 text-center text-[13px] leading-[18px] text-muted">
-        By continuing you agree to {salonName}&apos;s booking and cancellation terms.
-      </p>
-    </section>
   );
 }
 
 function Details({
   slug,
   user,
+  profile,
   pickTimeHref,
   seenBy,
 }: {
   slug: string;
   user: { email: string; name: string };
+  profile: Profile | null;
   pickTimeHref: string;
   seenBy: string;
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const [state, formAction, pending] = useActionState<ConfirmState, FormData>(confirmBooking, {});
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(profile ? phoneForField(profile.phone) : "");
   const [phoneError, setPhoneError] = useState<string>();
+  // A returning client confirms in one tap; "Change" opens the usual fields, prefilled.
+  const [editing, setEditing] = useState(!profile);
 
   useEffect(() => {
     if (state.next === "signin") void supabase.auth.signOut().then(() => router.refresh());
@@ -355,6 +142,73 @@ function Details({
   }
 
   const shownPhoneError = phoneError ?? state.fieldErrors?.phone;
+  const signedInAs = (
+    <p className="mt-2 px-[35px] text-center text-[13px] text-muted">
+      Signed in as {user.email}.{" "}
+      <button
+        type="button"
+        onClick={() => void supabase.auth.signOut().then(() => router.refresh())}
+        className="press min-h-11 font-semibold underline"
+      >
+        Not you?
+      </button>
+    </p>
+  );
+  const errorMessage =
+    state.message && (!state.next || state.next === "signin") ? (
+      <p role="alert" className="mt-3 text-[15px] text-danger">
+        {state.message}
+      </p>
+    ) : null;
+
+  if (profile && !editing && !state.fieldErrors) {
+    return (
+      <>
+        <p className="px-5 pt-2 text-[13px] leading-[18px] font-medium text-muted">
+          Pay at the salon. No payment is taken online.
+        </p>
+        <section
+          className="mx-5 mt-[13px] rounded-[16px] border border-line bg-white px-[17px] pt-3 pb-[14px]"
+          aria-labelledby="details-heading"
+        >
+          <h1 id="details-heading" className="text-[20px] leading-7 font-semibold">
+            Welcome back, {firstName(profile.fullName)}
+          </h1>
+          <p className="text-[16px] leading-6 font-medium text-muted">{seenBy}</p>
+          <div className="mt-[11px] flex min-h-[59px] items-center gap-3 rounded-[12px] bg-mist py-2 pr-1 pl-3.5">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[16px] leading-5 font-semibold">{profile.fullName}</p>
+              <p className="text-[14px] leading-5 font-medium text-muted">
+                {formatKenyanPhone(profile.phone)}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              aria-label="Change name or phone"
+              className="press min-h-11 px-2.5 text-[16px] font-semibold text-action"
+            >
+              Change
+            </button>
+          </div>
+          <form action={formAction} className="mt-4 flex flex-col">
+            <input type="hidden" name="slug" value={slug} />
+            <input type="hidden" name="fullName" value={profile.fullName} />
+            <input type="hidden" name="phone" value={profile.phone} />
+            <button
+              type="submit"
+              disabled={pending}
+              className="press flex h-[52px] w-full items-center justify-center rounded-[12px] bg-ink text-[16px] font-semibold text-white disabled:opacity-40"
+            >
+              {pending ? "Confirming…" : "Confirm booking"}
+            </button>
+            {errorMessage}
+          </form>
+        </section>
+        {signedInAs}
+      </>
+    );
+  }
 
   return (
     <>
@@ -386,7 +240,7 @@ function Details({
               name="fullName"
               className={input}
               placeholder="First name"
-              defaultValue={user.name ? firstName(user.name) : ""}
+              defaultValue={profile?.fullName ?? (user.name ? firstName(user.name) : "")}
               autoComplete="given-name"
               maxLength={80}
               required
@@ -435,24 +289,11 @@ function Details({
             <button type="submit" disabled={pending} className={`${primary} mt-[14px]`}>
               {pending ? "Confirming…" : "Confirm booking"}
             </button>
-            {state.message && (!state.next || state.next === "signin") ? (
-              <p role="alert" className="mt-3 text-[15px] text-danger">
-                {state.message}
-              </p>
-            ) : null}
+            {errorMessage}
           </form>
         </section>
       </div>
-      <p className="mt-2 px-[35px] text-center text-[13px] text-muted">
-        Signed in as {user.email}.{" "}
-        <button
-          type="button"
-          onClick={() => void supabase.auth.signOut().then(() => router.refresh())}
-          className="press min-h-11 font-semibold underline"
-        >
-          Not you?
-        </button>
-      </p>
+      {signedInAs}
     </>
   );
 }

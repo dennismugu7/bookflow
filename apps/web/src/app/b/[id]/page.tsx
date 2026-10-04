@@ -1,11 +1,12 @@
-import { bookingLink } from "@bookflow/shared";
-import { CalendarPlus } from "lucide-react";
+import { bookingLink, formatKes } from "@bookflow/shared";
 import type { Metadata } from "next";
+import Link from "next/link";
 
+import { MyBookingsLink } from "../../../components/my-bookings-link";
 import { SalonHeader } from "../../../components/salon-header";
-import { firstName, formatShortDateTime } from "../../../lib/format";
+import { firstName, formatClock, formatShortDateTime } from "../../../lib/format";
 import { directionsUrl, getMyBooking } from "../../../lib/my-booking";
-import { getPublicSalon } from "../../../lib/salon";
+import { getPublicSalon, salonArea } from "../../../lib/salon";
 import { ShareCard } from "./share-card";
 
 export const metadata: Metadata = { title: "Your booking · Bookflow", robots: { index: false } };
@@ -80,7 +81,10 @@ export default async function BookingPage(props: PageProps<"/b/[id]">) {
   }
 
   const tz = booking.salon.timezone;
-  const salon = await getPublicSalon(booking.salon.slug);
+  const [salon, area] = await Promise.all([
+    getPublicSalon(booking.salon.slug),
+    salonArea(booking.salon.address, booking.salon.maps_url),
+  ]);
   const directions = directionsUrl(booking.salon.maps_url, booking.salon.address);
   const services = booking.services.map((s) => s.name).join(", ");
 
@@ -89,7 +93,7 @@ export default async function BookingPage(props: PageProps<"/b/[id]">) {
       <SalonHeader
         name={booking.salon.name}
         tagline={salon?.tagline ?? null}
-        address={booking.salon.address}
+        area={area}
         logoUrl={salon?.logoUrl ?? null}
       />
 
@@ -101,37 +105,50 @@ export default async function BookingPage(props: PageProps<"/b/[id]">) {
         <p className="mt-[37px] text-[18px] leading-6 font-medium">See you soon!</p>
       </div>
 
-      <section aria-label="Booking details" className="mt-[45px] bg-surface px-7 py-[19px]">
-        <p className="text-[15px] leading-6 font-bold">
-          {formatShortDateTime(booking.starts_at, tz)}
+      <section aria-label="Booking details" className="mt-[45px] bg-mist px-5 py-[13px]">
+        <p className="text-[16px] leading-5 font-bold">
+          {formatShortDateTime(booking.starts_at, tz)} – {formatClock(booking.ends_at, tz)}
         </p>
-        <p className="mt-0.5 text-[16px] leading-6 font-medium">
-          {services} - with {firstName(booking.staff_name)}
+        <p className="mt-0.5 text-[16px] leading-[19px] font-medium">
+          {services} – with {firstName(booking.staff_name)}
+        </p>
+        <p className="text-[14px] leading-[18px] font-medium text-muted">
+          {formatKes(booking.total_kes)} · Pay at the salon
+          {directions ? (
+            <>
+              {" · "}
+              <a
+                href={directions}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="press -my-3 inline-block py-3 font-semibold text-action"
+              >
+                Get directions
+              </a>
+            </>
+          ) : null}
         </p>
       </section>
 
-      <div className="flex gap-2.5 px-[7px] pt-[17px]">
+      <div className="flex gap-2.5 px-5 pt-4">
         <a
           href={`/b/${booking.id}/ics`}
-          className="press flex h-[42px] flex-1 items-center justify-center gap-2.5 rounded-[10px] border border-line-strong bg-white text-[16px] font-semibold"
+          className="press flex h-[47px] flex-1 items-center justify-center rounded-[12px] border border-line-strong bg-white text-[15px] font-medium"
         >
-          <CalendarPlus className="size-5" aria-hidden="true" /> Add to calendar
+          Add to calendar
         </a>
-        {directions ? (
-          <a
-            href={directions}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="press flex h-[42px] flex-1 items-center justify-center rounded-[10px] bg-ink text-[16px] font-semibold text-white"
-          >
-            Get directions
-          </a>
-        ) : null}
+        <Link
+          href="/me"
+          className="press flex h-[47px] flex-1 items-center justify-center rounded-[12px] bg-ink text-[16px] font-semibold text-white"
+        >
+          View booking
+        </Link>
       </div>
 
       <div className="mx-[31px] mt-[26px] bg-sand pb-4">
         <ShareCard salonName={booking.salon.name} link={bookingLink(booking.salon.slug)} />
       </div>
+      <MyBookingsLink className="mt-6" />
     </main>
   );
 }

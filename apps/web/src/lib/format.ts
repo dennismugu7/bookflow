@@ -12,7 +12,9 @@ export function formatShortDateTime(iso: string | Date, timeZone: string): strin
     timeZone,
   }).formatToParts(new Date(iso));
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-  return `${get("weekday")} ${get("day")} ${get("month")}, ${get("hour")}:${get("minute")}`;
+  // Some ICU versions say "Sept"; the designs use three letters ("Sat 12 Sep").
+  const month = get("month").slice(0, 3);
+  return `${get("weekday")} ${get("day")} ${month}, ${get("hour")}:${get("minute")}`;
 }
 
 /** "10:45" in the salon's timezone. */
