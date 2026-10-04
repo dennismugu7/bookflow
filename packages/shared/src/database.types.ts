@@ -303,6 +303,12 @@ isOneToOne: false
               "ends_at": string,"staff_id": string,"starts_at": string
             }[]
                            },
+"get_client_profile":
+{ Args: { "p_client_id": string }; Returns: Json
+                           },
+"get_clients":
+{ Args: { "p_salon_id": string,"p_search"?: string,"p_segment"?: string }; Returns: Json
+                           },
 "get_day_agenda":
 { Args: { "p_date": string,"p_salon_id": string }; Returns: Json
                            },
@@ -314,6 +320,9 @@ isOneToOne: false
                            },
 "get_my_client_profile":
 { Args: { "p_salon_slug": string }; Returns: Json
+                           },
+"get_range_agenda":
+{ Args: { "p_from": string,"p_salon_id": string,"p_to": string }; Returns: Json
                            },
 "owner_create_booking":
 { Args: { "p_client_id"?: string,"p_client_name"?: string,"p_client_phone"?: string,"p_salon_id": string,"p_service_ids": (string)[],"p_staff_id": string,"p_starts_at": string }; Returns: string

@@ -12,7 +12,9 @@ export type BadgeVariant =
   | "noShow"
   | "done"
   | "next"
-  | "newWeb";
+  | "newWeb"
+  | "lapsed"
+  | "missed";
 
 const variants: Record<BadgeVariant, { background: string; text: string; dashed?: boolean }> = {
   confirmed: { background: colors.successTint, text: colors.success },
@@ -27,6 +29,9 @@ const variants: Record<BadgeVariant, { background: string; text: string; dashed?
   done: { background: colors.doneTint, text: colors.success },
   next: { background: colors.actionTint, text: colors.action },
   newWeb: { background: colors.newTint, text: colors.select },
+  // Clients (owner-v4 04, 05).
+  lapsed: { background: colors.attentionSoft, text: colors.attentionInk },
+  missed: { background: colors.missedTint, text: colors.danger },
 };
 
 type Props = {

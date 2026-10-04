@@ -4,7 +4,7 @@ import { z } from "zod";
 import { ceilToMinutes } from "./time";
 
 /** The shape returned by get_day_agenda (supabase/migrations/20261004150000_owner_today.sql). */
-const bookingSchema = z.object({
+export const bookingSchema = z.object({
   id: z.string(),
   status: z.enum(["confirmed", "completed", "no_show"]),
   starts_at: z.string(),
