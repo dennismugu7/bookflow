@@ -2,7 +2,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, type PressableProps } f
 
 import { colors, controlHeight, fonts, radius, space } from "../theme";
 
-type Variant = "primary" | "secondary" | "outline" | "brand" | "danger" | "blue";
+type Variant = "primary" | "secondary" | "outline" | "brand" | "danger" | "blue" | "action";
 
 type Props = Omit<PressableProps, "children" | "style"> & {
   title: string;
@@ -23,6 +23,8 @@ const variants: Record<Variant, { background: string; text: string; border?: str
   danger: { background: colors.dangerTint, text: colors.danger },
   // The blue action of the sign-in sheet and setup cards (03–05, 44, 51).
   blue: { background: colors.blue, text: colors.white },
+  // The 52 px blue main action of owner-v5 (Send me a code, Turn on notifications).
+  action: { background: colors.action, text: colors.white },
 };
 
 /** One black (primary) button per screen; brand for sharing and links, never for destructive actions. */
@@ -47,6 +49,7 @@ export function Button({
         styles.base,
         variant === "blue" && styles.blue,
         variant === "outline" && styles.outline,
+        variant === "action" && styles.action,
         shape === "pill" && styles.pill,
         compact && styles.compact,
         { backgroundColor: v.background, borderColor: v.border ?? v.background },
@@ -63,6 +66,7 @@ export function Button({
             styles.text,
             variant === "blue" && styles.blueText,
             variant === "outline" && styles.outlineText,
+            variant === "action" && styles.actionText,
             compact && styles.compactText,
             { color: v.text },
           ]}
@@ -91,6 +95,8 @@ const styles = StyleSheet.create({
   outline: { minHeight: 48, borderWidth: 1.5 },
   outlineText: { fontFamily: fonts.medium, fontSize: 17 },
   blueText: { fontFamily: fonts.regular, fontSize: 19 },
+  action: { borderWidth: 0 },
+  actionText: { fontFamily: fonts.semibold, fontSize: 17 },
   pressed: { opacity: 0.85 },
   inactive: { opacity: 0.5 },
 });

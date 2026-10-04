@@ -5,6 +5,7 @@ import { StyleSheet, Text, View, type ColorValue } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useSession } from "../../../lib/session";
+import { useNotifications } from "../../../lib/use-notifications";
 import { colors, fonts } from "../../../theme";
 
 type IconProps = { color: ColorValue; focused: boolean };
@@ -28,6 +29,8 @@ function MenuIcon({ focused }: IconProps) {
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  const { membership } = useSession();
+  useNotifications(membership?.salon.timezone ?? "Africa/Nairobi");
   return (
     <Tabs
       screenOptions={{

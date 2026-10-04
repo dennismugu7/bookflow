@@ -144,3 +144,14 @@ Mockups in `docs/design/owner-v4/` (fake data), adapted from originals 25 to 28 
 | Clients, empty | `owner-v4/03-clients-empty.png` |
 | Clients list (search and segments) | `owner-v4/04-clients-list.png` |
 | Client profile (stats, notes, past visits) | `owner-v4/05-client-profile.png` |
+
+### Release 0.5.0, Google sign-in and notifications (Dennis, 2026-10-04)
+Mockups in `docs/design/owner-v5/` (fake data). Sign in and Create account keep original 05's sheet and add Google's official button:
+
+| Screen | Copy from |
+| --- | --- |
+| Sign in (Google + email code) | `owner-v5/01-sign-in.png` |
+| Create account (with Terms and Privacy line) | `owner-v5/02-create-account.png` |
+| Turn on notifications (shown once) | `owner-v5/03-allow-notifications.png` |
+| Android notifications (content and tap target) | `owner-v5/04-notifications.png` |
+| Menu → Notifications switches | `owner-v5/05-notification-settings.png` |

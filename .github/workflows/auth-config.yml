@@ -60,7 +60,7 @@ jobs:
             --arg google_secret "$GOOGLE_SECRET" \
             '{
               site_url: "https://bookflow-web-pearl.vercel.app",
-              uri_allow_list: "http://localhost:3000/**,https://*-dennismugu7-6048s-projects.vercel.app/**,https://bookflow-web-pearl.vercel.app/**",
+              uri_allow_list: "http://localhost:3000/**,https://*-dennismugu7-6048s-projects.vercel.app/**,https://bookflow-web-pearl.vercel.app/**,bookflow://**",
               external_google_enabled: true,
               external_google_client_id: $google_client_id,
               external_google_secret: $google_secret,

@@ -249,8 +249,8 @@ async function signIn(page, email) {
   await clearMailbox(email);
   await page.goto(APP);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByLabel("Enter email:").fill(email);
-  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByRole("button", { name: "Send me a code" }).click();
   await page.getByLabel("Verification code").waitFor();
   await page.getByLabel("Verification code").fill(await latestCode(email));
   await page.getByLabel("Verification code").waitFor({ state: "detached" });
@@ -327,8 +327,8 @@ const go = async (page, route, ms = 2500) => {
   await page.getByRole("button", { name: "Sign in", exact: true }).waitFor();
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await clearMailbox(NEW_OWNER);
-  await page.getByLabel("Enter email:").fill(NEW_OWNER);
-  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Email", { exact: true }).fill(NEW_OWNER);
+  await page.getByRole("button", { name: "Send me a code" }).click();
   await page.getByLabel("Verification code").waitFor();
   await page.getByLabel("Verification code").fill(await latestCode(NEW_OWNER));
   await page.getByLabel("Salon name:").waitFor();

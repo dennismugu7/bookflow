@@ -13,11 +13,13 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { getEnv } from "../env";
 import { appReady } from "../lib/launch";
+import { setUpNotifications } from "../lib/push";
 import { SessionProvider, useSession } from "../lib/session";
 import { colors, space, type } from "../theme";
 import { Button } from "../ui";
 
 void SplashScreen.preventAutoHideAsync();
+setUpNotifications();
 
 /** The env error message, or null when the Supabase values were bundled. */
 function configError(): string | null {

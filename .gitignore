@@ -62,3 +62,6 @@ supabase/.branches/
 
 # Local design references (not for the public repo: third-party photos)
 /design-ref/
+
+# Firebase config for push (EAS file variable GOOGLE_SERVICES_JSON; never commit)
+google-services.json

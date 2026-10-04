@@ -89,6 +89,7 @@ export default function MenuScreen() {
             {isOwner && live ? (
               <Row icon="eye-off" title="Unpublish salon" onPress={confirmUnpublish} />
             ) : null}
+            <Row icon="bell" title="Notifications" onPress={() => router.push("/notifications")} />
           </>
         ) : null}
 

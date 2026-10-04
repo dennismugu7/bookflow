@@ -22,6 +22,8 @@ export function getSupabase(): SupabaseClient<Database> {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
+      // Google sign-in returns a code to bookflow://auth/callback; email codes work the same.
+      flowType: "pkce",
     },
   });
   const auth = client.auth;

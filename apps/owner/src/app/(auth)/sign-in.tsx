@@ -1,17 +1,36 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
+import { Linking, StyleSheet, Text, View } from "react-native";
 
 import { AUTH_MESSAGES, isValidEmail, sendCodeErrorMessage } from "../../lib/auth-errors";
+import { GOOGLE_ERROR } from "../../lib/google-auth";
+import { signInWithGoogle } from "../../lib/google-sign-in";
 import { getSupabase } from "../../lib/supabase";
-import { AuthSheet, Button, TextField } from "../../ui";
+import { colors, fonts } from "../../theme";
+import { Button, GoogleButton, OrDivider, SignInSheet, TextField } from "../../ui";
 
-/** Email step of sign-in (05), or of "Create for free" (03): both send the same 6-digit code. */
+const SITE = "https://bookflow-web-pearl.vercel.app";
+
+/**
+ * Sign in (owner-v5 01) or Create account (02): Google first, or a 6-digit email code. On success
+ * the root layout routes to onboarding (no salon yet) or the tabs.
+ */
 export default function SignInScreen() {
   const params = useLocalSearchParams<{ email?: string; mode?: string }>();
   const creating = params.mode === "create";
   const [email, setEmail] = useState(params.email ?? "");
   const [error, setError] = useState<string>();
+  const [googleError, setGoogleError] = useState<string>();
   const [sending, setSending] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
+
+  async function google() {
+    setGoogleError(undefined);
+    setGoogleBusy(true);
+    const result = await signInWithGoogle();
+    setGoogleBusy(false);
+    if (result === "error") setGoogleError(GOOGLE_ERROR);
+  }
 
   async function sendCode() {
     const address = email.trim().toLowerCase();
@@ -34,22 +53,22 @@ export default function SignInScreen() {
   }
 
   return (
-    <AuthSheet
-      title={creating ? "Create your Bookflow" : "Login to Bookflow"}
+    <SignInSheet
+      title={creating ? "Create your Bookflow account" : "Sign in to Bookflow"}
       onBack={() => (router.canGoBack() ? router.back() : router.replace("/welcome"))}
-      footer={
-        <Button
-          title={creating ? "Create for free" : "Continue"}
-          variant="blue"
-          onPress={() => void sendCode()}
-          loading={sending}
-        />
-      }
     >
+      <GoogleButton onPress={() => void google()} busy={googleBusy} />
+      {googleError ? (
+        <Text style={styles.error} accessibilityLiveRegion="polite">
+          {googleError}
+        </Text>
+      ) : null}
+      <OrDivider label="or use your email" />
+      <Text style={styles.label}>Email</Text>
       <TextField
-        variant="sheet"
-        label="Enter email:"
-        placeholder="address@mail.com"
+        label="Email"
+        hideLabel
+        placeholder="you@example.com"
         value={email}
         onChangeText={(text) => {
           setEmail(text);
@@ -64,6 +83,71 @@ export default function SignInScreen() {
         returnKeyType="send"
         onSubmitEditing={() => void sendCode()}
       />
-    </AuthSheet>
+      <View style={styles.send}>
+        <Button
+          title="Send me a code"
+          variant="action"
+          onPress={() => void sendCode()}
+          loading={sending}
+        />
+      </View>
+      <Text style={styles.note}>We&apos;ll email you a 6-digit code. No password needed.</Text>
+      {creating ? (
+        <Text style={styles.terms}>
+          By continuing you agree to the{" "}
+          <Text
+            accessibilityRole="link"
+            style={styles.link}
+            onPress={() => void Linking.openURL(`${SITE}/terms`)}
+          >
+            Terms
+          </Text>{" "}
+          and{" "}
+          <Text
+            accessibilityRole="link"
+            style={styles.link}
+            onPress={() => void Linking.openURL(`${SITE}/privacy`)}
+          >
+            Privacy Policy
+          </Text>
+          .
+        </Text>
+      ) : null}
+    </SignInSheet>
   );
 }
+
+const styles = StyleSheet.create({
+  error: {
+    marginTop: 8,
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.danger,
+  },
+  label: {
+    marginTop: 14,
+    marginBottom: 8,
+    fontFamily: fonts.semibold,
+    fontSize: 15,
+    color: colors.ink,
+  },
+  send: { marginTop: 19 },
+  note: {
+    marginTop: 12,
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.subtle,
+    textAlign: "center",
+  },
+  terms: {
+    marginTop: 54,
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.subtle,
+    textAlign: "center",
+  },
+  link: { color: colors.action },
+});

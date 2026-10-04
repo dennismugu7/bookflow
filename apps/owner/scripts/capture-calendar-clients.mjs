@@ -398,8 +398,8 @@ async function signIn(email) {
   await page.clock.resume();
   await page.goto(APP);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByLabel("Enter email:").fill(email);
-  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByRole("button", { name: "Send me a code" }).click();
   await page.getByLabel("Verification code").waitFor();
   await page.getByLabel("Verification code").fill(await latestCode(email));
   await page.getByLabel("Verification code").waitFor({ state: "detached" });

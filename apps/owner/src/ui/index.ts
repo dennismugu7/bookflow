@@ -15,3 +15,4 @@ export { Chip } from "./Chip";
 export { UploadBox } from "./UploadBox";
 export { BrandBackdrop } from "./BrandBackdrop";
 export { WelcomeAnimation } from "./WelcomeAnimation";
+export { GoogleButton, OrDivider, SignInSheet } from "./SignInSheet";
