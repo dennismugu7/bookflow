@@ -1,17 +1,36 @@
 import { router } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { colors, fonts, minTouch } from "../../theme";
-import { BrandBackdrop } from "../../ui";
+import { WelcomeLoop, welcomeBackground } from "../../ui";
 
-/** First screen when signed out (02). Both choices lead to the same email-code sign-in. */
+// The mockup is a 390 × 844 screen; shorter phones pull everything up in proportion.
+const MOCKUP_HEIGHT = 844;
+
+/**
+ * First screen when signed out (owner-v2 10): the light-blue gradient, the wordmark and the
+ * looping animation. Both choices lead to the same email-code sign-in.
+ */
 export default function WelcomeScreen() {
+  const { height } = useWindowDimensions();
+  const k = Math.min(1, height / MOCKUP_HEIGHT);
+
   return (
-    <BrandBackdrop style={styles.fill}>
-      <Text style={styles.wordmark} accessibilityRole="header">
-        Bookflow
-      </Text>
-      <View style={styles.actions}>
+    <View style={styles.fill}>
+      <Image
+        source={welcomeBackground}
+        resizeMode="cover"
+        accessible={false}
+        style={styles.background}
+      />
+      <View style={[styles.brand, { top: 96 * k }]}>
+        <Text style={styles.wordmark} accessibilityRole="header">
+          Bookflow
+        </Text>
+        <Text style={styles.subtitle}>Share your link. Bookings land.</Text>
+      </View>
+      <WelcomeLoop style={[styles.stage, { top: 210 * k }]} />
+      <View style={[styles.actions, { bottom: 120 * k - SIGN_IN_SLACK }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Create for free"
@@ -29,32 +48,58 @@ export default function WelcomeScreen() {
           <Text style={styles.signInText}>Sign in</Text>
         </Pressable>
       </View>
-    </BrandBackdrop>
+    </View>
   );
 }
 
+const GREEN = "#2FD573";
+// The Sign in tap area reaches this far below its label.
+const SIGN_IN_SLACK = (minTouch - 21) / 2;
+
+// Sizes and colours from 10-welcome-animation.html.
 const styles = StyleSheet.create({
-  fill: { flex: 1, alignItems: "center", backgroundColor: "#2A1D84" },
-  // Positions follow design 02, scaled to the screen height.
+  fill: { flex: 1, backgroundColor: "#A9DDF5" },
+  // Explicit size: otherwise the web target lays the image out at its pixel size.
+  background: { position: "absolute", top: 0, left: 0, width: "100%", height: "100%" },
+  brand: { position: "absolute", left: 0, right: 0, alignItems: "center" },
   wordmark: {
-    position: "absolute",
-    top: "13%",
     fontFamily: fonts.bold,
-    fontSize: 50,
-    letterSpacing: -1,
-    color: "#F1EFFA",
+    fontSize: 40,
+    lineHeight: 48,
+    letterSpacing: -0.5,
+    color: "#2A1E8C",
   },
-  actions: { position: "absolute", top: "43.5%", alignItems: "center", gap: 34 },
+  subtitle: {
+    marginTop: 6,
+    fontFamily: fonts.medium,
+    fontSize: 16,
+    lineHeight: 19,
+    color: "#3B3A4A",
+  },
+  stage: { position: "absolute", left: 28, right: 28 },
+  actions: { position: "absolute", left: 28, right: 28 },
   create: {
-    width: 217,
-    height: 59,
-    borderRadius: 22,
-    backgroundColor: colors.welcomeGreen,
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: GREEN,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: GREEN,
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  createText: { fontFamily: fonts.bold, fontSize: 18, color: "#0B2A17" },
+  // A 44 px tap area around the 17 px label; the margin keeps the label 18 px under the button.
+  signIn: {
+    marginTop: 18 - SIGN_IN_SLACK,
+    minHeight: minTouch,
+    minWidth: 120,
+    alignSelf: "center",
     alignItems: "center",
     justifyContent: "center",
   },
-  createText: { fontFamily: fonts.bold, fontSize: 25, color: colors.white },
-  signIn: { minHeight: minTouch, minWidth: 120, alignItems: "center", justifyContent: "center" },
-  signInText: { fontFamily: fonts.medium, fontSize: 24, color: "#DCD8F0" },
+  signInText: { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 21, color: colors.ink },
   pressed: { opacity: 0.85 },
 });

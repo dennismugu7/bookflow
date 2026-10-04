@@ -1,15 +1,17 @@
 import { Image, type ImageStyle, type StyleProp } from "react-native";
 
+import calendarTick from "./calendar-tick.png";
 import map from "./map.png";
 import planets from "./planets.png";
 import screens from "./screens.png";
 
-// Our own art, drawn after designs 12, 44, 47, 50 and 59. Sources are the SVGs next to these
+// Our own art, drawn after designs 44, 47, 50 and 59 and owner-v2 09 (calendar tick). Sources are the SVGs next to these
 // PNGs; re-render with `node apps/owner/scripts/render-art.mjs`.
 const ART = {
   planets: { source: planets, width: 156, height: 138 },
   screens: { source: screens, width: 172, height: 144 },
   map: { source: map, width: 280, height: 156 },
+  "calendar-tick": { source: calendarTick, width: 49, height: 51 },
 } as const;
 
 type Props = { name: keyof typeof ART; scale?: number; style?: StyleProp<ImageStyle> };
@@ -28,3 +30,4 @@ export function Illustration({ name, scale = 1, style }: Props) {
 
 export { default as brandBackground } from "./brand-background.png";
 export { default as logoMark } from "./logo-mark.png";
+export { default as welcomeBackground } from "./welcome-background.png";

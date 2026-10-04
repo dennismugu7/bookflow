@@ -1,6 +1,6 @@
 // Renders the SVG sources in src/ui/illustrations/ to the PNGs the app bundles (React Native has
 // no SVG renderer installed). Uses the workspace's Playwright from apps/web:
-//   node apps/owner/scripts/render-art.mjs
+//   node apps/owner/scripts/render-art.mjs [name ...]   (no names: all of them)
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -11,10 +11,21 @@ const { chromium } = require("playwright");
 
 const DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "../src/ui/illustrations");
 // name → width in px of the 1x PNG; @3x is enough for any Android density.
-const ART = { planets: 156, screens: 172, map: 280, "logo-mark": 64, "brand-background": 390 };
+const ART = {
+  planets: 156,
+  screens: 172,
+  map: 280,
+  "logo-mark": 64,
+  "brand-background": 390,
+  "calendar-tick": 49,
+};
+// HTML sources (CSS gradients SVG can't match), rendered at their own size.
+const HTML_ART = { "welcome-background": { width: 390, height: 844, scale: 2 } };
+const only = process.argv.slice(2);
+const wanted = (name) => only.length === 0 || only.includes(name);
 
 const browser = await chromium.launch();
-for (const [name, width] of Object.entries(ART)) {
+for (const [name, width] of Object.entries(ART).filter(([name]) => wanted(name))) {
   const svg = readFileSync(path.join(DIR, `${name}.svg`), "utf8");
   const [, w, h] = /viewBox="0 0 (\d+) (\d+)"/.exec(svg);
   const height = Math.round((width * Number(h)) / Number(w));
@@ -26,8 +37,17 @@ for (const [name, width] of Object.entries(ART)) {
   await page.close();
   console.log(`${name}.png ${width * 3}×${height * 3}`);
 }
+for (const [name, { width, height, scale }] of Object.entries(HTML_ART)) {
+  if (!wanted(name)) continue;
+  const html = readFileSync(path.join(DIR, `${name}.html`), "utf8");
+  const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: scale });
+  await page.setContent(`<body style="margin:0">${html}</body>`);
+  await page.screenshot({ path: path.join(DIR, `${name}.png`) });
+  await page.close();
+  console.log(`${name}.png ${width * scale}×${height * scale}`);
+}
 // The native splash icon (app.json): the B mark, large enough for xxxhdpi at 107 dp.
-{
+if (wanted("splash-icon")) {
   const svg = readFileSync(path.join(DIR, "logo-mark.svg"), "utf8");
   const page = await browser.newPage({
     viewport: { width: 107, height: 146 },
