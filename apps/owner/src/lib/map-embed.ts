@@ -3,9 +3,6 @@
 // redirects to.
 import { mapsEmbedUrl } from "@bookflow/shared";
 
-/** Origins the WebView may load at all (its `originWhitelist`). */
-export const MAP_ORIGINS = ["https://maps.google.com", "https://www.google.com"] as const;
-
 /** True only for `https://maps.google.com/maps?…output=embed` and `https://www.google.com/maps/embed?…`. */
 export function isMapEmbedUrl(url: string): boolean {
   let parsed: URL;
@@ -23,6 +20,15 @@ export function isMapEmbedUrl(url: string): boolean {
     return parsed.pathname === "/maps/embed";
   }
   return false;
+}
+
+/**
+ * The WebView's navigation guard: our own inline page (about:blank) and Google's embed only.
+ * Everything else is blocked silently and never opened (Dennis, 2026-10-04): the map takes no
+ * touches, so any other navigation is a redirect nobody asked for.
+ */
+export function allowMapNavigation(url: string): boolean {
+  return url === "about:blank" || isMapEmbedUrl(url);
 }
 
 /** What the map shows: the saved pin, else the place name from the link, else the address. */

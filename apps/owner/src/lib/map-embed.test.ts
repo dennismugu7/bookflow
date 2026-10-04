@@ -1,7 +1,7 @@
 import { mapsEmbedUrl } from "@bookflow/shared";
 import { describe, expect, it } from "vitest";
 
-import { isMapEmbedUrl, mapEmbedHtml, mapQuery } from "./map-embed";
+import { allowMapNavigation, isMapEmbedUrl, mapEmbedHtml, mapQuery } from "./map-embed";
 
 describe("isMapEmbedUrl", () => {
   it("allows Google's keyless embed and the page it redirects to", () => {
@@ -71,5 +71,21 @@ describe("mapEmbedHtml", () => {
     expect(urls.length).toBeGreaterThan(0);
     for (const url of urls)
       expect(new URL(url).origin).toMatch(/^https:\/\/(maps|www)\.google\.com$/);
+  });
+});
+
+describe("allowMapNavigation", () => {
+  it("lets through our inline page and the embed only", () => {
+    expect(allowMapNavigation("about:blank")).toBe(true);
+    expect(allowMapNavigation(mapsEmbedUrl("Galana Plaza"))).toBe(true);
+    expect(allowMapNavigation("https://www.google.com/maps/embed?pb=x")).toBe(true);
+  });
+
+  it("blocks everything else, including other Google pages", () => {
+    expect(allowMapNavigation("https://consent.google.com/ml?continue=x")).toBe(false);
+    expect(allowMapNavigation("https://www.google.com/maps/place/Galana+Plaza")).toBe(false);
+    expect(allowMapNavigation("https://evil.example/")).toBe(false);
+    expect(allowMapNavigation("about:srcdoc")).toBe(false);
+    expect(allowMapNavigation("intent://maps#Intent;end")).toBe(false);
   });
 });

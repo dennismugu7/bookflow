@@ -1,20 +1,9 @@
 import { useState } from "react";
-import { Linking, StyleSheet, View } from "react-native";
-import { WebView, type WebViewMessageEvent, type WebViewNavigation } from "react-native-webview";
+import { StyleSheet, View } from "react-native";
+import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
-import { MAP_ORIGINS, isMapEmbedUrl, mapEmbedHtml, type MapPageMessage } from "../lib/map-embed";
+import { allowMapNavigation, mapEmbedHtml, type MapPageMessage } from "../lib/map-embed";
 import { DrawnMap } from "./DrawnMap";
-
-/**
- * Lets through our own inline page (about:blank) and Google's embed. Anything else opens outside
- * the app (https only), never inside the WebView; other origins are already handled the same way
- * by `originWhitelist`.
- */
-function onlyTheEmbed({ url }: WebViewNavigation): boolean {
-  if (url === "about:blank" || isMapEmbedUrl(url)) return true;
-  if (url.startsWith("https://")) void Linking.openURL(url).catch(() => undefined);
-  return false;
-}
 
 /**
  * A real map of `query` (Google's keyless embed) in a locked-down, non-interactive WebView. Our
@@ -37,8 +26,10 @@ export function LiveMap({ query }: { query: string }) {
         <WebView
           source={{ html: mapEmbedHtml(query) }}
           style={[styles.fill, styles.web, state === "loaded" ? null : styles.hidden]}
-          originWhitelist={[...MAP_ORIGINS]}
-          onShouldStartLoadWithRequest={onlyTheEmbed}
+          // "*" hands every navigation to our guard; a narrower list would make the library open
+          // the rest in the browser, and anything but the embed must be blocked silently.
+          originWhitelist={["*"]}
+          onShouldStartLoadWithRequest={({ url }) => allowMapNavigation(url)}
           onMessage={onMessage}
           javaScriptEnabled
           domStorageEnabled={false}
