@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  EXAMPLES,
+  EXAMPLE,
+  FINAL_AT,
   LOOP_MS,
-  REST_AT,
   TRACKS,
   cssEase,
-  nextExample,
+  remainingMs,
   sample,
   welcomeDay,
 } from "./welcome-motion";
@@ -23,7 +23,7 @@ describe("cssEase", () => {
 });
 
 describe("TRACKS", () => {
-  it("loops every 6 seconds", () => {
+  it("are timed on the 6-second sequence of the HTML", () => {
     expect(LOOP_MS).toBe(6000);
   });
 
@@ -57,7 +57,7 @@ describe("TRACKS", () => {
     expect(sample(TRACKS.dropScale, 0.72)).toBe(1.02);
     expect(sample(TRACKS.dropY, 0.72)).toBe(2);
     expect(sample(TRACKS.dropScale, 0.76)).toBe(1);
-    // Everything fades out by 96 %, so the next example swaps in unseen.
+    // In the HTML loop, everything fades out by 96 %.
     for (const name of ["bubbleOpacity", "timesOpacity", "todayOpacity", "dropOpacity"] as const) {
       expect(sample(TRACKS[name], 0.96), name).toBe(0);
     }
@@ -69,31 +69,51 @@ describe("TRACKS", () => {
   });
 });
 
-describe("REST_AT", () => {
+describe("FINAL_AT", () => {
   it("is the final frame: every card in, the time picked, no tap rings", () => {
-    expect(sample(TRACKS.bubbleOpacity, REST_AT)).toBe(1);
-    expect(sample(TRACKS.timesOpacity, REST_AT)).toBe(1);
-    expect(sample(TRACKS.pick, REST_AT)).toBe(1);
-    expect(sample(TRACKS.todayOpacity, REST_AT)).toBe(1);
-    expect(sample(TRACKS.dropOpacity, REST_AT)).toBe(1);
-    expect(sample(TRACKS.dropScale, REST_AT)).toBe(1);
-    expect(sample(TRACKS.dropY, REST_AT)).toBe(0);
-    expect(sample(TRACKS.bubbleY, REST_AT)).toBe(0);
-    expect(sample(TRACKS.tap1Opacity, REST_AT)).toBe(0);
-    expect(sample(TRACKS.tap2Opacity, REST_AT)).toBe(0);
+    expect(sample(TRACKS.bubbleOpacity, FINAL_AT)).toBe(1);
+    expect(sample(TRACKS.timesOpacity, FINAL_AT)).toBe(1);
+    expect(sample(TRACKS.pick, FINAL_AT)).toBe(1);
+    expect(sample(TRACKS.todayOpacity, FINAL_AT)).toBe(1);
+    expect(sample(TRACKS.dropOpacity, FINAL_AT)).toBe(1);
+    expect(sample(TRACKS.dropScale, FINAL_AT)).toBe(1);
+    expect(sample(TRACKS.dropY, FINAL_AT)).toBe(0);
+    expect(sample(TRACKS.bubbleY, FINAL_AT)).toBe(0);
+    expect(sample(TRACKS.tap1Opacity, FINAL_AT)).toBe(0);
+    expect(sample(TRACKS.tap2Opacity, FINAL_AT)).toBe(0);
+  });
+
+  it("comes after the last movement and before the loop's fade-out", () => {
+    // The new booking settles at 76 %; the HTML loop starts fading out at 88 %.
+    for (const track of Object.values(TRACKS)) {
+      expect(sample(track, 0.76)).toBe(sample(track, FINAL_AT));
+      expect(sample(track, 0.88)).toBe(sample(track, FINAL_AT));
+    }
   });
 });
 
-describe("EXAMPLES", () => {
-  it("cycles hair, nails and barber, as in the HTML", () => {
-    expect(EXAMPLES.map((e) => e.who)).toEqual([
-      "Silk press · Wanjiru",
-      "Gel nails · Akinyi",
-      "Fade & beard · Brian",
-    ]);
-    expect(nextExample(0)).toBe(1);
-    expect(nextExample(1)).toBe(2);
-    expect(nextExample(2)).toBe(0);
+describe("remainingMs", () => {
+  it("plays the sequence once, from the start, at the HTML's pace", () => {
+    expect(remainingMs(0)).toBe(FINAL_AT * LOOP_MS);
+  });
+
+  it("resumes from where it paused", () => {
+    expect(remainingMs(0.5)).toBeCloseTo((FINAL_AT - 0.5) * LOOP_MS);
+  });
+
+  it("does not move again once it holds the final frame", () => {
+    expect(remainingMs(FINAL_AT)).toBe(0);
+    expect(remainingMs(1)).toBe(0);
+  });
+});
+
+describe("EXAMPLE", () => {
+  it("is the first example of the HTML only (hair)", () => {
+    expect(EXAMPLE).toEqual({
+      services: "Silk press, braids & more",
+      time: "10:30",
+      who: "Silk press · Wanjiru",
+    });
   });
 });
 
