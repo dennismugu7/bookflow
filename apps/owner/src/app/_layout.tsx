@@ -8,7 +8,7 @@ import {
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { getEnv } from "../env";
@@ -41,7 +41,7 @@ export default function RootLayout() {
 
 /**
  * Signed-out users only see (auth); signed-in users without a salon only see (onboarding);
- * everyone else only sees (app). The splash screen stays up until we know which.
+ * everyone else only sees (app). The splash (01) stays on top until we know which.
  */
 function RootNavigator() {
   const [fontsLoaded, fontError] = useFonts({
@@ -50,7 +50,8 @@ function RootNavigator() {
     Urbanist_600SemiBold,
     Urbanist_700Bold,
   });
-  const { session, membership, membershipError, reloadMembership } = useSession();
+  const { session, membership, membershipError } = useSession();
+  const [splashUp, setSplashUp] = useState(true);
 
   const signedIn = !!session;
   const ready =
@@ -58,12 +59,31 @@ function RootNavigator() {
     session !== undefined &&
     (!signedIn || membership !== undefined || membershipError);
 
-  // Our own splash (01) takes over from the native one while the session and fonts load.
-  useEffect(() => {
+  // The splash comes back whenever we lose track again, e.g. while a new sign-in loads the salon.
+  if (!ready && !splashUp) setSplashUp(true);
+
+  // The system splash (B on a solid colour) hands over once 01 is drawn in its place.
+  const systemSplashUp = useRef(true);
+  const hideSystemSplash = useCallback(() => {
+    if (!systemSplashUp.current) return;
+    systemSplashUp.current = false;
     SplashScreen.hide();
   }, []);
+  const finishSplash = useCallback(() => setSplashUp(false), []);
 
-  if (!ready) return <Splash />;
+  return (
+    <View style={styles.root}>
+      {ready ? <Routes /> : null}
+      {splashUp ? (
+        <Splash ready={!!ready} onShown={hideSystemSplash} onDone={finishSplash} />
+      ) : null}
+    </View>
+  );
+}
+
+function Routes() {
+  const { session, membership, membershipError, reloadMembership } = useSession();
+  const signedIn = !!session;
 
   if (signedIn && membershipError) {
     return (
@@ -110,6 +130,7 @@ function ConfigError({ message }: { message: string }) {
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.white },
   // System font: this screen can appear before Urbanist has loaded.
   plainTitle: { fontSize: 22, fontWeight: "700", color: colors.ink },
   plainBody: { fontSize: 15, color: colors.muted },

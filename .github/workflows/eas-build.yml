@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       profile:
-        description: Build profile
+        description: "Build profile (preview: APK to install directly; internal: AAB for Play internal testing)"
         type: choice
-        options: [development, preview]
+        options: [development, preview, internal]
         default: preview
 
 concurrency:

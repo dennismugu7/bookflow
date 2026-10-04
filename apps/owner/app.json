@@ -3,7 +3,7 @@
     "name": "Bookflow Owner",
     "slug": "bookflow-owner",
     "owner": "mugulabs",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -27,9 +27,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#2A1E86",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 107
+          "backgroundColor": "#221671",
+          "image": "./assets/splash/b-mark.png",
+          "imageWidth": 152
         }
       ],
       "expo-secure-store",
