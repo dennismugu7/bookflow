@@ -2,22 +2,41 @@ import { Pressable, StyleSheet, Text } from "react-native";
 
 import { colors, fonts, minTouch, space } from "../theme";
 
-type Props = { label: string; selected: boolean; onPress: () => void };
+type Props = {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  /** 37 px high, as in the owner-v3 sheets and New booking; the touch area stays 44 px. */
+  compact?: boolean;
+  /** "radio" when only one can be picked. */
+  role?: "checkbox" | "radio";
+};
 
 /** Selectable pill; the selected state is announced to screen readers, not shown by colour alone. */
-export function Chip({ label, selected, onPress }: Props) {
+export function Chip({ label, selected, onPress, compact = false, role = "checkbox" }: Props) {
   return (
     <Pressable
-      accessibilityRole="checkbox"
+      accessibilityRole={role}
       accessibilityLabel={label}
       accessibilityState={{ checked: selected }}
       onPress={onPress}
-      style={[styles.chip, selected ? styles.selected : styles.idle]}
+      hitSlop={compact ? (minTouch - COMPACT) / 2 : undefined}
+      style={[styles.chip, compact && styles.compact, selected ? styles.selected : styles.idle]}
     >
-      <Text style={[styles.text, { color: selected ? colors.action : colors.ink }]}>{label}</Text>
+      <Text
+        style={[
+          styles.text,
+          compact && styles.compactText,
+          { color: selected ? colors.action : colors.ink },
+        ]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
+
+const COMPACT = 37;
 
 const styles = StyleSheet.create({
   chip: {
@@ -28,6 +47,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  compact: { minHeight: COMPACT },
+  compactText: { fontSize: 14 },
   // Same look as the duration chips (owner-v2 03).
   idle: { backgroundColor: colors.white, borderColor: colors.field },
   selected: {

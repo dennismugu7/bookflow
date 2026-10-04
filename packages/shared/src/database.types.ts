@@ -100,13 +100,13 @@ isOneToOne: false
                   ]
                 },"clients": {
                   Row: {
-                    "created_at": string,"email": string | null,"full_name": string,"id": string,"notes": string | null,"phone": string,"phone_verified": boolean,"salon_id": string,"updated_at": string,"user_id": string | null
+                    "created_at": string,"email": string | null,"full_name": string,"id": string,"notes": string | null,"phone": string | null,"phone_verified": boolean,"salon_id": string,"updated_at": string,"user_id": string | null
                   }
                   Insert: {
-                    "created_at"?: string,"email"?: string | null,"full_name": string,"id"?: string,"notes"?: string | null,"phone": string,"phone_verified"?: boolean,"salon_id": string,"updated_at"?: string,"user_id"?: string | null
+                    "created_at"?: string,"email"?: string | null,"full_name": string,"id"?: string,"notes"?: string | null,"phone"?: string | null,"phone_verified"?: boolean,"salon_id": string,"updated_at"?: string,"user_id"?: string | null
                   }
                   Update: {
-                    "created_at"?: string,"email"?: string | null,"full_name"?: string,"id"?: string,"notes"?: string | null,"phone"?: string,"phone_verified"?: boolean,"salon_id"?: string,"updated_at"?: string,"user_id"?: string | null
+                    "created_at"?: string,"email"?: string | null,"full_name"?: string,"id"?: string,"notes"?: string | null,"phone"?: string | null,"phone_verified"?: boolean,"salon_id"?: string,"updated_at"?: string,"user_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -303,6 +303,9 @@ isOneToOne: false
               "ends_at": string,"staff_id": string,"starts_at": string
             }[]
                            },
+"get_day_agenda":
+{ Args: { "p_date": string,"p_salon_id": string }; Returns: Json
+                           },
 "get_my_booking":
 { Args: { "p_booking_id": string }; Returns: Json
                            },
@@ -311,6 +314,9 @@ isOneToOne: false
                            },
 "get_my_client_profile":
 { Args: { "p_salon_slug": string }; Returns: Json
+                           },
+"owner_create_booking":
+{ Args: { "p_client_id"?: string,"p_client_name"?: string,"p_client_phone"?: string,"p_salon_id": string,"p_service_ids": (string)[],"p_staff_id": string,"p_starts_at": string }; Returns: string
                            },
 "release_hold":
 { Args: { "p_hold_token": string }; Returns: undefined

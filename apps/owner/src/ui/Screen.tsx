@@ -1,5 +1,11 @@
-import type { ReactNode } from "react";
-import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from "react-native";
+import type { ReactElement, ReactNode } from "react";
+import {
+  KeyboardAvoidingView,
+  ScrollView,
+  StyleSheet,
+  View,
+  type RefreshControlProps,
+} from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
 import { colors, space } from "../theme";
@@ -13,10 +19,19 @@ type Props = {
   background?: string;
   /** Space between sections; the default suits most screens. */
   gap?: number;
+  /** Pull to refresh (Today). */
+  refreshControl?: ReactElement<RefreshControlProps>;
 };
 
 /** Safe-area page with scrolling content, keyboard avoidance and an optional pinned footer. */
-export function Screen({ children, footer, edges = ["top", "bottom"], background, gap }: Props) {
+export function Screen({
+  children,
+  footer,
+  edges = ["top", "bottom"],
+  background,
+  gap,
+  refreshControl,
+}: Props) {
   return (
     <SafeAreaView
       style={[styles.safe, background ? { backgroundColor: background } : null]}
@@ -26,6 +41,7 @@ export function Screen({ children, footer, edges = ["top", "bottom"], background
         <ScrollView
           contentContainerStyle={[styles.content, gap !== undefined && { gap, padding: space(4) }]}
           keyboardShouldPersistTaps="handled"
+          refreshControl={refreshControl}
         >
           {children}
         </ScrollView>

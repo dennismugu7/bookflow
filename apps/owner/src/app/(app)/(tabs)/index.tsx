@@ -2,13 +2,27 @@ import { bookingLink } from "@bookflow/shared";
 import Feather from "@expo/vector-icons/Feather";
 import { router, useFocusEffect, type Href } from "expo-router";
 import { useCallback, useState } from "react";
-import { Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, Share, StyleSheet, Text, View } from "react-native";
 
-import { useSession } from "../../../lib/session";
+import {
+  actionsFor,
+  nextBookingId,
+  nextFreeSlot,
+  timeline,
+  type Agenda,
+  type AgendaBooking,
+} from "../../../lib/agenda";
+import { statusErrorMessage } from "../../../lib/new-booking";
+import { useSession, type Membership } from "../../../lib/session";
 import { isSetupComplete, publishErrorMessage, type SetupStatus } from "../../../lib/setup";
 import { getSupabase } from "../../../lib/supabase";
+import { useAgenda, useNow } from "../../../lib/use-agenda";
 import { colors, fonts, minTouch, space, type } from "../../../theme";
-import { Button, Card, Illustration, Screen } from "../../../ui";
+import { Button, Card, Fab, Illustration, Screen } from "../../../ui";
+import { BookingCard } from "../../../ui/today/BookingCard";
+import { GapRow } from "../../../ui/today/GapRow";
+import { StatTiles } from "../../../ui/today/StatTiles";
+import { CancelSheet, NoShowSheet } from "../../../ui/today/StatusSheets";
 
 /** "Saturday, 4 October", as in owner-v2 09. */
 function todayLabel(timeZone: string): string {
@@ -41,21 +55,207 @@ const CHECKLIST: { key: keyof SetupStatus; title: string; detail: string; href: 
 export default function TodayScreen() {
   const { membership } = useSession();
   if (!membership) return null;
+  if (membership.salon.isPublished) return <Day membership={membership} />;
 
   return (
     <Screen edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.salon} accessibilityRole="header">
-          {membership.salon.name}
-        </Text>
-        <Text style={styles.date}>{todayLabel(membership.salon.timezone)}</Text>
-      </View>
-      {membership.salon.isPublished ? (
-        <NoBookings slug={membership.salon.slug} />
-      ) : (
-        <SetupCard salonId={membership.salon.id} isOwner={membership.role === "owner"} />
-      )}
+      <Header membership={membership} />
+      <SetupCard salonId={membership.salon.id} isOwner={membership.role === "owner"} />
     </Screen>
+  );
+}
+
+/** The v3 list sits 7 pt higher than the v2 empty state (owner-v3 01 vs owner-v2 09). */
+function Header({ membership, high = false }: { membership: Membership; high?: boolean }) {
+  return (
+    <View style={[styles.header, high && styles.headerHigh]}>
+      <Text style={styles.salon} accessibilityRole="header">
+        {membership.salon.name}
+      </Text>
+      <Text style={styles.date}>{todayLabel(membership.salon.timezone)}</Text>
+    </View>
+  );
+}
+
+const newBooking = (start: Date, from: "gap" | "add"): Href => ({
+  pathname: "/booking/new",
+  params: { start: start.toISOString(), from },
+});
+
+type Sheet = { kind: "cancel" | "noShow"; booking: AgendaBooking };
+
+/** A published salon's day: stats, bookings and free gaps (owner-v3 01–04). */
+function Day({ membership }: { membership: Membership }) {
+  const { salon } = membership;
+  const isOwner = membership.role === "owner";
+  const now = useNow();
+  const { agenda, error, refreshing, refresh, reload } = useAgenda(salon.id, salon.timezone, now);
+  const [openId, setOpenId] = useState<string>();
+  const [busyId, setBusyId] = useState<string>();
+  const [cardError, setCardError] = useState<{ id: string; message: string }>();
+  const [sheet, setSheet] = useState<Sheet>();
+  const [sheetSaving, setSheetSaving] = useState(false);
+  const [sheetError, setSheetError] = useState<string>();
+
+  /** Saves a status through update_booking_status; returns a friendly error, if any. */
+  async function setStatus(
+    booking: AgendaBooking,
+    status: "completed" | "no_show" | "cancelled",
+    reason?: string | null,
+  ): Promise<string | undefined> {
+    const { error: saveError } = await getSupabase().rpc("update_booking_status", {
+      p_booking_id: booking.id,
+      p_status: status,
+      p_reason: reason ?? undefined,
+    });
+    await reload();
+    return saveError ? statusErrorMessage(saveError) : undefined;
+  }
+
+  async function markDone(booking: AgendaBooking) {
+    setBusyId(booking.id);
+    setCardError(undefined);
+    const message = await setStatus(booking, "completed");
+    setBusyId(undefined);
+    if (message) setCardError({ id: booking.id, message });
+  }
+
+  async function confirmSheet(reason?: string | null) {
+    if (!sheet) return;
+    setSheetSaving(true);
+    setSheetError(undefined);
+    const message = await setStatus(
+      sheet.booking,
+      sheet.kind === "cancel" ? "cancelled" : "no_show",
+      reason,
+    );
+    setSheetSaving(false);
+    if (message) {
+      setSheetError(message);
+      return;
+    }
+    setSheet(undefined);
+    setOpenId(undefined);
+  }
+
+  const openSheet = (kind: Sheet["kind"], booking: AgendaBooking) => {
+    setSheetError(undefined);
+    setSheet({ kind, booking });
+  };
+
+  // Only owners add bookings (owner_create_booking).
+  const fill = isOwner ? (start: Date) => router.push(newBooking(start, "gap")) : undefined;
+  const nextId = agenda ? nextBookingId(agenda.bookings, now) : undefined;
+
+  return (
+    <View style={styles.flex}>
+      <Screen
+        edges={["top"]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}
+      >
+        <View>
+          <Header membership={membership} high={!!agenda && agenda.bookings.length > 0} />
+          {error ? <Text style={[styles.error, styles.loadError]}>{error}</Text> : null}
+          {!agenda ? null : agenda.bookings.length === 0 ? (
+            <>
+              <NoBookings slug={salon.slug} />
+              <Gaps agenda={agenda} timeZone={salon.timezone} onFill={fill} />
+            </>
+          ) : (
+            <>
+              <View style={styles.tiles}>
+                <StatTiles stats={agenda.stats} />
+              </View>
+              <Text style={styles.nextUp}>Next up</Text>
+              <View style={styles.list}>
+                {timeline(agenda).map((row) =>
+                  row.kind === "gap" ? (
+                    <GapRow
+                      key={`gap-${row.gap.starts_at}`}
+                      gap={row.gap}
+                      timeZone={salon.timezone}
+                      onFill={fill && (() => fill(new Date(row.gap.starts_at)))}
+                    />
+                  ) : (
+                    <BookingCard
+                      key={row.booking.id}
+                      booking={row.booking}
+                      timeZone={salon.timezone}
+                      nextId={nextId}
+                      open={openId === row.booking.id}
+                      onToggle={() =>
+                        setOpenId((id) => (id === row.booking.id ? undefined : row.booking.id))
+                      }
+                      actions={actionsFor(row.booking, now, {
+                        isOwner,
+                        staffId: membership.staffId,
+                      })}
+                      busy={busyId === row.booking.id}
+                      error={cardError?.id === row.booking.id ? cardError.message : undefined}
+                      onMarkDone={() => void markDone(row.booking)}
+                      onNoShow={() => openSheet("noShow", row.booking)}
+                      onCancel={() => openSheet("cancel", row.booking)}
+                    />
+                  ),
+                )}
+              </View>
+              <View style={styles.sharePill}>
+                <SharePill slug={salon.slug} />
+              </View>
+            </>
+          )}
+        </View>
+      </Screen>
+      {isOwner ? (
+        <View style={styles.fab}>
+          <Fab
+            label="New booking"
+            onPress={() => router.push(newBooking(nextFreeSlot(agenda?.gaps ?? [], now), "add"))}
+          />
+        </View>
+      ) : null}
+      <CancelSheet
+        booking={sheet?.kind === "cancel" ? sheet.booking : undefined}
+        timeZone={salon.timezone}
+        onClose={() => setSheet(undefined)}
+        saving={sheetSaving}
+        error={sheetError}
+        onConfirm={(reason) => void confirmSheet(reason)}
+      />
+      <NoShowSheet
+        booking={sheet?.kind === "noShow" ? sheet.booking : undefined}
+        timeZone={salon.timezone}
+        onClose={() => setSheet(undefined)}
+        saving={sheetSaving}
+        error={sheetError}
+        onConfirm={() => void confirmSheet()}
+      />
+    </View>
+  );
+}
+
+/** Free gaps under the empty state, when the day has no bookings yet. */
+function Gaps({
+  agenda,
+  timeZone,
+  onFill,
+}: {
+  agenda: Agenda;
+  timeZone: string;
+  onFill?: (start: Date) => void;
+}) {
+  if (agenda.gaps.length === 0) return null;
+  return (
+    <View style={[styles.list, styles.emptyGaps]}>
+      {agenda.gaps.map((gap) => (
+        <GapRow
+          key={gap.starts_at}
+          gap={gap}
+          timeZone={timeZone}
+          onFill={onFill && (() => onFill(new Date(gap.starts_at)))}
+        />
+      ))}
+    </View>
   );
 }
 
@@ -148,22 +348,45 @@ function NoBookings({ slug }: { slug: string }) {
       <Text style={styles.emptyBody}>
         Share your link on WhatsApp or Instagram. New bookings show up here.
       </Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Share your booking link"
-        onPress={() => void Share.share({ message: bookingLink(slug) })}
-        style={({ pressed }) => [styles.share, pressed && styles.pressed]}
-      >
-        <Text style={styles.shareText}>Share your booking link ›</Text>
-      </Pressable>
+      <View style={styles.emptyShare}>
+        <SharePill slug={slug} />
+      </View>
     </View>
   );
 }
 
+function SharePill({ slug }: { slug: string }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Share your booking link"
+      onPress={() => void Share.share({ message: bookingLink(slug) })}
+      style={({ pressed }) => [styles.share, pressed && styles.pressed]}
+    >
+      <Text style={styles.shareText}>Share your booking link ›</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   header: { marginTop: 9 },
+  headerHigh: { marginTop: 2 },
   salon: { fontFamily: fonts.bold, fontSize: 24, lineHeight: 30, color: colors.ink },
   date: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 22, color: colors.subtle },
+  tiles: { marginTop: 17 },
+  nextUp: {
+    marginTop: 21,
+    fontFamily: fonts.medium,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.subtle,
+  },
+  list: { marginTop: 11, gap: 9 },
+  emptyGaps: { marginTop: 32 },
+  sharePill: { alignItems: "center", marginTop: 24, marginBottom: 96 },
+  fab: { position: "absolute", right: 20, bottom: 24 },
+  loadError: { marginTop: 12 },
   card: { alignItems: "stretch", padding: space(5), gap: space(3) },
   step: {
     flexDirection: "row",
@@ -208,8 +431,8 @@ const styles = StyleSheet.create({
     marginTop: space(2),
     paddingHorizontal: space(4),
   },
+  emptyShare: { marginTop: 25 },
   share: {
-    marginTop: 25,
     height: 48,
     borderRadius: 24,
     paddingHorizontal: space(6),

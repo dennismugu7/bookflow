@@ -1,4 +1,5 @@
 export { formatKes } from "./money";
+export { compactKes, formatMinutes } from "./compact";
 export { initialsFor } from "./initials";
 export { areaLine, shortArea } from "./area";
 export { formatKenyanPhone, normalizeKenyanPhone } from "./phone";

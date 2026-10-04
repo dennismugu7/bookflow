@@ -5,28 +5,50 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors, minTouch, space } from "../theme";
 
-type Props = { visible: boolean; onClose: () => void; children: ReactNode };
+type Props = {
+  visible: boolean;
+  onClose: () => void;
+  children: ReactNode;
+  /**
+   * "close": a white sheet with a close ×, over the undimmed page (the log-out confirm, 31).
+   * "handle": a full-width sheet with a grab handle over a dimmed page (owner-v3 03, 04).
+   */
+  variant?: "close" | "handle";
+};
 
-/** A white sheet from the bottom with a close ×, as in the log-out confirm (31). */
-export function BottomSheet({ visible, onClose, children }: Props) {
+/** A white sheet from the bottom. */
+export function BottomSheet({ visible, onClose, children, variant = "close" }: Props) {
   const insets = useSafeAreaInsets();
+  const handle = variant === "handle";
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType={handle ? "fade" : "slide"}
+      onRequestClose={onClose}
+    >
       {/* Keeps the sheet's fields above the keyboard (the hours day editor). */}
-      <KeyboardAvoidingView style={styles.backdrop} behavior="padding">
+      <KeyboardAvoidingView style={[styles.backdrop, handle && styles.dimmed]} behavior="padding">
         <Pressable accessibilityLabel="Close" style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View style={[styles.sheet, { paddingBottom: insets.bottom + space(6) }]}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Close"
-            onPress={onClose}
-            hitSlop={8}
-            style={styles.close}
-          >
-            <Feather name="x" size={26} color={colors.ink} />
-          </Pressable>
-          {children}
-        </View>
+        {handle ? (
+          <View style={[styles.handleSheet, { paddingBottom: insets.bottom + 27 }]}>
+            <View style={styles.grip} />
+            {children}
+          </View>
+        ) : (
+          <View style={[styles.sheet, { paddingBottom: insets.bottom + space(6) }]}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              onPress={onClose}
+              hitSlop={8}
+              style={styles.close}
+            >
+              <Feather name="x" size={26} color={colors.ink} />
+            </Pressable>
+            {children}
+          </View>
+        )}
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -35,6 +57,7 @@ export function BottomSheet({ visible, onClose, children }: Props) {
 const styles = StyleSheet.create({
   // Design 31 keeps the page undimmed; a soft shadow lifts the sheet instead.
   backdrop: { flex: 1, justifyContent: "flex-end" },
+  dimmed: { backgroundColor: colors.scrim },
   sheet: {
     marginHorizontal: 12,
     backgroundColor: colors.white,
@@ -57,5 +80,20 @@ const styles = StyleSheet.create({
     height: minTouch,
     alignItems: "center",
     justifyContent: "center",
+  },
+  handleSheet: {
+    backgroundColor: colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  grip: {
+    alignSelf: "center",
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.field,
+    marginBottom: 16,
   },
 });
