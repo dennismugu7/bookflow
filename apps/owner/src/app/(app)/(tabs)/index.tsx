@@ -1,8 +1,7 @@
 import { bookingLink } from "@bookflow/shared";
 import Feather from "@expo/vector-icons/Feather";
-import * as Clipboard from "expo-clipboard";
 import { router, useFocusEffect, type Href } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Pressable, Share, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "../../../lib/session";
@@ -11,7 +10,7 @@ import { getSupabase } from "../../../lib/supabase";
 import { colors, fonts, minTouch, space, type } from "../../../theme";
 import { Button, Card, Illustration, Screen } from "../../../ui";
 
-/** "Tuesday, 15 September", as in design 12. */
+/** "Saturday, 4 October", as in owner-v2 09. */
 function todayLabel(timeZone: string): string {
   const part = (options: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat("en-GB", { ...options, timeZone }).format(new Date());
@@ -138,57 +137,33 @@ function SetupCard({ salonId, isOwner }: { salonId: string; isOwner: boolean }) 
   );
 }
 
-/** Design 12 without the stat tiles, which come with Phase 4 (approved deviation). */
+/** Today with no bookings: option A of owner-v2 09 (calendar tick). */
 function NoBookings({ slug }: { slug: string }) {
-  const [copied, setCopied] = useState(false);
-  const link = bookingLink(slug);
-
-  useEffect(() => {
-    if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), 2000);
-    return () => clearTimeout(timer);
-  }, [copied]);
-
   return (
     <View style={styles.empty}>
-      <Illustration name="screens" scale={0.74} />
-      <Text style={styles.emptyTitle}>No Bookings yet</Text>
+      <View style={styles.emptyArt}>
+        <Illustration name="calendar-tick" />
+      </View>
+      <Text style={styles.emptyTitle}>No bookings yet</Text>
       <Text style={styles.emptyBody}>
-        Share your{" "}
-        <Text
-          style={styles.inlineLink}
-          accessibilityRole="link"
-          accessibilityHint="Copies your booking link"
-          onPress={() => {
-            void Clipboard.setStringAsync(link).then(() => setCopied(true));
-          }}
-        >
-          booking link
-        </Text>{" "}
-        on WhatsApp or Instagram, and appointments will land here automatically.
+        Share your link on WhatsApp or Instagram. New bookings show up here.
       </Text>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Share your booking link"
-        onPress={() => void Share.share({ message: link })}
+        onPress={() => void Share.share({ message: bookingLink(slug) })}
         style={({ pressed }) => [styles.share, pressed && styles.pressed]}
       >
-        <Text style={styles.shareText}>Share your booking link</Text>
-        <Feather name="chevron-right" size={22} color={colors.white} />
+        <Text style={styles.shareText}>Share your booking link ›</Text>
       </Pressable>
-      {copied ? (
-        <Text style={styles.copied} accessibilityLiveRegion="polite">
-          Link copied
-        </Text>
-      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { gap: 2, marginTop: space(6) },
-  salon: { fontFamily: fonts.bold, fontSize: 28, lineHeight: 34, color: "#000000" },
-  date: { fontFamily: fonts.regular, fontSize: 17, color: "#111111" },
+  header: { marginTop: 9 },
+  salon: { fontFamily: fonts.bold, fontSize: 24, lineHeight: 30, color: colors.ink },
+  date: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 22, color: colors.subtle },
   card: { alignItems: "stretch", padding: space(5), gap: space(3) },
   step: {
     flexDirection: "row",
@@ -207,37 +182,42 @@ const styles = StyleSheet.create({
   },
   tickDone: { backgroundColor: colors.success, borderColor: colors.success },
   stepText: { flex: 1, gap: 2 },
-  empty: { alignItems: "center", marginTop: space(9) },
+  empty: { alignItems: "center", marginTop: 45 },
+  emptyArt: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: colors.actionTint,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   emptyTitle: {
-    fontFamily: fonts.regular,
-    fontSize: 25,
-    color: "#000000",
-    marginTop: space(6),
+    fontFamily: fonts.bold,
+    fontSize: 22,
+    lineHeight: 28,
+    color: colors.ink,
+    marginTop: space(7),
     textAlign: "center",
   },
   emptyBody: {
     fontFamily: fonts.regular,
-    fontSize: 17,
-    lineHeight: 26,
-    color: "#111111",
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.subtle,
     textAlign: "center",
-    marginTop: space(6),
+    marginTop: space(2),
+    paddingHorizontal: space(4),
   },
-  inlineLink: { color: colors.inputBlue },
   share: {
-    marginTop: space(8),
-    width: 228,
-    minHeight: 44,
-    borderRadius: 16,
-    backgroundColor: colors.blue,
-    flexDirection: "row",
+    marginTop: 25,
+    height: 48,
+    borderRadius: 24,
+    paddingHorizontal: space(6),
+    backgroundColor: colors.action,
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingLeft: space(3),
-    paddingRight: space(3),
+    justifyContent: "center",
   },
-  shareText: { fontFamily: fonts.medium, fontSize: 17, fontStyle: "italic", color: colors.white },
+  shareText: { fontFamily: fonts.semibold, fontSize: 16, color: colors.white },
   pressed: { opacity: 0.85 },
-  copied: { ...type.caption, color: colors.muted, marginTop: space(3) },
   error: { ...type.caption, color: colors.danger },
 });

@@ -206,11 +206,15 @@ async function clearMailbox(email) {
 
 const settle = (page, ms = 1200) => page.waitForTimeout(ms);
 
+/** A PNG's pixel width, from its IHDR header. */
+const pngWidth = (file) => readFileSync(file).readUInt32BE(16);
+
 /**
  * Saves the live screen and, when the design is present, a design | live image. `design` is an
- * original ("51-add-team-member") or an owner-v2 mockup ("v2/01-my-brand").
+ * original ("51-add-team-member") or an owner-v2 mockup ("v2/01-my-brand"). `crop` picks one
+ * phone out of a mockup sheet, in the sheet's pixels.
  */
-async function shot(page, name, design) {
+async function shot(page, name, design, crop) {
   mkdirSync(OUT, { recursive: true });
   const live = path.join(OUT, `${name}.png`);
   await page.screenshot({ path: live });
@@ -223,13 +227,17 @@ async function shot(page, name, design) {
   if (!original || !existsSync(original)) return;
   mkdirSync(COMPARE, { recursive: true });
   const dataUrl = (file) => `data:image/png;base64,${readFileSync(file, "base64")}`;
+  const scale = crop ? 390 / crop.width : 1;
+  const imgStyle = crop
+    ? `display:block;width:${pngWidth(original) * scale}px;margin:${-crop.y * scale}px 0 0 ${-crop.x * scale}px`
+    : "width:390px;display:block";
   const sheet = await page
     .context()
     .browser()
     .newPage({ viewport: { width: 900, height: 900 } });
   await sheet.setContent(
     `<body style="margin:0;background:#888;display:flex;gap:12px;padding:12px;width:max-content">
-      <figure style="margin:0;font:600 14px sans-serif;color:#fff">design ${design}<div style="width:390px;height:844px;overflow:hidden;background:#ccc"><img src="${dataUrl(original)}" style="width:390px;display:block"></div></figure>
+      <figure style="margin:0;font:600 14px sans-serif;color:#fff">design ${design}<div style="width:390px;height:844px;overflow:hidden;background:#ccc"><img src="${dataUrl(original)}" style="${imgStyle}"></div></figure>
       <figure style="margin:0;font:600 14px sans-serif;color:#fff">live ${name}<img src="${dataUrl(live)}" style="width:390px;display:block"></figure>
     </body>`,
   );
@@ -267,6 +275,46 @@ const go = async (page, route, ms = 2500) => {
   await page.goto(`${APP}${route}`);
   await settle(page, ms);
 };
+
+// Welcome (owner-v2 10): three moments of the loop on a fake clock, as in 10-welcome-frames.png
+// (three 390 px phones, 15 px apart), and the still frame when "Remove animations" is on.
+{
+  const frame = (n) => ({ x: n * 405, y: 0, width: 390 });
+  const context = await browser.newContext(device);
+  await noFocusRing(context);
+  const page = await context.newPage();
+  await page.clock.install({ time: new Date("2026-10-03T07:00:00Z") });
+  await page.clock.pauseAt(new Date("2026-10-03T07:00:01Z"));
+  await page.goto(APP);
+  // Time stands still, so step it until the screen (and with it the loop) has started.
+  const create = page.getByRole("button", { name: "Create for free" });
+  for (let i = 0; i < 2000 && !(await create.isVisible()); i++) await page.clock.runFor(16);
+  if (!(await create.isVisible())) throw new Error("welcome did not load");
+  const at = async (ms) => {
+    await page.clock.runFor(ms);
+    await page.waitForTimeout(150);
+  };
+  await at(1260); // 21 %: the link bubble, the tap ring growing
+  await shot(page, "owner2-10a-welcome-link", "v2/10-welcome-frames", frame(0));
+  await at(4800 - 1260); // 80 %: the time picked, the new booking in Today
+  await shot(page, "owner2-10b-welcome-booked", "v2/10-welcome-frames", frame(1));
+  await at(6000 + 960 - 4800); // the next loop, 16 %: the nails example
+  await shot(page, "owner2-10c-welcome-next", "v2/10-welcome-frames", frame(2));
+  if (!(await page.getByText("Nails, lashes & brows").isVisible())) {
+    throw new Error("the loop did not move on to the next example");
+  }
+  console.log("ok: the welcome loop runs and cycles its examples");
+  await context.close();
+
+  const still = await browser.newContext({ ...device, reducedMotion: "reduce" });
+  await noFocusRing(still);
+  const stillPage = await still.newPage();
+  await stillPage.goto(APP);
+  await stillPage.getByRole("button", { name: "Create for free" }).waitFor();
+  await settle(stillPage, 2500);
+  await shot(stillPage, "owner2-10d-welcome-still", "v2/10-welcome-frames", frame(1));
+  await still.close();
+}
 
 // A brand-new owner: sign-in and onboarding, the empty screens, then every save (regression).
 {
@@ -390,7 +438,14 @@ const go = async (page, route, ms = 2500) => {
   await noFocusRing(context);
   const page = await context.newPage();
   await signIn(page, FULL_OWNER);
-  await shot(page, "owner2-today", "12-today-empty");
+  // The mockup's day is a Saturday; option A is the first phone of 09 (2x).
+  await page.clock.setFixedTime(new Date("2026-10-03T10:00:00+03:00"));
+  await go(page, "/");
+  await shot(page, "owner2-09-today-empty", "v2/09-today-options", {
+    x: 62,
+    y: 125,
+    width: 776,
+  });
 
   await go(page, "/business/brand");
   await page.getByRole("textbox", { name: "Tagline", exact: true }).click();
