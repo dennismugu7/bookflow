@@ -133,3 +133,14 @@ Phase 4a deviations (Dennis, 2026-10-04):
 - Sheet copy says "their" instead of "her" (`03`, `04`): clients can be anyone.
 - "… will see it as cancelled in their bookings." shows only for web bookings; walk-ins have no account to see it. "This can't be undone." always shows.
 - "Phone not verified" is hidden when the client has no phone (walk-ins).
+
+### Phase 4b/4c, Calendar and Clients (Dennis, 2026-10-04): replaces originals 25 to 28
+Mockups in `docs/design/owner-v4/` (fake data), adapted from originals 25 to 28 without deposits or ratings:
+
+| Screen | Copy from |
+| --- | --- |
+| Calendar, Day (a column per team member) | `owner-v4/01-calendar-day.png` |
+| Calendar, Week | `owner-v4/02-calendar-week.png` |
+| Clients, empty | `owner-v4/03-clients-empty.png` |
+| Clients list (search and segments) | `owner-v4/04-clients-list.png` |
+| Client profile (stats, notes, past visits) | `owner-v4/05-client-profile.png` |

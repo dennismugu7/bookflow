@@ -46,11 +46,13 @@ type Props = {
   /** Mark done is saving. */
   busy?: boolean;
   error?: string;
+  /** Opens the client's profile from their name on the opened card. */
+  onOpenClient?: (clientId: string) => void;
 };
 
 /** One booking on Today (owner-v3 01); tapping it opens contact, details and actions in place (02). */
 export function BookingCard(props: Props) {
-  const { booking, timeZone, nextId, open, onToggle } = props;
+  const { booking, timeZone, nextId, open, onToggle, onOpenClient } = props;
   const name = booking.client?.full_name ?? "Walk-in";
   const time = clockTime(booking.starts_at, timeZone);
   // The opened card swaps "Next" for the end time (02).
@@ -75,9 +77,23 @@ export function BookingCard(props: Props) {
         </View>
         <View style={styles.body}>
           <View style={styles.titleRow}>
-            <Text style={styles.name} numberOfLines={1}>
-              {name}
-            </Text>
+            {open && booking.client && onOpenClient ? (
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel={`Open ${name}'s profile`}
+                onPress={() => onOpenClient(booking.client!.id)}
+                hitSlop={8}
+                style={({ pressed }) => [styles.nameLink, pressed && styles.pressed]}
+              >
+                <Text style={styles.name} numberOfLines={1}>
+                  {name}
+                </Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.name} numberOfLines={1}>
+                {name}
+              </Text>
+            )}
             <Text style={styles.price}>{amount(booking.total_kes)}</Text>
           </View>
           <Text style={styles.sub} numberOfLines={open ? 1 : 2}>
@@ -247,6 +263,7 @@ const styles = StyleSheet.create({
   duration: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 18, color: colors.subtle },
   body: { flex: 1 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  nameLink: { flex: 1 },
   name: { flex: 1, fontFamily: fonts.bold, fontSize: 16, lineHeight: 21, color: colors.ink },
   price: { fontFamily: fonts.bold, fontSize: 16, lineHeight: 21, color: colors.ink },
   sub: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, color: colors.subtle },

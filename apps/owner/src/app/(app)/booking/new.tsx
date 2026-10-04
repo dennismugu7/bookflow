@@ -31,7 +31,14 @@ type Found = { id: string; full_name: string; phone: string | null };
 /** New booking, a walk-in or phone booking (owner-v3 05). */
 export default function NewBookingScreen() {
   const { membership } = useSession();
-  const params = useLocalSearchParams<{ start?: string; from?: string }>();
+  const params = useLocalSearchParams<{
+    start?: string;
+    from?: string;
+    /** From the Calendar: the team member whose column was tapped. */
+    staff?: string;
+    /** From a client's profile: Book. */
+    client?: string;
+  }>();
   const salon = membership?.salon;
   const timeZone = salon?.timezone ?? "Africa/Nairobi";
 
@@ -52,7 +59,7 @@ export default function NewBookingScreen() {
   const [found, setFound] = useState<Found[]>([]);
   const [phone, setPhone] = useState("");
   const [serviceIds, setServiceIds] = useState<string[]>([]);
-  const [staffId, setStaffId] = useState<string>();
+  const [staffId, setStaffId] = useState<string | undefined>(params.staff);
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState(initial.time);
   const [picking, setPicking] = useState(false);
@@ -95,6 +102,23 @@ export default function NewBookingScreen() {
       setHours(h.data);
     });
   }, [salon]);
+
+  // Book from a profile: that client, already picked.
+  useEffect(() => {
+    if (!salon || !params.client) return;
+    void getSupabase()
+      .from("clients")
+      .select("id, full_name, phone")
+      .eq("salon_id", salon.id)
+      .eq("id", params.client)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setPicked(data);
+        setClientText(data.full_name);
+        setPhone(data.phone ? formatKenyanPhone(data.phone) : "");
+      });
+  }, [salon, params.client]);
 
   // Search this salon's clients as the owner types (name or phone, the first 20).
   useEffect(() => {

@@ -10,23 +10,39 @@ type Props = {
   compact?: boolean;
   /** "radio" when only one can be picked. */
   role?: "checkbox" | "radio";
+  /** 32 px high, as the filters of the Calendar week and the client list (owner-v4 02, 04). */
+  dense?: boolean;
 };
 
 /** Selectable pill; the selected state is announced to screen readers, not shown by colour alone. */
-export function Chip({ label, selected, onPress, compact = false, role = "checkbox" }: Props) {
+export function Chip({
+  label,
+  selected,
+  onPress,
+  compact = false,
+  role = "checkbox",
+  dense = false,
+}: Props) {
+  const height = dense ? DENSE : compact ? COMPACT : minTouch;
   return (
     <Pressable
       accessibilityRole={role}
       accessibilityLabel={label}
       accessibilityState={{ checked: selected }}
       onPress={onPress}
-      hitSlop={compact ? (minTouch - COMPACT) / 2 : undefined}
-      style={[styles.chip, compact && styles.compact, selected ? styles.selected : styles.idle]}
+      hitSlop={height < minTouch ? (minTouch - height) / 2 : undefined}
+      style={[
+        styles.chip,
+        compact && styles.compact,
+        dense && styles.dense,
+        selected ? styles.selected : styles.idle,
+      ]}
     >
       <Text
         style={[
           styles.text,
           compact && styles.compactText,
+          dense && styles.denseText,
           { color: selected ? colors.action : colors.ink },
         ]}
       >
@@ -37,6 +53,7 @@ export function Chip({ label, selected, onPress, compact = false, role = "checkb
 }
 
 const COMPACT = 37;
+const DENSE = 32;
 
 const styles = StyleSheet.create({
   chip: {
@@ -49,6 +66,8 @@ const styles = StyleSheet.create({
   },
   compact: { minHeight: COMPACT },
   compactText: { fontSize: 14 },
+  dense: { minHeight: DENSE, paddingHorizontal: 15 },
+  denseText: { fontSize: 15 },
   // Same look as the duration chips (owner-v2 03).
   idle: { backgroundColor: colors.white, borderColor: colors.field },
   selected: {

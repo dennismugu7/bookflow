@@ -29,11 +29,24 @@ export function clockTime(at: Date | string, timeZone: string): string {
   return zonedParts(new Date(at), timeZone).time;
 }
 
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+// Fixed names: some Intl data says "Sept", the mockups say "Sep".
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "3 Oct" for a "YYYY-MM-DD" date. */
+export function dayMonth(date: string): string {
+  return `${Number(date.slice(8, 10))} ${MONTHS[Number(date.slice(5, 7)) - 1]}`;
+}
+
+/** "Sat" for a "YYYY-MM-DD" date. */
+export function weekdayShort(date: string): string {
+  return WEEKDAYS[isoWeekday(date) % 7]!;
+}
+
 /** "Sat 3 Oct". */
 export function shortDate(at: Date | string, timeZone: string): string {
-  const format = (options: Intl.DateTimeFormatOptions) =>
-    new Intl.DateTimeFormat("en-GB", { ...options, timeZone }).format(new Date(at));
-  return `${format({ weekday: "short" })} ${format({ day: "numeric", month: "short" })}`;
+  const { date } = zonedParts(new Date(at), timeZone);
+  return `${weekdayShort(date)} ${dayMonth(date)}`;
 }
 
 /** The instant a wall-clock date and time ("2026-10-03", "12:00") happens in the zone. */

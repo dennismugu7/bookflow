@@ -53,6 +53,8 @@ export const colors = {
   attentionSoft: "#FDF1DC",
   attentionInk: "#6B3E00",
   scrim: "rgba(22, 19, 31, 0.45)",
+  // Phase 4b/4c Calendar and Clients (docs/design/owner-v4), sampled from the mockups.
+  missedTint: "#FDECEA",
 } as const;
 
 /** Urbanist (400–700; see docs/design/README.md); React Native needs one family per weight. */

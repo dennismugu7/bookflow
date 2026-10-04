@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  dayMonth,
+  weekdayShort,
   addDays,
   ceilToMinutes,
   clockTime,
@@ -40,5 +42,13 @@ describe("salon time", () => {
     expect(isoWeekday("2026-10-03")).toBe(6);
     expect(isoWeekday("2026-10-04")).toBe(7);
     expect(addDays("2026-10-31", 1)).toBe("2026-11-01");
+  });
+});
+
+describe("short dates", () => {
+  it("says Sep, as the mockups do, whatever the Intl data", () => {
+    expect(shortDate("2026-09-28T09:00:00Z", "Africa/Nairobi")).toBe("Mon 28 Sep");
+    expect(dayMonth("2026-08-14")).toBe("14 Aug");
+    expect(weekdayShort("2026-10-04")).toBe("Sun");
   });
 });
