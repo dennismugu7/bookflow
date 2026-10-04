@@ -13,7 +13,6 @@ export { TopBar, goBack, titleStyle, type BarAction } from "./TopBar";
 export { TextField } from "./TextField";
 export { ComingSoon } from "./ComingSoon";
 export { Chip } from "./Chip";
-export { Splash } from "./Splash";
 export { UploadBox } from "./UploadBox";
 export { BrandBackdrop } from "./BrandBackdrop";
 export { WelcomeAnimation } from "./WelcomeAnimation";

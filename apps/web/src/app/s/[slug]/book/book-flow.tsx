@@ -127,7 +127,7 @@ export function BookFlow({ salon, services, staff, initial, turnstileSiteKey }: 
   };
 
   return (
-    <div className="min-h-full flex-1 bg-surface">
+    <div className="min-h-full flex-1 bg-white">
       <main className="mx-auto w-full max-w-[560px] px-[22px] pb-32">
         <FlowTopBar
           back={
@@ -528,7 +528,7 @@ function TimeStep({
         {loading ? (
           <div className="grid grid-cols-3 gap-[10px]" aria-label="Loading times">
             {Array.from({ length: 9 }, (_, i) => (
-              <div key={i} className="h-[42px] animate-pulse rounded-full bg-white" />
+              <div key={i} className="h-[42px] animate-pulse rounded-full bg-line" />
             ))}
           </div>
         ) : daySlots === "error" ? (

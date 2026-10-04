@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { initials } from "../lib/format";
+import { card } from "./ui";
 
 export type Profile = {
   id: string;
@@ -57,7 +58,7 @@ export function ProfileSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby="profile-name"
-        className="relative flex max-h-[calc(100dvh-6px)] min-h-[calc(100dvh-6px)] w-full max-w-[560px] flex-col overflow-y-auto rounded-t-[30px] bg-surface motion-safe:animate-[sheet-up_200ms_ease-out]"
+        className="relative flex max-h-[calc(100dvh-6px)] min-h-[calc(100dvh-6px)] w-full max-w-[560px] flex-col overflow-y-auto rounded-t-[30px] bg-white motion-safe:animate-[sheet-up_200ms_ease-out]"
         onTouchStart={(e) => {
           touchStart.current = e.touches[0]?.clientY ?? null;
         }}
@@ -96,11 +97,13 @@ export function ProfileSheet({
             <p className="mt-2 text-[16px] leading-6 font-medium">{profile.title}</p>
           ) : null}
         </div>
-        <div className="flex-1 bg-white px-[26px] pt-5 pb-[max(32px,env(safe-area-inset-bottom))]">
-          <h3 className="text-[17px] leading-6 font-bold">About</h3>
-          <p className="mt-1 pl-[3px] text-[13px] leading-[15px] font-medium whitespace-pre-line">
-            {profile.bio ?? `${profile.name} hasn't added an introduction yet.`}
-          </p>
+        <div className="px-5 pb-[max(32px,env(safe-area-inset-bottom))]">
+          <div className={`${card} px-[21px] pt-4 pb-5`}>
+            <h3 className="text-[17px] leading-6 font-bold">About</h3>
+            <p className="mt-1 pl-[3px] text-[13px] leading-[15px] font-medium whitespace-pre-line">
+              {profile.bio ?? `${profile.name} hasn't added an introduction yet.`}
+            </p>
+          </div>
         </div>
       </div>
     </div>

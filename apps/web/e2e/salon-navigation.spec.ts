@@ -141,3 +141,56 @@ test("a booking link opened mid-flow steps back in place", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Select professional" })).toBeVisible();
   await expect(page).toHaveURL(/step=pro/);
 });
+
+/** Page backgrounds behind `selector`, up to the body, that aren't transparent or white. */
+async function tintedBackgrounds(page: Page, selector: string): Promise<string[]> {
+  return page.$$eval(selector, (els) =>
+    els
+      .map((el) => getComputedStyle(el).backgroundColor)
+      .filter((c) => c !== "rgba(0, 0, 0, 0)" && c !== "rgb(255, 255, 255)"),
+  );
+}
+
+test("client pages are white, with no grey bands (Dennis, 2026-10-04)", async ({ page }) => {
+  for (const url of [SALON, `${SALON}/book?services=${SILK_PRESS}`, "/me"]) {
+    await page.goto(url);
+    await expect(page.locator("main").first()).toBeVisible();
+    // Every block-level wrapper: sections, divs and the page itself.
+    expect(
+      await tintedBackgrounds(page, "body, body > div, main, main > div, main > section, main section > div"),
+    ).toEqual([]);
+  }
+  await page.goto(SALON);
+  const service = page.locator("#services li").first();
+  await expect(service).toHaveCSS("border-top-color", "rgb(231, 230, 236)");
+  await expect(service).toHaveCSS("border-radius", "14px");
+});
+
+test("Continue with Google uses Google's blue button", async ({ page }) => {
+  await page.goto("/me");
+  const google = page.getByRole("button", { name: "Continue with Google" });
+  await expect(google).toHaveCSS("background-color", "rgb(66, 133, 244)");
+  await expect(google).toHaveCSS("color", "rgb(255, 255, 255)");
+  await expect(google).toHaveCSS("height", "48px");
+  await expect(google).toHaveCSS("border-radius", "8px");
+});
+
+test("My bookings' back arrow returns to the previous page", async ({ page }) => {
+  await page.goto(SALON);
+  await page.getByRole("link", { name: "My bookings" }).click();
+  await expect(page).toHaveURL(/\/me$/);
+  await page.getByRole("button", { name: "Back" }).click();
+  await expect(page).toHaveURL(new RegExp(`${SALON}$`));
+});
+
+test("without history, My bookings' back arrow opens the last salon visited", async ({
+  context,
+}) => {
+  const first = await context.newPage();
+  await first.goto(SALON);
+  await expect(first.getByRole("heading", { level: 1 })).toBeVisible();
+  const fresh = await context.newPage();
+  await fresh.goto("/me");
+  await fresh.getByRole("button", { name: "Back" }).click();
+  await expect(fresh).toHaveURL(new RegExp(`${SALON}$`));
+});

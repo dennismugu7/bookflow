@@ -7,7 +7,7 @@ const bar = "block animate-pulse rounded-full bg-line";
 /** Shown at once while a booking step loads; copies the layout of original 08. */
 export default function BookLoading() {
   return (
-    <div className="min-h-full flex-1 bg-surface" aria-busy="true">
+    <div className="min-h-full flex-1 bg-white" aria-busy="true">
       <main className="mx-auto w-full max-w-[560px] px-[22px] pb-32">
         <FlowTopBar
           back={

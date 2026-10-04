@@ -25,9 +25,12 @@ export function AddCircle() {
   );
 }
 
-/** Card classes (originals 02 and 08–12): white, 17 px corners, the 2.5 px purple border when chosen. */
+/** Plain card on the white pages: 1 px #E7E6EC outline, 14 px corners (Dennis, 2026-10-04). */
+export const card = "rounded-[14px] border border-card-line bg-white";
+
+/** Card classes (originals 02 and 08–12) on white; the 2.5 px purple border when chosen. */
 export function cardClass(selected: boolean): string {
-  return `rounded-[17px] bg-white ${selected ? "border-[2.5px] border-select" : "border border-line"}`;
+  return selected ? "rounded-[14px] border-[2.5px] border-select bg-white" : card;
 }
 
 /** Black pill for the main booking actions ("Continue →", original 09). */
@@ -70,13 +73,16 @@ export function ServiceText({
   );
 }
 
-/** Fixed white bottom bar with safe-area padding (originals 09 and 12). */
+/**
+ * Fixed white bottom bar with safe-area padding (originals 09 and 12); a 1 px top line keeps cards
+ * from looking cut off as they scroll under it on the white page.
+ */
 export function BottomBar({ children, label }: { children: ReactNode; label?: string }) {
   return (
     <div
       role="region"
       aria-label={label}
-      className="fixed inset-x-0 bottom-0 z-20 bg-white px-[22px] pt-[14px] pb-[max(9px,env(safe-area-inset-bottom))]"
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-card-line bg-white px-[22px] pt-[14px] pb-[max(9px,env(safe-area-inset-bottom))]"
     >
       <div className="mx-auto flex max-w-[516px] items-center gap-4">{children}</div>
     </div>

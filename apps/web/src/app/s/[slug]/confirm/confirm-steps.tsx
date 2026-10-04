@@ -15,6 +15,7 @@ import {
   primary,
   useNow,
 } from "../../../../components/sign-in";
+import { card } from "../../../../components/ui";
 import { firstName } from "../../../../lib/format";
 import { phoneFromField } from "../../../../lib/phone-field";
 import { createClient } from "../../../../lib/supabase/client";
@@ -173,7 +174,7 @@ function Details({
       <>
         {payNote}
         <section
-          className="mx-5 mt-[13px] rounded-[16px] border border-line bg-white px-[17px] pt-3 pb-[14px]"
+          className={`${card} mx-5 mt-[13px] px-[17px] pt-3 pb-[14px]`}
           aria-labelledby="details-heading"
         >
           <h1 id="details-heading" className="text-[20px] leading-7 font-semibold">
@@ -218,11 +219,8 @@ function Details({
   return (
     <>
       {payNote}
-      <div className="mt-[13px] bg-sand px-[11px] pt-1 pb-2">
-        <section
-          className="rounded-[16px] border border-line bg-white px-[21px] pt-5 pb-6"
-          aria-labelledby="details-heading"
-        >
+      <div className="mt-[13px] px-5">
+        <section className={`${card} px-[21px] pt-5 pb-6`} aria-labelledby="details-heading">
           <h1 id="details-heading" className={heading}>
             What should we call you?
           </h1>

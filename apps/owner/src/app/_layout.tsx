@@ -8,13 +8,14 @@ import {
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { getEnv } from "../env";
+import { appReady } from "../lib/launch";
 import { SessionProvider, useSession } from "../lib/session";
 import { colors, space, type } from "../theme";
-import { Button, Splash } from "../ui";
+import { Button } from "../ui";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -41,7 +42,8 @@ export default function RootLayout() {
 
 /**
  * Signed-out users only see (auth); signed-in users without a salon only see (onboarding);
- * everyone else only sees (app). The splash (01) stays on top until we know which.
+ * everyone else only sees (app). Android's system splash stays up until we know which, then the
+ * first screen shows straight away (no second splash; Dennis, 2026-10-04).
  */
 function RootNavigator() {
   const [fontsLoaded, fontError] = useFonts({
@@ -51,31 +53,30 @@ function RootNavigator() {
     Urbanist_700Bold,
   });
   const { session, membership, membershipError } = useSession();
-  const [splashUp, setSplashUp] = useState(true);
+  const [launched, setLaunched] = useState(false);
 
-  const signedIn = !!session;
-  const ready =
-    (fontsLoaded || !!fontError) &&
-    session !== undefined &&
-    (!signedIn || membership !== undefined || membershipError);
+  const ready = appReady({
+    fontsSettled: fontsLoaded || !!fontError,
+    signedIn: !!session,
+    sessionKnown: session !== undefined,
+    membershipKnown: membership !== undefined || !!membershipError,
+  });
 
-  // The splash comes back whenever we lose track again, e.g. while a new sign-in loads the salon.
-  if (!ready && !splashUp) setSplashUp(true);
-
-  // The system splash (B on a solid colour) hands over once 01 is drawn in its place.
-  const systemSplashUp = useRef(true);
-  const hideSystemSplash = useCallback(() => {
-    if (!systemSplashUp.current) return;
-    systemSplashUp.current = false;
+  useEffect(() => {
+    if (!ready || launched) return;
     SplashScreen.hide();
-  }, []);
-  const finishSplash = useCallback(() => setSplashUp(false), []);
+    setLaunched(true);
+  }, [ready, launched]);
 
   return (
     <View style={styles.root}>
-      {ready ? <Routes /> : null}
-      {splashUp ? (
-        <Splash ready={!!ready} onShown={hideSystemSplash} onDone={finishSplash} />
+      {ready ? (
+        <Routes />
+      ) : launched ? (
+        // Later gaps, e.g. while a new sign-in loads the salon: a plain wait, not a splash.
+        <View style={styles.waiting}>
+          <ActivityIndicator color={colors.brand} />
+        </View>
       ) : null}
     </View>
   );
@@ -131,6 +132,7 @@ function ConfigError({ message }: { message: string }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.white },
+  waiting: { flex: 1, alignItems: "center", justifyContent: "center" },
   // System font: this screen can appear before Urbanist has loaded.
   plainTitle: { fontSize: 22, fontWeight: "700", color: colors.ink },
   plainBody: { fontSize: 15, color: colors.muted },

@@ -11,7 +11,6 @@
   --ink: #0d0d0d;
   /* originals: #808080–#828282 */
   --muted: #707070;
-  --surface: #f5f5f5;
   --success: #1e7f4f;
   --attention: #f0a030;
   --danger: #b42318;
@@ -32,6 +31,8 @@
   --read-more: #004aad;
   --day-dot: #78d23f;
   --sand: #fcfcfb;
+  /* Card outline on the white pages (Dennis, 2026-10-04) */
+  --card-line: #e7e6ec;
   /* Phase 3b mockups (docs/design/client-v2) */
   --action: #5b45e0;
   --action-tint: #f1eefd;
@@ -52,7 +53,6 @@
   --color-select: var(--select);
   --color-ink: var(--ink);
   --color-muted: var(--muted);
-  --color-surface: var(--surface);
   --color-success: var(--success);
   --color-attention: var(--attention);
   --color-danger: var(--danger);
@@ -72,6 +72,7 @@
   --color-read-more: var(--read-more);
   --color-day-dot: var(--day-dot);
   --color-sand: var(--sand);
+  --color-card-line: var(--card-line);
   --color-action: var(--action);
   --color-action-tint: var(--action-tint);
   --color-mist: var(--mist);
