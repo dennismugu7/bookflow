@@ -3,8 +3,8 @@ import { StyleSheet, View, type DimensionValue } from "react-native";
 
 import { colors } from "../theme";
 
-// Our own street pattern with a pin, drawn after owner-v2 07 on a 350 × 180 grid. Not a live
-// map (approved deviation until the next APK); tapping it opens the real pin in Google Maps.
+// Our own street pattern with a pin, drawn after owner-v2 07 on a 350 × 180 grid. Location shows
+// it while the live map loads, and keeps it if that fails (e.g. offline).
 const W = 350;
 const H = 180;
 const COLUMNS = [
@@ -26,9 +26,10 @@ const PARKS = [
 
 const pct = (value: number, of: number): DimensionValue => `${(value / of) * 100}%`;
 
-export function DrawnMap() {
+/** Sized by its 350 × 180 ratio, or filling its parent with `fill`. */
+export function DrawnMap({ fill = false }: { fill?: boolean }) {
   return (
-    <View style={styles.map} accessible={false}>
+    <View style={[styles.map, fill && styles.fill]} accessible={false}>
       {ROWS.flatMap(([top, bottom]) =>
         COLUMNS.map(([left, right]) => (
           <View
@@ -65,6 +66,14 @@ export function DrawnMap() {
 
 const styles = StyleSheet.create({
   map: { width: "100%", aspectRatio: W / H, backgroundColor: colors.white, overflow: "hidden" },
+  fill: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    aspectRatio: "auto",
+  },
   block: { position: "absolute", backgroundColor: "#EEF0F5" },
   park: { position: "absolute", backgroundColor: "#D8EFD8", borderRadius: 4 },
   road: {

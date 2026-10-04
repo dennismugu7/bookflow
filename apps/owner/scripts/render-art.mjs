@@ -46,21 +46,4 @@ for (const [name, { width, height, scale }] of Object.entries(HTML_ART)) {
   await page.close();
   console.log(`${name}.png ${width * scale}×${height * scale}`);
 }
-// The native splash icon (app.json): the B mark, large enough for xxxhdpi at 107 dp.
-if (wanted("splash-icon")) {
-  const svg = readFileSync(path.join(DIR, "logo-mark.svg"), "utf8");
-  const page = await browser.newPage({
-    viewport: { width: 107, height: 146 },
-    deviceScaleFactor: 4,
-  });
-  await page.setContent(
-    `<body style="margin:0;background:transparent">${svg.replace(/<svg /, '<svg style="display:block;width:107px;height:146px" ')}</body>`,
-  );
-  await page.screenshot({
-    path: path.join(DIR, "../../../assets/images/splash-icon.png"),
-    omitBackground: true,
-  });
-  await page.close();
-  console.log("assets/images/splash-icon.png 428×584");
-}
 await browser.close();

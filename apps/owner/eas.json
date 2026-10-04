@@ -21,6 +21,14 @@
       },
       "environment": "preview"
     },
+    "internal": {
+      "channel": "preview",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "environment": "preview"
+    },
     "production": {
       "channel": "production",
       "autoIncrement": true,

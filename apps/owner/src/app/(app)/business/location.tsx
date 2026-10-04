@@ -3,10 +3,11 @@ import Feather from "@expo/vector-icons/Feather";
 import { useEffect, useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { mapQuery } from "../../../lib/map-embed";
 import { useSession } from "../../../lib/session";
 import { getSupabase } from "../../../lib/supabase";
 import { colors, fonts, minTouch, type } from "../../../theme";
-import { Button, DrawnMap, Page, SaveBar, TextField } from "../../../ui";
+import { Button, DrawnMap, LiveMap, Page, SaveBar, TextField } from "../../../ui";
 
 type Saved = { address: string; mapsUrl: string | null; lat: number | null; lng: number | null };
 type Pin = Pick<Saved, "mapsUrl" | "lat" | "lng">;
@@ -26,7 +27,8 @@ export default function LocationScreen() {
   const { membership } = useSession();
   const salonId = membership?.salon.id;
   const [saved, setSaved] = useState<Saved>();
-  const [placeName, setPlaceName] = useState<string | null>(null);
+  // undefined until the saved link has been read, so the live map loads once.
+  const [placeName, setPlaceName] = useState<string | null>();
   const [address, setAddress] = useState("");
   // "Change pin" switches a set pin to the paste field; cancelling keeps the old pin.
   const [changingPin, setChangingPin] = useState(false);
@@ -61,7 +63,7 @@ export default function LocationScreen() {
   // The saved pin's place name isn't stored; read it from the link (long links need no fetch).
   useEffect(() => {
     const url = saved?.mapsUrl;
-    setPlaceName(null);
+    setPlaceName(undefined);
     if (!url) return;
     let current = true;
     void inspectMapsLink(url).then((info) => {
@@ -97,6 +99,10 @@ export default function LocationScreen() {
   }, [link]);
 
   const hasPin = !!saved?.mapsUrl && !removingPin;
+  const query =
+    saved && (saved.lat !== null || placeName !== undefined)
+      ? mapQuery({ ...saved, placeName: placeName ?? null })
+      : null;
   const pasting = !hasPin || changingPin;
 
   /** The pin to save: a checked link replaces it; removing clears it; otherwise it stays. */
@@ -173,14 +179,16 @@ export default function LocationScreen() {
         <>
           {hasPin && !changingPin ? (
             <>
-              <Pressable
-                accessibilityRole="link"
-                accessibilityLabel="Open your pin in Google Maps"
-                onPress={() => void Linking.openURL(saved.mapsUrl!)}
-                style={styles.mapTap}
-              >
-                <DrawnMap />
-              </Pressable>
+              <View style={styles.map}>
+                {query ? <LiveMap key={query} query={query} /> : <DrawnMap fill />}
+                {/* The map itself takes no touches; this layer opens the pin in Google Maps. */}
+                <Pressable
+                  accessibilityRole="link"
+                  accessibilityLabel="Open your pin in Google Maps"
+                  onPress={() => void Linking.openURL(saved.mapsUrl!)}
+                  style={styles.mapTap}
+                />
+              </View>
               <View style={styles.place}>
                 <View style={styles.placeRow}>
                   <Feather name="check" size={20} color={colors.success} />
@@ -323,7 +331,8 @@ function LinkStatus({ check }: { check: LinkCheck }) {
 }
 
 const styles = StyleSheet.create({
-  mapTap: { borderRadius: 16, overflow: "hidden", marginTop: -8 },
+  map: { height: 180, borderRadius: 16, overflow: "hidden", marginTop: -8 },
+  mapTap: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
   place: { gap: 6, marginTop: -2 },
   placeRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   placeName: { fontFamily: fonts.semibold, fontSize: 17, color: colors.ink },
