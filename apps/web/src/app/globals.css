@@ -32,6 +32,17 @@
   --read-more: #004aad;
   --day-dot: #78d23f;
   --sand: #fcfcfb;
+  /* Phase 3b mockups (docs/design/client-v2) */
+  --action: #5b45e0;
+  --action-tint: #f1eefd;
+  --mist: #f6f5fa;
+  --handle: #dad8e0;
+  --confirmed-tint: #ddf3e6;
+  /* mockup: #1e7f4f, 4.3:1 on the tint; darkened for WCAG AA */
+  --confirmed-text: #1a7347;
+  --done-tint: #eef0f5;
+  --done-text: #4a4858;
+  --cancelled-tint: #fdecea;
   color-scheme: light;
 }
 
@@ -61,6 +72,15 @@
   --color-read-more: var(--read-more);
   --color-day-dot: var(--day-dot);
   --color-sand: var(--sand);
+  --color-action: var(--action);
+  --color-action-tint: var(--action-tint);
+  --color-mist: var(--mist);
+  --color-handle: var(--handle);
+  --color-confirmed-tint: var(--confirmed-tint);
+  --color-confirmed-text: var(--confirmed-text);
+  --color-done-tint: var(--done-tint);
+  --color-done-text: var(--done-text);
+  --color-cancelled-tint: var(--cancelled-tint);
   --radius-ds: 12px;
 }
 

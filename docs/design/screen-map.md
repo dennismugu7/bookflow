@@ -23,7 +23,7 @@ The images are in `design-ref/` (git-ignored; ask Dennis if missing). **For layo
 | You're all set | `21-booked`, plus the share card from `20-booked-share` |
 
 ### Approved deviations (client web)
-- No ratings, reviews, review counts, portfolio, photo counter ("1/6"), category line ("Hair stylist"), "View booking", "Rate this visit" or feedback thumbs: there's no data for them yet (later phases).
+- No ratings, reviews, review counts, portfolio, photo counter ("1/6"), category line ("Hair stylist"), "Rate this visit" or feedback thumbs: there's no data for them yet (later phases).
 - Sign-in uses Google or an email code instead of a phone code (ADR 0007), laid out per `bookflow-client-signin.png`.
 - Font: Urbanist (Dennis, 2026-10-03).
 - The tagline is plain text (owners type it); the script lettering in `01` is part of that salon's logo artwork.
@@ -33,10 +33,26 @@ The images are in `design-ref/` (git-ignored; ask Dennis if missing). **For layo
 - Where an original colour fails WCAG AA text contrast, use the nearest darker shade of the same hue ("Open" #008746, "until" #776dab, greys #707070); the WhatsApp button keeps #25d366 with dark text instead of white (Dennis, 2026-10-03).
 - The third section tab is "Hours & location", not "Other" (Dennis, 2026-10-03).
 - "Any professional" starts selected on Select professional, unlike `10` (Dennis, 2026-10-03).
-- No "Returning clients skip this" footnote on `18` until returning clients really skip that step (phase 3b) (Dennis, 2026-10-03).
 - `18` asks for "First name"; the value is stored as the client's `full_name` (Dennis, 2026-10-03).
-- On "You're all set", "Get directions" takes the black button slot until "View booking" exists (phase 3b) (Dennis, 2026-10-03).
 - The back arrow and × on confirm have no grey square behind them (the shade in `16`/`18` was a mistake); they keep a 44 px tap area with a soft pressed tint (Dennis, 2026-10-03).
+
+### Client web, approved additions (Dennis, 2026-10-04): Phase 3b
+Mockups in `docs/design/client-v2/` (fake data):
+
+| Screen | Copy from |
+| --- | --- |
+| `/me`, My bookings (upcoming) | `client-v2/01-my-bookings.png` |
+| `/me`, Past | `client-v2/02-past.png` |
+| Cancel sheet | `client-v2/03-cancel-sheet.png` |
+| Too late to cancel (under 2 hours) | `client-v2/04-too-late.png` |
+| Confirm, returning client | `client-v2/05-returning.png` |
+| You're all set (View booking replaces the Get directions button) | `client-v2/06-booked.png` |
+
+Phase 3b deviations (Dennis, 2026-10-04):
+- Text black and grey keep the existing tokens (#0d0d0d, #707070), not the mockups' #16131f / #6b6878.
+- Booking cards always say "with <stylist>"; "any professional" isn't stored.
+- "Pay at the salon. No payment is taken online." also shows for first-time clients on `18`.
+- "Confirmed" pill text is #1a7347 (the mockup's #1e7f4f fails AA on its tint).
 
 ## Owner app (`apps/owner`), images in `design-ref/original-owner/`
 

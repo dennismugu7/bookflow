@@ -1,12 +1,11 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
-import { shortArea } from "../lib/short-area";
-
 type Identity = {
   name: string;
   tagline: string | null;
-  address: string | null;
+  /** The area line ("Kilimani, Nairobi"), from `salonArea`. */
+  area: string | null;
   logoUrl: string | null;
 };
 
@@ -17,11 +16,10 @@ type Identity = {
 export function SalonIdentity({
   name,
   tagline,
-  address,
+  area,
   logoUrl,
   as: Name = "p",
 }: Identity & { as?: "h1" | "p" }) {
-  const area = shortArea(address);
   const line = tagline?.trim() || null;
   return (
     <div className="flex items-center gap-[30px]">

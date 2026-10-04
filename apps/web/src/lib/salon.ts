@@ -1,6 +1,6 @@
 import "server-only";
 
-import { inspectMapsLink, mediaUrl, type Database } from "@bookflow/shared";
+import { areaLine, inspectMapsLink, mediaUrl, shortArea, type Database } from "@bookflow/shared";
 import { createClient } from "@supabase/supabase-js";
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
@@ -128,4 +128,17 @@ export async function mapQuery(salon: PublicSalon): Promise<string | null> {
     if (place) return place;
   }
   return salon.address || null;
+}
+
+/**
+ * The area line under the salon name ("Kilimani, Nairobi"): from the address, else from the place
+ * name behind the salon's Maps link, so salons with only a link still show one.
+ */
+export async function salonArea(
+  address: string | null,
+  mapsUrl: string | null,
+): Promise<string | null> {
+  if (shortArea(address) || !mapsUrl) return areaLine(address, null);
+  const place = await placeNameFor(mapsUrl).catch(() => null);
+  return areaLine(address, place);
 }

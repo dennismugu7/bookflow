@@ -15,3 +15,9 @@ export function normalizeKenyanPhone(input: string): string | null {
   }
   return E164.test(phone) ? phone : null;
 }
+
+/** "+254712345678" → "0712 345 678"; other numbers are returned as they are. */
+export function formatKenyanPhone(e164: string): string {
+  const match = /^\+254(\d{3})(\d{3})(\d{3})$/.exec(e164);
+  return match ? `0${match[1]} ${match[2]} ${match[3]}` : e164;
+}

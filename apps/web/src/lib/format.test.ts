@@ -15,6 +15,7 @@ const tz = "Africa/Nairobi";
 describe("format helpers", () => {
   it("formats short dates and clocks in the salon's timezone", () => {
     expect(formatShortDateTime("2026-10-05T07:45:00Z", tz)).toBe("Mon 5 Oct, 10:45");
+    expect(formatShortDateTime("2026-09-12T11:00:00Z", tz)).toBe("Sat 12 Sep, 14:00");
     expect(formatClock("2026-10-05T08:15:00Z", tz)).toBe("11:15");
     expect(formatClock("2026-10-04T21:00:00Z", tz)).toBe("00:00");
   });
