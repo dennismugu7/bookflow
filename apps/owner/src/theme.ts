@@ -47,6 +47,12 @@ export const colors = {
   openDotV2: "#5BC236",
   closedDot: "#CFCDD6",
   menuGreen: "#3DBE29",
+  // Phase 4a Today (docs/design/owner-v3, Dennis 2026-10-04), sampled from the mockups.
+  doneTint: "#DDF3E6",
+  newTint: "#F1EEFB",
+  attentionSoft: "#FDF1DC",
+  attentionInk: "#6B3E00",
+  scrim: "rgba(22, 19, 31, 0.45)",
 } as const;
 
 /** Urbanist (400–700; see docs/design/README.md); React Native needs one family per weight. */

@@ -107,3 +107,14 @@ Mockups in `docs/design/owner-v2/` (fake data). For these screens, copy the mock
 Welcome animation plays once, then holds the last frame. Dennis, 2026-10-04.
 
 Everywhere in the owner app: white pages without framed view cards, a fixed top bar with a back arrow, a grey field outline at rest that turns blue while typing, and one blue round add button.
+
+### Phase 4a, Today with bookings (Dennis, 2026-10-04): replaces originals 13 to 19
+Mockups in `docs/design/owner-v3/` (fake data), adapted from originals 13 to 19 without deposits:
+
+| Screen | Copy from |
+| --- | --- |
+| Today with bookings, gaps and stats | `owner-v3/01-today.png` |
+| Booking opened (Call, WhatsApp, actions) | `owner-v3/02-booking-open.png` |
+| Cancel sheet | `owner-v3/03-cancel.png` |
+| No-show sheet | `owner-v3/04-no-show.png` |
+| New booking (walk-in or phone) | `owner-v3/05-add-booking.png` |
