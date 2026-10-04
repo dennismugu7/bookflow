@@ -1,14 +1,14 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
 
 import { AUTH_MESSAGES, isValidEmail, sendCodeErrorMessage } from "../../lib/auth-errors";
 import { getSupabase } from "../../lib/supabase";
-import { colors, radius, space, type } from "../../theme";
-import { Button, Screen, TextField } from "../../ui";
+import { AuthSheet, Button, TextField } from "../../ui";
 
+/** Email step of sign-in (05), or of "Create for free" (03): both send the same 6-digit code. */
 export default function SignInScreen() {
-  const params = useLocalSearchParams<{ email?: string }>();
+  const params = useLocalSearchParams<{ email?: string; mode?: string }>();
+  const creating = params.mode === "create";
   const [email, setEmail] = useState(params.email ?? "");
   const [error, setError] = useState<string>();
   const [sending, setSending] = useState(false);
@@ -34,19 +34,22 @@ export default function SignInScreen() {
   }
 
   return (
-    <Screen footer={<Button title="Send code" onPress={() => void sendCode()} loading={sending} />}>
-      <View style={styles.logo} accessibilityLabel="Bookflow">
-        <Text style={styles.logoText}>B</Text>
-      </View>
-      <View style={styles.heading}>
-        <Text style={type.display}>Sign in to Bookflow</Text>
-        <Text style={[type.body, { color: colors.muted }]}>
-          We&apos;ll email you a 6-digit code. No password needed.
-        </Text>
-      </View>
+    <AuthSheet
+      title={creating ? "Create your Bookflow" : "Login to Bookflow"}
+      onBack={() => (router.canGoBack() ? router.back() : router.replace("/welcome"))}
+      footer={
+        <Button
+          title={creating ? "Create for free" : "Continue"}
+          variant="blue"
+          onPress={() => void sendCode()}
+          loading={sending}
+        />
+      }
+    >
       <TextField
-        label="Email"
-        placeholder="you@example.com"
+        variant="sheet"
+        label="Enter email:"
+        placeholder="address@mail.com"
         value={email}
         onChangeText={(text) => {
           setEmail(text);
@@ -61,20 +64,6 @@ export default function SignInScreen() {
         returnKeyType="send"
         onSubmitEditing={() => void sendCode()}
       />
-    </Screen>
+    </AuthSheet>
   );
 }
-
-const styles = StyleSheet.create({
-  logo: {
-    width: 56,
-    height: 56,
-    borderRadius: radius,
-    backgroundColor: colors.brand,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: space(6),
-  },
-  logoText: { ...type.title, color: colors.white },
-  heading: { gap: space(2) },
-});

@@ -14,7 +14,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { getEnv } from "../env";
 import { SessionProvider, useSession } from "../lib/session";
 import { colors, space, type } from "../theme";
-import { Button } from "../ui";
+import { Button, Splash } from "../ui";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -58,11 +58,12 @@ function RootNavigator() {
     session !== undefined &&
     (!signedIn || membership !== undefined || membershipError);
 
+  // Our own splash (01) takes over from the native one while the session and fonts load.
   useEffect(() => {
-    if (ready) SplashScreen.hide();
-  }, [ready]);
+    SplashScreen.hide();
+  }, []);
 
-  if (!ready) return null;
+  if (!ready) return <Splash />;
 
   if (signedIn && membershipError) {
     return (

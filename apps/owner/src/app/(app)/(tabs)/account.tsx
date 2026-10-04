@@ -1,51 +1,56 @@
 import { bookingLink } from "@bookflow/shared";
+import Feather from "@expo/vector-icons/Feather";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router, type Href } from "expo-router";
 import * as Updates from "expo-updates";
-import { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { useState, type ReactNode } from "react";
+import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { formatBuildInfo } from "../../../build-info";
+import { initials } from "../../../lib/display";
 import { useSession } from "../../../lib/session";
 import { getSupabase } from "../../../lib/supabase";
 import { colors, fonts, minTouch, space, type } from "../../../theme";
-import { Badge, Button, Card, ListRow, Screen } from "../../../ui";
+import { Badge, BottomSheet, Button } from "../../../ui";
 
 const buildInfo = formatBuildInfo(Updates);
 
-const BUSINESS_PROFILE: { title: string; detail: string; href: Href }[] = [
-  { title: "My brand", detail: "Name, logo, banner and about", href: "/business/brand" },
+const ICON = { size: 24, color: colors.ink };
+
+// Portfolio is hidden until it exists (approved deviation), as are Profile, Settings,
+// Share feedback and Support in "General".
+const BUSINESS_PROFILE: { title: string; icon: ReactNode; href: Href }[] = [
+  {
+    title: "My brand",
+    icon: <MaterialCommunityIcons name="medal-outline" {...ICON} />,
+    href: "/business/brand",
+  },
   {
     title: "My services",
-    detail: "Prices, durations, what's bookable",
+    icon: <MaterialCommunityIcons name="content-cut" {...ICON} />,
     href: "/business/services",
   },
-  { title: "My team", detail: "Who clients can book", href: "/business/team" },
-  { title: "Opening hours", detail: "When clients can book", href: "/business/hours" },
-  { title: "Location", detail: "Address and map pin", href: "/business/location" },
+  {
+    title: "My team",
+    icon: <MaterialCommunityIcons name="account-group-outline" {...ICON} />,
+    href: "/business/team",
+  },
+  { title: "Opening hours", icon: <Feather name="clock" {...ICON} />, href: "/business/hours" },
+  {
+    title: "Location",
+    icon: <Ionicons name="location-outline" {...ICON} />,
+    href: "/business/location",
+  },
 ];
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.row}>
-      <Text style={[type.caption, { color: colors.muted }]}>{label}</Text>
-      <Text style={type.bodyStrong} selectable>
-        {value}
-      </Text>
-    </View>
-  );
-}
 
 export default function AccountScreen() {
   const { session, membership, signOut, reloadMembership } = useSession();
   const [error, setError] = useState<string>();
+  const [confirmingLogOut, setConfirmingLogOut] = useState(false);
   const isOwner = membership?.role === "owner";
-
-  function confirmLogOut() {
-    Alert.alert("Log out?", "You'll need a new code from your email to sign in again.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Log out", style: "destructive", onPress: () => void signOut() },
-    ]);
-  }
+  const email = session?.user.email ?? "";
 
   function confirmUnpublish() {
     if (!membership) return;
@@ -72,74 +77,204 @@ export default function AccountScreen() {
   }
 
   return (
-    <Screen
-      edges={["top"]}
-      footer={<Button title="Log out" variant="danger" onPress={confirmLogOut} />}
-    >
-      <Text style={type.display}>Account</Text>
-      <Card style={styles.card}>
-        <Row label="Signed in as" value={session?.user.email ?? ""} />
+    <SafeAreaView style={styles.page} edges={["top"]}>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <View style={styles.profile}>
+          <View style={styles.avatar}>
+            <Text style={styles.initials}>{initials(email)}</Text>
+          </View>
+          <Text style={styles.name} numberOfLines={1} adjustsFontSizeToFit>
+            {email}
+          </Text>
+        </View>
+
         {membership ? (
           <>
-            <Row label="Salon" value={membership.salon.name} />
-            <View style={styles.row}>
-              <View style={styles.linkLabel}>
-                <Text style={[type.caption, { color: colors.muted }]}>Booking link</Text>
-                <Badge
-                  label={membership.salon.isPublished ? "Live" : "Not published"}
-                  variant={membership.salon.isPublished ? "confirmed" : "completed"}
+            <Text style={styles.band}>General</Text>
+            <View style={styles.rows}>
+              <Row
+                icon={<Feather name="share-2" {...ICON} />}
+                title="Booking link"
+                trailing={
+                  <Badge
+                    label={membership.salon.isPublished ? "Live" : "Not published"}
+                    variant={membership.salon.isPublished ? "confirmed" : "completed"}
+                  />
+                }
+                accessibilityLabel={`Share your booking link, ${bookingLink(membership.salon.slug)}`}
+                onPress={() => void Share.share({ message: bookingLink(membership.salon.slug) })}
+              />
+              {isOwner && membership.salon.isPublished ? (
+                <Row
+                  icon={<Feather name="eye-off" size={ICON.size} color={colors.danger} />}
+                  title="Unpublish salon"
+                  danger
+                  onPress={confirmUnpublish}
                 />
-              </View>
-              <Text style={type.bodyStrong} selectable>
-                {bookingLink(membership.salon.slug)}
-              </Text>
-              {!membership.salon.isPublished ? (
-                <Text style={[type.caption, { color: colors.muted }]}>
-                  Publish your salon first so clients can book.
-                </Text>
               ) : null}
             </View>
           </>
         ) : null}
-      </Card>
 
-      {isOwner ? (
-        <View>
-          <Text style={styles.section}>Business profile</Text>
-          {BUSINESS_PROFILE.map((item) => (
-            <ListRow
-              key={item.title}
-              title={item.title}
-              detail={item.detail}
-              onPress={() => router.push(item.href)}
-            />
-          ))}
+        {isOwner ? (
+          <>
+            <Text style={styles.band}>Business Profile</Text>
+            <View style={styles.rows}>
+              {BUSINESS_PROFILE.map((item) => (
+                <Row
+                  key={item.title}
+                  icon={item.icon}
+                  title={item.title}
+                  onPress={() => router.push(item.href)}
+                />
+              ))}
+            </View>
+          </>
+        ) : null}
+
+        <View style={styles.bottom}>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Log out"
+            onPress={() => setConfirmingLogOut(true)}
+            style={({ pressed }) => [styles.logOut, pressed && styles.pressed]}
+          >
+            <MaterialCommunityIcons name="logout" size={24} color={colors.ink} />
+            <Text style={styles.logOutText}>Log out</Text>
+          </Pressable>
+          <Text style={[type.caption, styles.version]}>Version {buildInfo}</Text>
         </View>
-      ) : null}
+      </ScrollView>
 
-      {isOwner && membership?.salon.isPublished ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Unpublish salon"
-          onPress={confirmUnpublish}
-          style={styles.link}
-        >
-          <Text style={styles.unpublish}>Unpublish salon</Text>
-        </Pressable>
-      ) : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <BottomSheet visible={confirmingLogOut} onClose={() => setConfirmingLogOut(false)}>
+        <Text style={styles.sheetTitle} accessibilityRole="header">
+          Log out?
+        </Text>
+        <Text style={styles.sheetBody}>
+          Are you sure you want to log out of{"\n"}
+          <Text style={styles.sheetEmail}>{email}</Text>
+        </Text>
+        <View style={styles.sheetActions}>
+          <View style={styles.flex}>
+            <Button
+              title="Go back"
+              variant="secondary"
+              shape="pill"
+              onPress={() => setConfirmingLogOut(false)}
+            />
+          </View>
+          <View style={styles.flex}>
+            <Button title="Confirm" shape="pill" onPress={() => void signOut()} />
+          </View>
+        </View>
+      </BottomSheet>
+    </SafeAreaView>
+  );
+}
 
-      <Text style={[type.caption, { color: colors.muted }]}>Version {buildInfo}</Text>
-    </Screen>
+function Row({
+  icon,
+  title,
+  trailing,
+  danger = false,
+  accessibilityLabel,
+  onPress,
+}: {
+  icon: ReactNode;
+  title: string;
+  trailing?: ReactNode;
+  danger?: boolean;
+  accessibilityLabel?: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? title}
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+    >
+      <View style={styles.rowIcon}>{icon}</View>
+      <Text style={[styles.rowTitle, danger && { color: colors.danger }]}>{title}</Text>
+      {trailing}
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { gap: space(4) },
-  row: { gap: space(1) },
-  linkLabel: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  section: { ...type.caption, color: colors.muted, textTransform: "uppercase", letterSpacing: 0.5 },
-  link: { minHeight: minTouch, justifyContent: "center", alignSelf: "flex-start" },
-  unpublish: { fontFamily: fonts.bold, fontSize: 15, color: colors.danger },
+  page: { flex: 1, backgroundColor: colors.band },
+  scroll: { flexGrow: 1 },
+  profile: {
+    backgroundColor: colors.white,
+    alignItems: "center",
+    paddingTop: space(8),
+    paddingBottom: space(8),
+    paddingHorizontal: space(6),
+    gap: space(4),
+  },
+  avatar: {
+    width: 116,
+    height: 116,
+    borderRadius: 58,
+    borderWidth: 3,
+    borderColor: colors.avatarGreen,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  initials: { fontFamily: fonts.bold, fontSize: 46, color: colors.avatarGreen },
+  name: { fontFamily: fonts.bold, fontSize: 22, color: colors.forest },
+  band: {
+    backgroundColor: colors.band,
+    paddingLeft: 42,
+    paddingVertical: space(3),
+    fontFamily: fonts.medium,
+    fontSize: 17,
+    color: "#111111",
+  },
+  rows: { backgroundColor: colors.white, paddingVertical: space(2) },
+  row: {
+    minHeight: minTouch,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingLeft: 40,
+    paddingRight: space(6),
+    gap: space(5),
+  },
+  rowPressed: { backgroundColor: colors.band },
+  rowIcon: { width: 28, alignItems: "center" },
+  rowTitle: {
+    flex: 1,
+    fontFamily: fonts.regular,
+    fontSize: 16.5,
+    letterSpacing: 1.8,
+    color: "#222222",
+  },
+  bottom: {
+    flexGrow: 1,
+    justifyContent: "flex-end",
+    padding: 26,
+    paddingTop: space(10),
+    gap: space(3),
+  },
+  logOut: {
+    minHeight: 49,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "#777777",
+    backgroundColor: colors.white,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 26,
+    gap: space(2),
+  },
+  logOutText: { fontFamily: fonts.bold, fontSize: 19, color: colors.ink },
+  pressed: { opacity: 0.85 },
+  version: { color: colors.muted, textAlign: "center" },
   error: { ...type.caption, color: colors.danger },
+  sheetTitle: { fontFamily: fonts.bold, fontSize: 28, color: colors.ink },
+  sheetBody: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 25, color: colors.ink },
+  sheetEmail: { fontFamily: fonts.bold },
+  sheetActions: { flexDirection: "row", gap: space(3), marginTop: space(6) },
+  flex: { flex: 1 },
 });

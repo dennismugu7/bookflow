@@ -1,24 +1,34 @@
-import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 
 import { useImageSlot } from "../../../lib/media";
 import { useSession } from "../../../lib/session";
 import { validateBrand, type BrandErrors } from "../../../lib/setup";
 import { getSupabase } from "../../../lib/supabase";
-import { colors, space, type } from "../../../theme";
-import { Button, Card, Header, ImageSlot, Screen, TextField } from "../../../ui";
+import { colors, fonts, space, type } from "../../../theme";
+import {
+  Button,
+  CardScreen,
+  CardSubtitle,
+  CardTitle,
+  Illustration,
+  TextField,
+  UploadBox,
+} from "../../../ui";
 
 type Brand = { name: string; tagline: string; about: string };
 
+/** My brand: empty (44), view (45) and edit (46). */
 export default function BrandScreen() {
   const { membership, reloadMembership } = useSession();
   const salonId = membership?.salon.id;
+  const [saved, setSaved] = useState<Brand>();
   const [brand, setBrand] = useState<Brand>();
+  const [editing, setEditing] = useState(false);
   const [errors, setErrors] = useState<BrandErrors & { form?: string }>({});
   const [saving, setSaving] = useState(false);
 
-  // Each image saves its path as soon as it has uploaded, independent of "Save brand".
+  // Each image saves its path as soon as it has uploaded, independent of the tick.
   const saveLogo = useCallback(
     async (path: string) => {
       const { error } = await getSupabase()
@@ -56,7 +66,9 @@ export default function BrandScreen() {
           setErrors({ form: "Couldn't load your brand. Go back and try again." });
           return;
         }
-        setBrand({ name: data.name, tagline: data.tagline ?? "", about: data.about ?? "" });
+        const loaded = { name: data.name, tagline: data.tagline ?? "", about: data.about ?? "" };
+        setSaved(loaded);
+        setBrand(loaded);
         loadLogo(data.logo_path, data.updated_at);
         loadBanner(data.banner_path, data.updated_at);
       });
@@ -68,81 +80,76 @@ export default function BrandScreen() {
     setErrors(fieldErrors);
     if (Object.keys(fieldErrors).length > 0) return;
     setSaving(true);
+    const next = {
+      name: brand.name.trim(),
+      tagline: brand.tagline.trim(),
+      about: brand.about.trim(),
+    };
     const { error } = await getSupabase()
       .from("salons")
-      .update({
-        name: brand.name.trim(),
-        tagline: brand.tagline.trim() || null,
-        about: brand.about.trim() || null,
-      })
+      .update({ name: next.name, tagline: next.tagline || null, about: next.about || null })
       .eq("id", salonId);
     setSaving(false);
     if (error) {
       setErrors({ form: "Couldn't save. Check your connection and try again." });
       return;
     }
+    setSaved(next);
+    setBrand(next);
+    setEditing(false);
     await reloadMembership();
-    router.back();
   }
 
-  const empty = brand && !logo.uri && !banner.uri && !brand.tagline && !brand.about;
+  const empty = !!saved && !logo.uri && !banner.uri && !saved.tagline && !saved.about;
   const imageError = logo.error ?? banner.error;
+  const errorText =
+    imageError || errors.form ? (
+      <Text style={styles.formError}>{imageError ?? errors.form}</Text>
+    ) : null;
 
-  return (
-    <Screen
-      footer={
-        <Button title="Save brand" onPress={() => void save()} loading={saving} disabled={!brand} />
-      }
-    >
-      <Header title="My brand" subtitle="How clients see your salon" />
-      {empty ? (
-        <Card>
-          <Text style={type.heading}>Make it yours</Text>
-          <Text style={[type.body, { color: colors.muted }]}>
-            Add a logo, a banner photo and a few words about your salon. They show at the top of
-            your booking page.
-          </Text>
-        </Card>
-      ) : null}
-      {brand ? (
-        <>
-          <ImageSlot
-            label="Banner"
-            shape="banner"
-            uri={banner.uri}
-            busy={banner.uploading}
-            onPress={() => void banner.change()}
-          />
-          <View style={styles.logoRow}>
-            <ImageSlot
-              label="Logo"
-              shape="square"
-              uri={logo.uri}
-              busy={logo.uploading}
-              onPress={() => void logo.change()}
-            />
-            <Text style={[type.caption, styles.logoHint]}>
-              Square works best. We resize photos before uploading.
-            </Text>
-          </View>
+  if (editing && brand) {
+    return (
+      <CardScreen
+        left={{
+          icon: "arrow-left",
+          label: "Cancel editing",
+          onPress: () => {
+            setBrand(saved);
+            setErrors({});
+            setEditing(false);
+          },
+        }}
+        right={{
+          icon: "check",
+          label: saving ? "Saving" : "Save brand",
+          onPress: () => {
+            if (!saving && !logo.uploading && !banner.uploading) void save();
+          },
+        }}
+      >
+        <Heading />
+        <View style={styles.fields}>
           <TextField
-            label="Salon name"
+            variant="card"
+            label="Business name"
             value={brand.name}
             onChangeText={(name) => setBrand({ ...brand, name })}
             error={errors.name}
             maxLength={80}
           />
           <TextField
-            label="Tagline"
-            placeholder="Braids, silk press and natural hair care"
+            variant="card"
+            label="Business Tagline"
+            placeholder="Your business, in a nutshell"
             value={brand.tagline}
             onChangeText={(tagline) => setBrand({ ...brand, tagline })}
             error={errors.tagline}
             maxLength={80}
           />
           <TextField
+            variant="card"
             label="About"
-            placeholder="Tell clients what makes your salon special."
+            placeholder="Tell your story"
             value={brand.about}
             onChangeText={(about) => setBrand({ ...brand, about })}
             error={errors.about}
@@ -150,17 +157,130 @@ export default function BrandScreen() {
             multiline
             style={styles.multiline}
           />
+        </View>
+        <View style={styles.images}>
+          <View style={styles.imageCol}>
+            <Text style={styles.imageLabel}>Business banner</Text>
+            <UploadBox
+              label="Banner"
+              uri={banner.uri}
+              busy={banner.uploading}
+              onPress={() => void banner.change()}
+            />
+          </View>
+          <View style={styles.imageCol}>
+            <Text style={styles.imageLabel}>Logo</Text>
+            <UploadBox
+              label="Logo"
+              uri={logo.uri}
+              busy={logo.uploading}
+              onPress={() => void logo.change()}
+            />
+          </View>
+        </View>
+        {saving ? <Text style={styles.muted}>Saving…</Text> : null}
+        {errorText}
+      </CardScreen>
+    );
+  }
+
+  if (empty) {
+    return (
+      <CardScreen>
+        <Heading />
+        <Illustration name="planets" style={styles.art} />
+        <Text style={styles.emptyTitle}>No brand added</Text>
+        <Text style={styles.emptyBody}>Add your brand here to make a great first impression!</Text>
+        <View style={styles.cta}>
+          <Button
+            title="Brand my business"
+            variant="blue"
+            compact
+            onPress={() => setEditing(true)}
+          />
+        </View>
+        {errorText}
+      </CardScreen>
+    );
+  }
+
+  return (
+    <CardScreen
+      right={
+        saved ? { icon: "edit-2", label: "Edit brand", onPress: () => setEditing(true) } : undefined
+      }
+    >
+      <Heading />
+      {saved ? (
+        <>
+          {banner.uri ? (
+            <Image
+              source={{ uri: banner.uri }}
+              style={styles.banner}
+              resizeMode="cover"
+              accessibilityLabel="Banner"
+            />
+          ) : null}
+          <View style={styles.identity}>
+            <View style={styles.identityText}>
+              <Text style={styles.name}>{saved.name}</Text>
+              {saved.tagline ? <Text style={styles.tagline}>{saved.tagline}</Text> : null}
+            </View>
+            {logo.uri ? (
+              <Image
+                source={{ uri: logo.uri }}
+                style={styles.logo}
+                resizeMode="contain"
+                accessibilityLabel="Logo"
+              />
+            ) : null}
+          </View>
         </>
       ) : null}
-      {imageError ? <Text style={styles.formError}>{imageError}</Text> : null}
-      {errors.form ? <Text style={styles.formError}>{errors.form}</Text> : null}
-    </Screen>
+      {errorText}
+    </CardScreen>
+  );
+}
+
+function Heading() {
+  return (
+    <View style={styles.heading}>
+      <CardTitle>My brand</CardTitle>
+      <CardSubtitle>This is what your clients will see first when they book with you.</CardSubtitle>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  logoRow: { flexDirection: "row", alignItems: "center", gap: space(4) },
-  logoHint: { flex: 1, color: colors.muted },
-  multiline: { height: 120, paddingTop: space(3), textAlignVertical: "top" },
+  heading: { gap: space(4), marginBottom: space(4) },
+  fields: { gap: space(3), paddingRight: space(8) },
+  multiline: { minHeight: 46, maxHeight: 140, paddingTop: 12, textAlignVertical: "top" },
+  images: { flexDirection: "row", gap: space(10), marginTop: space(4) },
+  imageCol: { width: 116, gap: space(3) },
+  imageLabel: { fontFamily: fonts.bold, fontSize: 15, color: "#3A3A3A" },
+  art: { marginTop: space(4) },
+  emptyTitle: {
+    fontFamily: fonts.regular,
+    fontSize: 20,
+    color: "#000000",
+    textAlign: "center",
+    marginTop: space(6),
+  },
+  emptyBody: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.text,
+    textAlign: "center",
+    paddingHorizontal: space(4),
+  },
+  cta: { marginTop: space(8), marginHorizontal: space(3) },
+  banner: { width: "100%", aspectRatio: 281 / 143, borderRadius: 9, marginTop: space(4) },
+  identity: { flexDirection: "row", alignItems: "center", gap: space(3), marginTop: space(10) },
+  identityText: { flex: 1, gap: space(1), paddingLeft: space(2) },
+  name: { fontFamily: fonts.semibold, fontSize: 21, color: "#1A1A1A" },
+  tagline: { fontFamily: fonts.regular, fontStyle: "italic", fontSize: 16, color: "#1A1A1A" },
+  logo: { width: 52, height: 68 },
+  muted: { ...type.caption, color: colors.muted },
   formError: { ...type.caption, color: colors.danger },
 });

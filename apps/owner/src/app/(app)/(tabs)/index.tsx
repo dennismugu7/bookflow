@@ -8,16 +8,14 @@ import { Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { useSession } from "../../../lib/session";
 import { isSetupComplete, publishErrorMessage, type SetupStatus } from "../../../lib/setup";
 import { getSupabase } from "../../../lib/supabase";
-import { colors, minTouch, radius, space, type } from "../../../theme";
-import { Badge, Button, Card, Screen } from "../../../ui";
+import { colors, fonts, minTouch, space, type } from "../../../theme";
+import { Button, Card, Illustration, Screen } from "../../../ui";
 
+/** "Tuesday, 15 September", as in design 12. */
 function todayLabel(timeZone: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    timeZone,
-  }).format(new Date());
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("en-GB", { ...options, timeZone }).format(new Date());
+  return `${part({ weekday: "long" })}, ${part({ day: "numeric", month: "long" })}`;
 }
 
 const CHECKLIST: { key: keyof SetupStatus; title: string; detail: string; href: Href }[] = [
@@ -48,16 +46,13 @@ export default function TodayScreen() {
   return (
     <Screen edges={["top"]}>
       <View style={styles.header}>
-        <Text style={[type.caption, { color: colors.muted }]}>
-          {membership.salon.name} · {todayLabel(membership.salon.timezone)}
+        <Text style={styles.salon} accessibilityRole="header">
+          {membership.salon.name}
         </Text>
-        <View style={styles.titleRow}>
-          <Text style={type.display}>Today</Text>
-          {membership.salon.isPublished ? <Badge label="Live" variant="confirmed" /> : null}
-        </View>
+        <Text style={styles.date}>{todayLabel(membership.salon.timezone)}</Text>
       </View>
       {membership.salon.isPublished ? (
-        <ShareCard slug={membership.salon.slug} />
+        <NoBookings slug={membership.salon.slug} />
       ) : (
         <SetupCard salonId={membership.salon.id} isOwner={membership.role === "owner"} />
       )}
@@ -143,7 +138,8 @@ function SetupCard({ salonId, isOwner }: { salonId: string; isOwner: boolean }) 
   );
 }
 
-function ShareCard({ slug }: { slug: string }) {
+/** Design 12 without the stat tiles, which come with Phase 4 (approved deviation). */
+function NoBookings({ slug }: { slug: string }) {
   const [copied, setCopied] = useState(false);
   const link = bookingLink(slug);
 
@@ -154,38 +150,45 @@ function ShareCard({ slug }: { slug: string }) {
   }, [copied]);
 
   return (
-    <Card style={styles.card}>
-      <View style={styles.emptyIcon}>
-        <Feather name="inbox" size={28} color={colors.brand} />
-      </View>
-      <Text style={[type.heading, styles.center]}>No bookings yet</Text>
-      <Text style={[type.body, styles.center, { color: colors.muted }]}>
-        Share your booking link on WhatsApp, Instagram or TikTok so clients can book you.
-      </Text>
-      <Text style={[type.caption, styles.center, { color: colors.ink }]} selectable>
-        {link}
-      </Text>
-      <View style={styles.actions}>
-        <Button
-          title="Share your booking link"
-          variant="brand"
-          onPress={() => void Share.share({ message: link })}
-        />
-        <Button
-          title={copied ? "Copied" : "Copy link"}
-          variant="secondary"
+    <View style={styles.empty}>
+      <Illustration name="screens" scale={0.74} />
+      <Text style={styles.emptyTitle}>No Bookings yet</Text>
+      <Text style={styles.emptyBody}>
+        Share your{" "}
+        <Text
+          style={styles.inlineLink}
+          accessibilityRole="link"
+          accessibilityHint="Copies your booking link"
           onPress={() => {
             void Clipboard.setStringAsync(link).then(() => setCopied(true));
           }}
-        />
-      </View>
-    </Card>
+        >
+          booking link
+        </Text>{" "}
+        on WhatsApp or Instagram, and appointments will land here automatically.
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Share your booking link"
+        onPress={() => void Share.share({ message: link })}
+        style={({ pressed }) => [styles.share, pressed && styles.pressed]}
+      >
+        <Text style={styles.shareText}>Share your booking link</Text>
+        <Feather name="chevron-right" size={22} color={colors.white} />
+      </Pressable>
+      {copied ? (
+        <Text style={styles.copied} accessibilityLiveRegion="polite">
+          Link copied
+        </Text>
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { gap: space(1) },
-  titleRow: { flexDirection: "row", alignItems: "center", gap: space(3) },
+  header: { gap: 2, marginTop: space(6) },
+  salon: { fontFamily: fonts.bold, fontSize: 28, lineHeight: 34, color: "#000000" },
+  date: { fontFamily: fonts.regular, fontSize: 17, color: "#111111" },
   card: { alignItems: "stretch", padding: space(5), gap: space(3) },
   step: {
     flexDirection: "row",
@@ -204,16 +207,37 @@ const styles = StyleSheet.create({
   },
   tickDone: { backgroundColor: colors.success, borderColor: colors.success },
   stepText: { flex: 1, gap: 2 },
-  emptyIcon: {
-    alignSelf: "center",
-    width: 56,
-    height: 56,
-    borderRadius: radius,
-    backgroundColor: colors.brandTint,
-    alignItems: "center",
-    justifyContent: "center",
+  empty: { alignItems: "center", marginTop: space(9) },
+  emptyTitle: {
+    fontFamily: fonts.regular,
+    fontSize: 25,
+    color: "#000000",
+    marginTop: space(6),
+    textAlign: "center",
   },
-  center: { textAlign: "center" },
-  actions: { gap: space(3), marginTop: space(2) },
+  emptyBody: {
+    fontFamily: fonts.regular,
+    fontSize: 17,
+    lineHeight: 26,
+    color: "#111111",
+    textAlign: "center",
+    marginTop: space(6),
+  },
+  inlineLink: { color: colors.inputBlue },
+  share: {
+    marginTop: space(8),
+    width: 228,
+    minHeight: 44,
+    borderRadius: 16,
+    backgroundColor: colors.blue,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingLeft: space(3),
+    paddingRight: space(3),
+  },
+  shareText: { fontFamily: fonts.medium, fontSize: 17, fontStyle: "italic", color: colors.white },
+  pressed: { opacity: 0.85 },
+  copied: { ...type.caption, color: colors.muted, marginTop: space(3) },
   error: { ...type.caption, color: colors.danger },
 });

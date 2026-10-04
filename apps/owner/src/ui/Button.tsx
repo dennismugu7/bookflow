@@ -2,11 +2,15 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, type PressableProps } f
 
 import { colors, controlHeight, fonts, radius, space } from "../theme";
 
-type Variant = "primary" | "secondary" | "brand" | "danger";
+type Variant = "primary" | "secondary" | "brand" | "danger" | "blue";
 
 type Props = Omit<PressableProps, "children" | "style"> & {
   title: string;
   variant?: Variant;
+  /** "pill" for the fully rounded buttons of the log-out sheet (31). */
+  shape?: "rounded" | "pill";
+  /** Smaller text, for the blue buttons inside setup cards (44, 51). */
+  compact?: boolean;
   loading?: boolean;
 };
 
@@ -15,10 +19,20 @@ const variants: Record<Variant, { background: string; text: string; border?: str
   secondary: { background: colors.white, text: colors.ink, border: colors.border },
   brand: { background: colors.brand, text: colors.white },
   danger: { background: colors.dangerTint, text: colors.danger },
+  // The blue action of the sign-in sheet and setup cards (03–05, 44, 51).
+  blue: { background: colors.blue, text: colors.white },
 };
 
 /** One black (primary) button per screen; brand for sharing and links, never for destructive actions. */
-export function Button({ title, variant = "primary", loading = false, disabled, ...rest }: Props) {
+export function Button({
+  title,
+  variant = "primary",
+  shape = "rounded",
+  compact = false,
+  loading = false,
+  disabled,
+  ...rest
+}: Props) {
   const v = variants[variant];
   const inactive = !!disabled || loading;
   return (
@@ -29,6 +43,9 @@ export function Button({ title, variant = "primary", loading = false, disabled, 
       disabled={inactive}
       style={({ pressed }) => [
         styles.base,
+        variant === "blue" && styles.blue,
+        shape === "pill" && styles.pill,
+        compact && styles.compact,
         { backgroundColor: v.background, borderColor: v.border ?? v.background },
         pressed && styles.pressed,
         inactive && styles.inactive,
@@ -38,7 +55,16 @@ export function Button({ title, variant = "primary", loading = false, disabled, 
       {loading ? (
         <ActivityIndicator color={v.text} />
       ) : (
-        <Text style={[styles.text, { color: v.text }]}>{title}</Text>
+        <Text
+          style={[
+            styles.text,
+            variant === "blue" && styles.blueText,
+            compact && styles.compactText,
+            { color: v.text },
+          ]}
+        >
+          {title}
+        </Text>
       )}
     </Pressable>
   );
@@ -53,7 +79,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: space(5),
   },
+  blue: { minHeight: 46, borderRadius: 9 },
+  pill: { borderRadius: 999 },
+  compact: { minHeight: 44, borderRadius: 10 },
+  compactText: { fontFamily: fonts.regular, fontSize: 15 },
   text: { fontFamily: fonts.bold, fontSize: 16 },
+  blueText: { fontFamily: fonts.regular, fontSize: 19 },
   pressed: { opacity: 0.85 },
   inactive: { opacity: 0.5 },
 });
