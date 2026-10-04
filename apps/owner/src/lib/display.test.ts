@@ -1,32 +1,20 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  hourRowsToWeek,
-  hoursLabel,
-  initials,
+  addBreak,
+  applyDayDraft,
+  avatarTint,
+  dayDraft,
+  dayDraftError,
   minutesLabel,
-  validateHourRows,
-  weekToHourRows,
   weekdayIn,
 } from "./display";
-
-describe("initials", () => {
-  it.each([
-    ["Xenon Xavier", "XX"],
-    ["Amani Beauty Studio", "AB"],
-    ["njeri", "N"],
-    ["amina.said@example.com", "AS"],
-    ["owner@example.com", "O"],
-    ["  ", "?"],
-  ])("%j → %j", (text, expected) => {
-    expect(initials(text)).toBe(expected);
-  });
-});
+import type { Week } from "./setup";
 
 describe("minutesLabel", () => {
-  it("writes minutes the way the service cards do", () => {
-    expect(minutesLabel(20)).toBe("20 mins");
-    expect(minutesLabel(90)).toBe("90 mins");
+  it("writes minutes the way the service cards do (owner-v2 02)", () => {
+    expect(minutesLabel(30)).toBe("30 min");
+    expect(minutesLabel(180)).toBe("180 min");
     expect(minutesLabel(1)).toBe("1 min");
   });
 });
@@ -40,79 +28,94 @@ describe("weekdayIn", () => {
   });
 });
 
-describe("hoursLabel", () => {
-  it("joins ranges with a spaced hyphen, as in design 57", () => {
-    expect(hoursLabel([{ opens: "10:00", closes: "24:00" }])).toBe("10:00 - 24:00");
-    expect(
-      hoursLabel([
-        { opens: "09:00", closes: "13:00" },
-        { opens: "14:00", closes: "18:00" },
-      ]),
-    ).toBe("09:00 - 13:00, 14:00 - 18:00");
-    expect(hoursLabel([])).toBe("Closed");
+describe("avatarTint", () => {
+  it("gives the same name the same colour", () => {
+    expect(avatarTint("Njeri Kamau")).toBe(avatarTint("Njeri Kamau"));
+    expect(avatarTint("Njeri Kamau")).toMatch(/^#[0-9A-F]{6}$/);
+  });
+
+  it("spreads names over the palette", () => {
+    const tints = new Set(
+      ["Njeri Kamau", "Achieng Ouma", "Wanjiru Mwangi", "Amina Said", "Grace Ochieng"].map(
+        avatarTint,
+      ),
+    );
+    expect(tints.size).toBeGreaterThan(1);
   });
 });
 
-describe("hour rows", () => {
-  const week = {
+describe("day editor", () => {
+  const week: Week = {
     1: [{ opens: "09:00", closes: "18:00" }],
     2: [],
-    3: [
-      { opens: "14:00", closes: "18:00" },
+    3: [],
+    4: [
       { opens: "09:00", closes: "13:00" },
+      { opens: "14:00", closes: "18:00" },
     ],
-    4: [],
     5: [],
     6: [],
     7: [],
   };
 
-  it("lists one row per range, by day then time", () => {
-    expect(weekToHourRows(week)).toEqual([
-      { day: 1, opens: "09:00", closes: "18:00" },
-      { day: 3, opens: "09:00", closes: "13:00" },
-      { day: 3, opens: "14:00", closes: "18:00" },
+  it("opens an open day with its ranges", () => {
+    expect(dayDraft(week[4]!)).toEqual({ closed: false, ranges: week[4] });
+  });
+
+  it("opens a closed day switched to Closed, with a usable range ready", () => {
+    expect(dayDraft([])).toEqual({ closed: true, ranges: [{ opens: "09:00", closes: "18:00" }] });
+  });
+
+  it("replaces only that day in the week", () => {
+    const next = applyDayDraft(week, 2, {
+      closed: false,
+      ranges: [{ opens: "10:00", closes: "16:00" }],
+    });
+    expect(next[2]).toEqual([{ opens: "10:00", closes: "16:00" }]);
+    expect(next[1]).toEqual(week[1]);
+    expect(next[4]).toEqual(week[4]);
+    expect(week[2]).toEqual([]);
+  });
+
+  it("drops the ranges when the day is closed", () => {
+    expect(applyDayDraft(week, 1, { closed: true, ranges: week[1]! })[1]).toEqual([]);
+  });
+
+  it("adds a break as a new empty range", () => {
+    expect(addBreak([{ opens: "09:00", closes: "13:00" }])).toEqual([
+      { opens: "09:00", closes: "13:00" },
+      { opens: "", closes: "" },
     ]);
   });
 
-  it("round-trips back to a week, with days without rows closed", () => {
-    expect(hourRowsToWeek(weekToHourRows(week))).toEqual({
-      1: [{ opens: "09:00", closes: "18:00" }],
-      2: [],
-      3: [
-        { opens: "09:00", closes: "13:00" },
-        { opens: "14:00", closes: "18:00" },
-      ],
-      4: [],
-      5: [],
-      6: [],
-      7: [],
-    });
-  });
-
-  it("skips fully blank rows", () => {
-    expect(validateHourRows([{ day: null, opens: "", closes: "" }])).toEqual({});
-    expect(hourRowsToWeek([{ day: null, opens: "", closes: "" }])[1]).toEqual([]);
-  });
-
-  it("asks for a day when times are filled in", () => {
-    expect(validateHourRows([{ day: null, opens: "09:00", closes: "18:00" }])).toEqual({
-      0: "Pick a day.",
-    });
-  });
-
-  it("puts each day's error on that day's rows", () => {
+  it("rejects overlaps and bad times with a friendly message", () => {
     expect(
-      validateHourRows([
-        { day: 1, opens: "09:00", closes: "18:00" },
-        { day: 2, opens: "18:00", closes: "09:00" },
-        { day: 3, opens: "09:00", closes: "13:00" },
-        { day: 3, opens: "12:00", closes: "18:00" },
-      ]),
-    ).toEqual({
-      1: "Closing time must be after opening time.",
-      2: "These times overlap.",
-      3: "These times overlap.",
-    });
+      dayDraftError(week, 1, {
+        closed: false,
+        ranges: [
+          { opens: "09:00", closes: "13:00" },
+          { opens: "12:00", closes: "18:00" },
+        ],
+      }),
+    ).toBe("These times overlap.");
+    expect(
+      dayDraftError(week, 1, { closed: false, ranges: [{ opens: "18:00", closes: "09:00" }] }),
+    ).toBe("Closing time must be after opening time.");
+    expect(
+      dayDraftError(week, 1, {
+        closed: false,
+        ranges: [
+          { opens: "09:00", closes: "13:00" },
+          { opens: "", closes: "" },
+        ],
+      }),
+    ).toBe("Use times like 09:00 or 18:30.");
+  });
+
+  it("accepts a valid day, and any closed day", () => {
+    expect(dayDraftError(week, 1, dayDraft(week[4]!))).toBeUndefined();
+    expect(
+      dayDraftError(week, 1, { closed: true, ranges: [{ opens: "x", closes: "y" }] }),
+    ).toBeUndefined();
   });
 });

@@ -85,6 +85,12 @@ describe("team", () => {
 describe("brand", () => {
   it("validates lengths", () => {
     expect(validateBrand({ name: "Salome Salon", tagline: "", about: "" })).toEqual({});
+    expect(validateBrand({ name: "Salome Salon", tagline: "", about: "x".repeat(500) })).toEqual(
+      {},
+    );
+    expect(validateBrand({ name: "Salome Salon", tagline: "", about: "x".repeat(501) })).toEqual({
+      about: "Keep this under 500 characters.",
+    });
     expect(validateBrand({ name: "", tagline: "x".repeat(81), about: "x".repeat(601) })).toEqual({
       name: expect.any(String),
       tagline: expect.any(String),

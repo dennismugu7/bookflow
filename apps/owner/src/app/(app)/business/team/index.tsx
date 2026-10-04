@@ -1,14 +1,15 @@
+import { initialsFor } from "@bookflow/shared";
 import Feather from "@expo/vector-icons/Feather";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { initials } from "../../../../lib/display";
+import { avatarTint } from "../../../../lib/display";
 import { publicMediaUrl } from "../../../../lib/media";
 import { useSession } from "../../../../lib/session";
 import { getSupabase } from "../../../../lib/supabase";
-import { colors, fonts, minTouch, space, type } from "../../../../theme";
-import { Badge, CardScreen, CardTitle, Fab, Illustration } from "../../../../ui";
+import { colors, fonts, minTouch, type } from "../../../../theme";
+import { Badge, Fab, Illustration, Page } from "../../../../ui";
 
 type Member = {
   id: string;
@@ -23,7 +24,7 @@ type Member = {
 const editMember = (id: string, me = false) =>
   router.push({ pathname: "/business/team/[id]", params: me ? { id, me: "1" } : { id } });
 
-/** My team: empty (50) and list (52). Ratings are left out until reviews exist. */
+/** My team: rounded rows with a pencil, and the add button (owner-v2 04). No ratings yet. */
 export default function TeamScreen() {
   const { membership } = useSession();
   const salonId = membership?.salon.id;
@@ -74,116 +75,107 @@ export default function TeamScreen() {
   ) : null;
 
   return (
-    <CardScreen fab={<Fab label="Add a team member" onPress={() => editMember("new")} />}>
-      <CardTitle>My Team</CardTitle>
+    <Page
+      title="My team"
+      gap={12}
+      fab={<Fab label="Add a team member" onPress={() => editMember("new")} />}
+    >
       {team?.length === 0 ? (
         <View style={styles.empty}>
           <Illustration name="planets" />
+          {/* Copy from the original empty state (50); the redesign has no empty mockup. */}
           <Text style={styles.emptyTitle}>No members added</Text>
           <Text style={styles.emptyBody}>
             Add your team so clients can book their favorite specialist by name, photo, and
             expertise—not just an open calendar slot.
           </Text>
-          {addSelf}
         </View>
       ) : null}
-      {team && team.length > 0 ? (
-        <View style={styles.list}>
-          {team.map((m) => (
-            <View key={m.id} style={styles.member}>
-              {m.photo_path ? (
-                <Image
-                  source={{ uri: publicMediaUrl(m.photo_path, m.updated_at) }}
-                  style={styles.photo}
-                  accessibilityIgnoresInvertColors
-                />
-              ) : (
-                <View style={[styles.photo, styles.initials]}>
-                  <Text style={styles.initialsText}>{initials(m.display_name)}</Text>
-                </View>
-              )}
-              <View style={styles.memberText}>
-                <Text style={styles.name}>{m.display_name}</Text>
-                {m.title ? <Text style={styles.title}>{m.title}</Text> : null}
-                {!m.is_active ? (
-                  <Badge label="Inactive" variant="completed" />
-                ) : m.services === 0 ? (
-                  <Badge label="No services" variant="due" />
-                ) : null}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`View ${m.display_name}'s profile`}
-                  onPress={() =>
-                    router.push({ pathname: "/business/team/profile/[id]", params: { id: m.id } })
-                  }
-                  style={styles.view}
-                >
-                  <Text style={styles.viewText}>View profile</Text>
-                </Pressable>
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Edit ${m.display_name}`}
-                onPress={() => editMember(m.id)}
-                style={styles.pencil}
-              >
-                <Feather name="edit-2" size={17} color={colors.ink} />
-              </Pressable>
+      {team?.map((m) => (
+        <View key={m.id} style={styles.member}>
+          {m.photo_path ? (
+            <Image
+              source={{ uri: publicMediaUrl(m.photo_path, m.updated_at) }}
+              style={styles.avatar}
+              accessibilityIgnoresInvertColors
+            />
+          ) : (
+            <View style={[styles.avatar, { backgroundColor: avatarTint(m.display_name) }]}>
+              <Text style={styles.initials}>{initialsFor(m.display_name)}</Text>
             </View>
-          ))}
+          )}
+          <View style={styles.memberText}>
+            <Text style={styles.name}>{m.display_name}</Text>
+            {m.title ? <Text style={styles.title}>{m.title}</Text> : null}
+            {!m.is_active ? (
+              <Badge label="Inactive" variant="completed" />
+            ) : m.services === 0 ? (
+              <Badge label="No services" variant="due" />
+            ) : null}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`View ${m.display_name}'s profile`}
+              onPress={() =>
+                router.push({ pathname: "/business/team/profile/[id]", params: { id: m.id } })
+              }
+              style={styles.view}
+            >
+              <Text style={styles.viewText}>View profile</Text>
+            </Pressable>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Edit ${m.display_name}`}
+            onPress={() => editMember(m.id)}
+            style={styles.pencil}
+          >
+            <Feather name="edit-3" size={22} color={colors.ink} />
+          </Pressable>
         </View>
-      ) : null}
-      {team && team.length > 0 ? addSelf : null}
+      ))}
+      {team ? addSelf : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
-    </CardScreen>
+    </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  empty: { alignItems: "center", marginTop: space(12) },
-  emptyTitle: {
-    fontFamily: fonts.regular,
-    fontSize: 20,
-    color: "#000000",
-    marginTop: space(8),
-    textAlign: "center",
-  },
+  empty: { alignItems: "center", paddingTop: 56, gap: 12 },
+  emptyTitle: { fontFamily: fonts.semibold, fontSize: 18, color: colors.ink, marginTop: 20 },
   emptyBody: {
     fontFamily: fonts.regular,
-    fontSize: 12.5,
-    lineHeight: 17,
-    color: colors.text,
+    fontSize: 15,
+    lineHeight: 21,
+    color: colors.subtle,
     textAlign: "center",
-    marginTop: space(3),
-  },
-  addSelf: { minHeight: minTouch, justifyContent: "center", alignSelf: "center" },
-  addSelfText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.inputBlue },
-  list: {
-    backgroundColor: "#F7F7F7",
-    marginHorizontal: -space(4) + 20,
-    marginTop: space(4),
-    padding: 2,
-    gap: space(3),
   },
   member: {
     flexDirection: "row",
     alignItems: "center",
-    gap: space(3),
+    gap: 16,
     backgroundColor: colors.white,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
-    paddingVertical: space(3),
-    paddingLeft: space(3),
+    borderColor: colors.cardLine,
+    paddingVertical: 15,
+    paddingLeft: 16,
+    paddingRight: 6,
   },
-  photo: { width: 67, height: 67, borderRadius: 34 },
-  initials: { backgroundColor: colors.brandTint, alignItems: "center", justifyContent: "center" },
-  initialsText: { fontFamily: fonts.bold, fontSize: 22, color: colors.brand },
-  memberText: { flex: 1, gap: 2 },
-  name: { fontFamily: fonts.medium, fontSize: 14.5, color: "#222222" },
-  title: { fontFamily: fonts.regular, fontSize: 13, color: "#8A8A8A" },
-  view: { minHeight: 32, justifyContent: "center", alignSelf: "flex-start" },
-  viewText: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.ink },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  initials: { fontFamily: fonts.bold, fontSize: 18, color: colors.white },
+  memberText: { flex: 1, gap: 1, alignItems: "flex-start" },
+  name: { fontFamily: fonts.semibold, fontSize: 18, lineHeight: 23, color: colors.ink },
+  title: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 21, color: colors.subtle },
+  view: { minHeight: 28, justifyContent: "center" },
+  viewText: { fontFamily: fonts.medium, fontSize: 16, color: colors.action },
   pencil: { width: minTouch, height: minTouch, alignItems: "center", justifyContent: "center" },
+  addSelf: { minHeight: minTouch, justifyContent: "center", alignSelf: "flex-start" },
+  addSelfText: { fontFamily: fonts.medium, fontSize: 16, color: colors.action },
   error: { ...type.caption, color: colors.danger },
 });

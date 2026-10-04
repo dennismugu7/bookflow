@@ -2,7 +2,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, type PressableProps } f
 
 import { colors, controlHeight, fonts, radius, space } from "../theme";
 
-type Variant = "primary" | "secondary" | "brand" | "danger" | "blue";
+type Variant = "primary" | "secondary" | "outline" | "brand" | "danger" | "blue";
 
 type Props = Omit<PressableProps, "children" | "style"> & {
   title: string;
@@ -17,6 +17,8 @@ type Props = Omit<PressableProps, "children" | "style"> & {
 const variants: Record<Variant, { background: string; text: string; border?: string }> = {
   primary: { background: colors.ink, text: colors.white },
   secondary: { background: colors.white, text: colors.ink, border: colors.border },
+  // White with an ink outline: Open Google Maps, Change pin, Log out (owner-v2 06–08).
+  outline: { background: colors.white, text: colors.ink, border: colors.ink },
   brand: { background: colors.brand, text: colors.white },
   danger: { background: colors.dangerTint, text: colors.danger },
   // The blue action of the sign-in sheet and setup cards (03–05, 44, 51).
@@ -44,6 +46,7 @@ export function Button({
       style={({ pressed }) => [
         styles.base,
         variant === "blue" && styles.blue,
+        variant === "outline" && styles.outline,
         shape === "pill" && styles.pill,
         compact && styles.compact,
         { backgroundColor: v.background, borderColor: v.border ?? v.background },
@@ -59,6 +62,7 @@ export function Button({
           style={[
             styles.text,
             variant === "blue" && styles.blueText,
+            variant === "outline" && styles.outlineText,
             compact && styles.compactText,
             { color: v.text },
           ]}
@@ -84,6 +88,8 @@ const styles = StyleSheet.create({
   compact: { minHeight: 44, borderRadius: 10 },
   compactText: { fontFamily: fonts.regular, fontSize: 15 },
   text: { fontFamily: fonts.bold, fontSize: 16 },
+  outline: { minHeight: 48, borderWidth: 1.5 },
+  outlineText: { fontFamily: fonts.medium, fontSize: 17 },
   blueText: { fontFamily: fonts.regular, fontSize: 19 },
   pressed: { opacity: 0.85 },
   inactive: { opacity: 0.5 },

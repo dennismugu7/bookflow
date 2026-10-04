@@ -3,24 +3,37 @@ import { StyleSheet, Text, TextInput, View, type TextInputProps } from "react-na
 
 import { colors, controlHeight, fonts, radius, space, type } from "../theme";
 
-type Variant = "default" | "sheet" | "card";
+type Variant = "default" | "sheet";
 
 type Props = TextInputProps & {
   label: string;
   /** Hides the visible label (the input keeps it for screen readers). */
   hideLabel?: boolean;
+  /** Adds the red "*" after the label. */
+  required?: boolean;
   error?: string;
   hint?: string;
-  /** "sheet": light-blue sign-in field (03–05); "card": blue-outlined card field (46, 51, 58). */
+  /** Shows "84 / 500" under a field with a maxLength. */
+  counter?: boolean;
+  /** "default": the owner Field (owner-v2); "sheet": light-blue sign-in field (03–05). */
   variant?: Variant;
 };
 
+/**
+ * The owner Field: a 15/600 label over a 52 px field with a grey outline at rest that turns
+ * blue while typing (owner-v2 01, 03, 06). Multi-line fields are 120 px high.
+ */
 export function TextField({
   label,
   hideLabel = false,
+  required = false,
   error,
   hint,
+  counter = false,
   variant = "default",
+  multiline,
+  maxLength,
+  value,
   onFocus,
   onBlur,
   style,
@@ -30,12 +43,26 @@ export function TextField({
   const v = variants[variant];
   return (
     <View style={styles.wrapper}>
-      {hideLabel ? null : <Text style={v.label}>{label}</Text>}
+      {hideLabel ? null : (
+        <Text style={v.label}>
+          {label}
+          {required ? <Text style={styles.required}> *</Text> : null}
+        </Text>
+      )}
       <TextInput
         accessibilityLabel={label}
         accessibilityHint={error ?? hint}
         placeholderTextColor={placeholders[variant]}
-        style={[v.input, focused && v.focused, !!error && styles.invalid, style]}
+        multiline={multiline}
+        maxLength={maxLength}
+        value={value}
+        style={[
+          v.input,
+          multiline && variant === "default" && styles.multiline,
+          focused && v.focused,
+          !!error && styles.invalid,
+          style,
+        ]}
         onFocus={(event) => {
           setFocused(true);
           onFocus?.(event);
@@ -46,6 +73,11 @@ export function TextField({
         }}
         {...rest}
       />
+      {counter && maxLength ? (
+        <Text style={styles.counter}>
+          {value?.length ?? 0} / {maxLength}
+        </Text>
+      ) : null}
       {error ? (
         <Text style={styles.error} accessibilityLiveRegion="polite">
           {error}
@@ -59,33 +91,35 @@ export function TextField({
 
 const styles = StyleSheet.create({
   wrapper: { gap: space(2) },
+  required: { color: colors.required },
+  multiline: { height: 120, paddingTop: 14, paddingBottom: 14, textAlignVertical: "top" },
   invalid: { borderColor: colors.danger },
+  counter: { ...type.caption, fontSize: 14, color: colors.subtle, textAlign: "right" },
   error: { ...type.caption, color: colors.danger },
-  hint: { ...type.caption, color: colors.muted },
+  hint: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 19, color: colors.subtle },
 });
 
 const placeholders: Record<Variant, string> = {
-  default: colors.muted,
+  default: colors.faint,
   sheet: "#A9A9A9",
-  card: colors.placeholder,
 };
 
 const variants = {
   default: StyleSheet.create({
-    label: { fontFamily: fonts.bold, fontSize: 14, color: colors.ink },
+    label: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
     input: {
       height: controlHeight,
       borderRadius: radius,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: colors.field,
       backgroundColor: colors.white,
       paddingHorizontal: space(4),
       color: colors.ink,
-      fontFamily: type.body.fontFamily,
-      fontSize: type.body.fontSize,
+      fontFamily: fonts.regular,
+      fontSize: 17,
     },
     // One pixel less padding keeps the text still when the border thickens.
-    focused: { borderColor: colors.select, borderWidth: 2, paddingHorizontal: space(4) - 1 },
+    focused: { borderColor: colors.action, borderWidth: 2, paddingHorizontal: space(4) - 1 },
   }),
   sheet: StyleSheet.create({
     label: {
@@ -108,20 +142,5 @@ const variants = {
       letterSpacing: 1.4,
     },
     focused: { borderColor: colors.inputBlue },
-  }),
-  card: StyleSheet.create({
-    label: { fontFamily: fonts.bold, fontSize: 15, color: "#3A3A3A" },
-    input: {
-      minHeight: 42,
-      borderRadius: 13,
-      borderWidth: 1.5,
-      borderColor: colors.inputBlue,
-      backgroundColor: colors.white,
-      paddingHorizontal: space(3),
-      color: colors.ink,
-      fontFamily: fonts.semibold,
-      fontSize: 14,
-    },
-    focused: { borderWidth: 2, paddingHorizontal: space(3) - 0.5 },
   }),
 };

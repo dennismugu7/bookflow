@@ -104,6 +104,9 @@ export function diffIds(current: string[], next: string[]): { add: string[]; rem
 
 // Brand --------------------------------------------------------------------------------
 
+/** About on My brand: up to 500 characters, with a counter (owner-v2 01). */
+export const ABOUT_MAX = 500;
+
 export type BrandForm = { name: string; tagline: string; about: string };
 export type BrandErrors = Partial<Record<keyof BrandForm, string>>;
 
@@ -113,7 +116,8 @@ export function validateBrand(form: BrandForm): BrandErrors {
   if (name.length === 0) errors.name = "Enter your salon's name.";
   else if (name.length > 80) errors.name = "Keep the name under 80 characters.";
   if (form.tagline.trim().length > 80) errors.tagline = "Keep the tagline under 80 characters.";
-  if (form.about.trim().length > 600) errors.about = "Keep this under 600 characters.";
+  if (form.about.trim().length > ABOUT_MAX)
+    errors.about = `Keep this under ${ABOUT_MAX} characters.`;
   return errors;
 }
 

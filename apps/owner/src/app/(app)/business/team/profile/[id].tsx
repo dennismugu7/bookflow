@@ -1,14 +1,14 @@
+import { initialsFor } from "@bookflow/shared";
 import Feather from "@expo/vector-icons/Feather";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { initials } from "../../../../../lib/display";
+import { avatarTint } from "../../../../../lib/display";
 import { publicMediaUrl } from "../../../../../lib/media";
 import { getSupabase } from "../../../../../lib/supabase";
-import { colors, fonts, minTouch, space, type } from "../../../../../theme";
-import { Badge } from "../../../../../ui";
+import { colors, fonts, type } from "../../../../../theme";
+import { Badge, Page } from "../../../../../ui";
 
 type Profile = {
   name: string;
@@ -21,7 +21,7 @@ type Profile = {
 
 const SHOWN_SERVICES = 2;
 
-/** A team member as clients see them (53), without the rating until reviews exist. */
+/** A team member as clients see them (53), under the owner-v2 TopBar; no rating until reviews exist. */
 export default function TeamProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [profile, setProfile] = useState<Profile>();
@@ -57,144 +57,109 @@ export default function TeamProfileScreen() {
   const edit = () => router.push({ pathname: "/business/team/[id]", params: { id } });
 
   return (
-    <SafeAreaView style={styles.backdrop}>
-      <View style={styles.page}>
-        <View style={styles.top}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Close"
-            onPress={() => router.back()}
-            style={styles.icon}
-          >
-            <Feather name="x" size={30} color={colors.ink} />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Edit team member"
-            onPress={edit}
-            style={styles.icon}
-          >
-            <Feather name="edit-2" size={28} color={colors.ink} />
-          </Pressable>
-        </View>
-        <ScrollView contentContainerStyle={styles.scroll}>
-          {profile ? (
-            <>
-              <View style={styles.hero}>
-                {profile.photoUri ? (
-                  <Image
-                    source={{ uri: profile.photoUri }}
-                    style={styles.photo}
-                    accessibilityIgnoresInvertColors
-                  />
-                ) : (
-                  <View style={[styles.photo, styles.initials]}>
-                    <Text style={styles.initialsText}>{initials(profile.name)}</Text>
-                  </View>
-                )}
-                <Text style={styles.name} accessibilityRole="header">
-                  {profile.name}
-                </Text>
-                {profile.title ? <Text style={styles.title}>{profile.title}</Text> : null}
-                {!profile.isActive ? <Badge label="Inactive" variant="completed" /> : null}
+    <Page
+      title="Team member"
+      right={{ icon: "edit-3", label: "Edit team member", onPress: edit }}
+      gap={24}
+    >
+      {profile ? (
+        <>
+          <View style={styles.hero}>
+            {profile.photoUri ? (
+              <Image
+                source={{ uri: profile.photoUri }}
+                style={styles.photo}
+                accessibilityIgnoresInvertColors
+              />
+            ) : (
+              <View style={[styles.photo, { backgroundColor: avatarTint(profile.name) }]}>
+                <Text style={styles.initialsText}>{initialsFor(profile.name)}</Text>
               </View>
+            )}
+            <Text style={styles.name} accessibilityRole="header">
+              {profile.name}
+            </Text>
+            {profile.title ? <Text style={styles.title}>{profile.title}</Text> : null}
+            {!profile.isActive ? <Badge label="Inactive" variant="completed" /> : null}
+          </View>
 
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Services offered, ${profile.services.length} selected. Edit`}
-                onPress={edit}
-                style={styles.services}
-              >
-                <View style={styles.servicesHead}>
-                  <Text style={styles.servicesTitle}>
-                    Services offered · {profile.services.length} selected
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Services offered, ${profile.services.length} selected. Edit`}
+            onPress={edit}
+            style={styles.services}
+          >
+            <View style={styles.servicesHead}>
+              <Text style={styles.servicesTitle}>
+                Services offered · {profile.services.length} selected
+              </Text>
+              <Feather name="chevron-right" size={22} color={colors.faint} />
+            </View>
+            {profile.services.length > 0 ? (
+              <View style={styles.chips}>
+                {profile.services.slice(0, SHOWN_SERVICES).map((name) => (
+                  <Text key={name} style={styles.chip}>
+                    {name}
                   </Text>
-                  <Feather name="chevron-right" size={22} color="#777777" />
-                </View>
-                {profile.services.length > 0 ? (
-                  <View style={styles.chips}>
-                    {profile.services.slice(0, SHOWN_SERVICES).map((name) => (
-                      <Text key={name} style={styles.chip}>
-                        {name}
-                      </Text>
-                    ))}
-                    {profile.services.length > SHOWN_SERVICES ? (
-                      <Text style={[styles.chip, styles.more]}>
-                        +{profile.services.length - SHOWN_SERVICES}
-                      </Text>
-                    ) : null}
-                  </View>
+                ))}
+                {profile.services.length > SHOWN_SERVICES ? (
+                  <Text style={[styles.chip, styles.more]}>
+                    +{profile.services.length - SHOWN_SERVICES}
+                  </Text>
                 ) : null}
-              </Pressable>
+              </View>
+            ) : null}
+          </Pressable>
 
-              {profile.about ? (
-                <View style={styles.about}>
-                  <Text style={styles.aboutTitle}>About</Text>
-                  <Text style={styles.aboutText}>{profile.about}</Text>
-                </View>
-              ) : null}
-            </>
+          {profile.about ? (
+            <View style={styles.about}>
+              <Text style={styles.aboutTitle}>About</Text>
+              <Text style={styles.aboutText}>{profile.about}</Text>
+            </View>
           ) : null}
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-        </ScrollView>
-      </View>
-    </SafeAreaView>
+        </>
+      ) : null}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+    </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: "#C4C4C4" },
-  page: {
-    flex: 1,
-    marginTop: 5,
-    backgroundColor: colors.band,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    overflow: "hidden",
+  hero: { alignItems: "center", gap: 6, marginTop: 8 },
+  photo: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    marginBottom: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  top: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: space(5),
-    paddingTop: space(4),
-  },
-  icon: { width: minTouch, height: minTouch, alignItems: "center", justifyContent: "center" },
-  scroll: { flexGrow: 1, paddingBottom: space(10) },
-  hero: { alignItems: "center", gap: space(2), marginTop: space(10) },
-  photo: { width: 206, height: 206, borderRadius: 103, marginBottom: space(6) },
-  initials: { backgroundColor: colors.brandTint, alignItems: "center", justifyContent: "center" },
-  initialsText: { fontFamily: fonts.bold, fontSize: 64, color: colors.brand },
-  name: { fontFamily: fonts.bold, fontSize: 23, color: "#000000", textAlign: "center" },
-  title: { fontFamily: fonts.regular, fontSize: 16, color: "#111111" },
+  initialsText: { fontFamily: fonts.bold, fontSize: 52, color: colors.white },
+  name: { fontFamily: fonts.bold, fontSize: 22, color: colors.ink, textAlign: "center" },
+  title: { fontFamily: fonts.regular, fontSize: 16, color: colors.subtle },
   services: {
-    backgroundColor: colors.white,
-    marginHorizontal: 22,
-    marginTop: space(8),
-    borderRadius: 10,
-    padding: space(3),
-    gap: space(3),
+    borderWidth: 1,
+    borderColor: colors.cardLine,
+    borderRadius: 16,
+    padding: 16,
+    gap: 12,
   },
   servicesHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  servicesTitle: { fontFamily: fonts.semibold, fontSize: 14, color: "#333333" },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: space(2) },
+  servicesTitle: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     fontFamily: fonts.medium,
-    fontSize: 13,
-    color: colors.chipBlueText,
-    backgroundColor: colors.chipBlueTint,
+    fontSize: 14,
+    color: colors.action,
+    backgroundColor: colors.actionTint,
     borderRadius: 999,
     overflow: "hidden",
-    paddingHorizontal: space(3),
-    paddingVertical: space(1),
+    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
-  more: { color: "#555555", backgroundColor: "#F2F2F2" },
-  about: {
-    backgroundColor: colors.white,
-    paddingHorizontal: 26,
-    paddingVertical: space(4),
-    gap: space(2),
-  },
-  aboutTitle: { fontFamily: fonts.bold, fontSize: 16, color: "#000000" },
-  aboutText: { fontFamily: fonts.regular, fontSize: 12.5, lineHeight: 17, color: "#111111" },
-  error: { ...type.caption, color: colors.danger, padding: space(5) },
+  more: { color: colors.subtle, backgroundColor: colors.softFill },
+  about: { gap: 8 },
+  aboutTitle: { fontFamily: fonts.semibold, fontSize: 17, color: colors.ink },
+  aboutText: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22, color: colors.ink },
+  error: { ...type.caption, color: colors.danger },
 });

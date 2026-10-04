@@ -1,4 +1,5 @@
 export { formatKes } from "./money";
+export { initialsFor } from "./initials";
 export { normalizeKenyanPhone } from "./phone";
 export { WEB_BASE_URL, bookingLink } from "./links";
 export {

@@ -1,8 +1,7 @@
 import { formatKes } from "@bookflow/shared";
-import Feather from "@expo/vector-icons/Feather";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState, type ReactNode } from "react";
-import { Alert, Pressable, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Alert, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 
 import { minutesLabel } from "../../../../lib/display";
 import { useSession } from "../../../../lib/session";
@@ -16,18 +15,24 @@ import {
   type ServiceForm,
 } from "../../../../lib/setup";
 import { getSupabase } from "../../../../lib/supabase";
-import { colors, fonts, minTouch, space, type } from "../../../../theme";
-import { Button, Screen } from "../../../../ui";
+import { colors, fonts, minTouch, type } from "../../../../theme";
+import { Page, SaveBar, TextField } from "../../../../ui";
 
 const EMPTY: ServiceForm = { name: "", duration: "20", price: "", isBookable: true };
-const LABEL_GREY = "#6B6B6B";
 
-/** Add or edit a service (48). */
+const sameForm = (a: ServiceForm, b: ServiceForm) =>
+  a.name.trim() === b.name.trim() &&
+  a.duration === b.duration &&
+  a.price.trim() === b.price.trim() &&
+  a.isBookable === b.isBookable;
+
+/** Add or edit a service (owner-v2 03). */
 export default function ServiceEditScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const isNew = id === "new";
   const { membership } = useSession();
   const salonId = membership?.salon.id;
+  const [initial, setInitial] = useState<ServiceForm | undefined>(isNew ? EMPTY : undefined);
   const [form, setForm] = useState<ServiceForm | undefined>(isNew ? EMPTY : undefined);
   const [custom, setCustom] = useState(false);
   const [errors, setErrors] = useState<ServiceErrors & { form?: string }>({});
@@ -45,12 +50,14 @@ export default function ServiceEditScreen() {
           setErrors({ form: "Couldn't load this service." });
           return;
         }
-        setForm({
+        const loaded = {
           name: data.name,
           duration: String(data.duration_min),
           price: String(data.price_kes),
           isBookable: data.is_bookable,
-        });
+        };
+        setInitial(loaded);
+        setForm(loaded);
         setCustom(!(DURATION_CHOICES as readonly number[]).includes(data.duration_min));
       });
   }, [id, isNew]);
@@ -103,73 +110,43 @@ export default function ServiceEditScreen() {
 
   const duration = form ? parseDuration(form.duration) : null;
   const price = form ? parsePriceKes(form.price) : null;
-  const named = !!form?.name.trim();
+  const changed = !!form && !!initial && !sameForm(form, initial);
+  const preview = form
+    ? [
+        form.name.trim() || "Service name",
+        duration ? minutesLabel(duration) : "— min",
+        price !== null ? formatKes(price) : "KES —",
+      ].join(" · ")
+    : "";
 
   return (
-    <Screen
-      background="#FAFAFA"
-      gap={space(3)}
+    <Page
+      title={isNew ? "Add a service" : "Edit service"}
       footer={
-        <Button
+        <SaveBar
           title="Save service"
           onPress={() => void save()}
+          disabled={!changed}
           loading={saving}
-          disabled={!form}
         />
       }
     >
-      <View style={styles.header}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={() => router.back()}
-          hitSlop={8}
-          style={styles.back}
-        >
-          <Feather name="arrow-left" size={24} color={colors.ink} />
-        </Pressable>
-        <Text style={styles.title} accessibilityRole="header">
-          {isNew ? "Add a service" : "Edit service"}
-        </Text>
-      </View>
       {form ? (
         <>
-          <View style={styles.group}>
-            <Text style={styles.caps}>How it&apos;ll appear</Text>
-            <View
-              style={styles.preview}
-              accessible
-              accessibilityLabel="Preview of the service on your booking page"
-            >
-              <Text style={[styles.previewName, !named && styles.previewEmpty]}>
-                {named ? form.name.trim() : "Service name"}
-              </Text>
-              <Text style={styles.previewMins}>
-                {duration ? minutesLabel(duration) : "— mins"}
-                {form.isBookable ? "" : " · hidden"}
-              </Text>
-              <Text style={[styles.previewPrice, price === null && styles.previewEmpty]}>
-                {price !== null ? formatKes(price) : "KES —"}
-              </Text>
-            </View>
-          </View>
-
-          <FieldCard label="Service name" error={errors.name}>
-            <TextInput
-              accessibilityLabel="Service name"
-              placeholder="e.g. Shaping & defining the beard"
-              placeholderTextColor={LABEL_GREY}
-              value={form.name}
-              onChangeText={(name) => setForm({ ...form, name })}
-              maxLength={80}
-              autoCapitalize="sentences"
-              style={styles.input}
-            />
-          </FieldCard>
+          <TextField
+            label="Service name"
+            required
+            placeholder="e.g. Silk press"
+            value={form.name}
+            onChangeText={(name) => setForm({ ...form, name })}
+            error={errors.name}
+            maxLength={80}
+            autoCapitalize="sentences"
+          />
 
           <View style={styles.group}>
             <Text style={styles.label}>
-              Duration <Text style={styles.star}>*</Text>
+              Duration<Text style={styles.star}> *</Text>
             </Text>
             <View style={styles.chips}>
               {DURATION_CHOICES.map((minutes) => (
@@ -183,57 +160,54 @@ export default function ServiceEditScreen() {
                   }}
                 />
               ))}
-              <DurationChip
-                label="Custom"
-                dashed
-                selected={custom}
-                onPress={() => setCustom(true)}
-              />
+              <DurationChip label="Custom" selected={custom} onPress={() => setCustom(true)} />
             </View>
             {custom ? (
-              <FieldCard label="Minutes" hint="5 to 600, in steps of 5" error={errors.duration}>
-                <TextInput
-                  accessibilityLabel="Minutes"
-                  value={form.duration}
-                  onChangeText={(text) => setForm({ ...form, duration: text.replace(/\D/g, "") })}
-                  keyboardType="number-pad"
-                  maxLength={3}
-                  style={styles.input}
-                />
-              </FieldCard>
+              <TextField
+                label="Minutes"
+                hideLabel
+                placeholder="Minutes"
+                hint="5 to 600, in steps of 5"
+                value={form.duration}
+                onChangeText={(text) => setForm({ ...form, duration: text.replace(/\D/g, "") })}
+                error={errors.duration}
+                keyboardType="number-pad"
+                maxLength={3}
+              />
             ) : errors.duration ? (
               <Text style={styles.error}>{errors.duration}</Text>
             ) : null}
           </View>
 
-          <FieldCard label="Price" error={errors.price}>
-            <View style={styles.priceRow}>
-              <Text style={styles.kes}>KES</Text>
-              <TextInput
-                accessibilityLabel="Price in KES, whole shillings"
-                placeholder="e.g. 400"
-                placeholderTextColor={LABEL_GREY}
-                value={form.price}
-                onChangeText={(text) => setForm({ ...form, price: text.replace(/[^\d,\s]/g, "") })}
-                keyboardType="number-pad"
-                style={[styles.input, styles.flex]}
-              />
-            </View>
-          </FieldCard>
+          <TextField
+            label="Price (KES)"
+            required
+            placeholder="e.g. 1500"
+            value={form.price}
+            onChangeText={(text) => setForm({ ...form, price: text.replace(/[^\d,\s]/g, "") })}
+            error={errors.price}
+            keyboardType="number-pad"
+            accessibilityLabel="Price in KES, whole shillings"
+          />
 
-          <View style={[styles.fieldCard, styles.toggle]}>
+          <View style={styles.toggle}>
             <View style={styles.flex}>
               <Text style={styles.toggleTitle}>Bookable by clients</Text>
-              <Text style={styles.toggleDetail}>Off keeps it as a draft, hidden from booking</Text>
+              <Text style={styles.toggleDetail}>Off keeps it as a draft</Text>
             </View>
             <Switch
               accessibilityLabel="Bookable by clients"
               value={form.isBookable}
               onValueChange={(isBookable) => setForm({ ...form, isBookable })}
-              trackColor={{ false: colors.border, true: "#2F76E0" }}
+              trackColor={{ false: colors.field, true: colors.action }}
               thumbColor={colors.white}
             />
           </View>
+
+          <Text style={styles.preview} accessibilityLabel={`Preview: ${preview}`}>
+            Preview: <Text style={styles.previewValue}>{preview}</Text>
+            {form.isBookable ? "" : " (hidden)"}
+          </Text>
 
           {errors.form ? <Text style={styles.error}>{errors.form}</Text> : null}
 
@@ -251,49 +225,17 @@ export default function ServiceEditScreen() {
       ) : errors.form ? (
         <Text style={styles.error}>{errors.form}</Text>
       ) : null}
-    </Screen>
-  );
-}
-
-function FieldCard({
-  label,
-  hint,
-  error,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  error?: string;
-  children: ReactNode;
-}) {
-  return (
-    <View style={styles.fieldGroup}>
-      <View style={styles.fieldCard}>
-        <Text style={styles.label}>
-          {label} <Text style={styles.star}>*</Text>
-        </Text>
-        {children}
-      </View>
-      {error ? (
-        <Text style={styles.error} accessibilityLiveRegion="polite">
-          {error}
-        </Text>
-      ) : hint ? (
-        <Text style={styles.hint}>{hint}</Text>
-      ) : null}
-    </View>
+    </Page>
   );
 }
 
 function DurationChip({
   label,
   selected,
-  dashed = false,
   onPress,
 }: {
   label: string;
   selected: boolean;
-  dashed?: boolean;
   onPress: () => void;
 }) {
   return (
@@ -302,7 +244,7 @@ function DurationChip({
       accessibilityLabel={label}
       accessibilityState={{ checked: selected }}
       onPress={onPress}
-      style={[styles.chip, dashed && styles.chipDashed, selected && styles.chipSelected]}
+      style={[styles.chip, selected && styles.chipSelected]}
     >
       <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
     </Pressable>
@@ -310,70 +252,53 @@ function DurationChip({
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", gap: space(3), marginLeft: -space(2) },
-  back: { width: minTouch, height: minTouch, alignItems: "center", justifyContent: "center" },
-  title: { fontFamily: fonts.semibold, fontSize: 18, color: colors.ink },
-  group: { gap: space(2) },
-  fieldGroup: { gap: space(1) },
-  caps: {
-    fontFamily: fonts.semibold,
-    fontSize: 12,
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
-    color: LABEL_GREY,
-  },
-  preview: {
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: "#D0D0D0",
-    borderRadius: 14,
-    paddingHorizontal: space(4),
-    paddingVertical: space(3),
-    gap: space(1) + 2,
-  },
-  previewName: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
-  previewMins: { fontFamily: fonts.medium, fontSize: 13, color: LABEL_GREY },
-  previewPrice: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
-  previewEmpty: { color: LABEL_GREY },
-  fieldCard: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    paddingHorizontal: space(4),
-    paddingVertical: space(3),
-    gap: space(1),
-  },
-  label: { fontFamily: fonts.medium, fontSize: 11.5, color: LABEL_GREY },
-  star: { color: colors.danger },
-  input: {
-    minHeight: 30,
-    padding: 0,
-    fontFamily: fonts.medium,
-    fontSize: 15,
-    color: colors.ink,
-  },
-  priceRow: { flexDirection: "row", alignItems: "center", gap: space(2) },
-  kes: { fontFamily: fonts.medium, fontSize: 15, color: colors.ink },
+  group: { gap: 8 },
+  label: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
+  star: { color: colors.required },
   flex: { flex: 1 },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: space(1) + 2 },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
-    minHeight: 36,
-    paddingHorizontal: space(2) + 2,
+    minWidth: 78,
+    height: 40,
+    paddingHorizontal: 16,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#DDDDDD",
+    borderColor: colors.field,
     backgroundColor: colors.white,
     alignItems: "center",
     justifyContent: "center",
   },
-  chipDashed: { borderStyle: "dashed", borderColor: "#CCCCCC" },
-  chipSelected: { borderColor: colors.inputBlue, backgroundColor: "#F2F7FF" },
-  chipText: { fontFamily: fonts.semibold, fontSize: 13.5, color: colors.ink },
-  chipTextSelected: { color: colors.inputBlue },
-  toggle: { flexDirection: "row", alignItems: "center", gap: space(3), paddingVertical: space(3) },
-  toggleTitle: { fontFamily: fonts.bold, fontSize: 14.5, color: colors.ink },
-  toggleDetail: { fontFamily: fonts.medium, fontSize: 12, color: LABEL_GREY, marginTop: 2 },
-  hint: { ...type.caption, color: colors.muted },
+  // One pixel less padding keeps the label still when the border thickens.
+  chipSelected: {
+    borderWidth: 2,
+    paddingHorizontal: 15,
+    borderColor: colors.action,
+    backgroundColor: colors.actionTint,
+  },
+  chipText: { fontFamily: fonts.regular, fontSize: 16, color: colors.ink },
+  chipTextSelected: { color: colors.action },
+  toggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1,
+    borderColor: colors.cardLine,
+    borderRadius: 16,
+    paddingLeft: 16,
+    paddingRight: 14,
+    paddingVertical: 14,
+    marginTop: 2,
+  },
+  toggleTitle: { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 22, color: colors.ink },
+  toggleDetail: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 21, color: colors.subtle },
+  preview: {
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    color: colors.subtle,
+    marginTop: -6,
+  },
+  previewValue: { fontFamily: fonts.semibold, color: colors.ink },
   error: { ...type.caption, color: colors.danger },
   delete: { minHeight: minTouch, justifyContent: "center", alignSelf: "flex-start" },
-  deleteText: { fontFamily: fonts.bold, fontSize: 15, color: colors.danger },
+  deleteText: { fontFamily: fonts.semibold, fontSize: 15, color: colors.danger },
 });

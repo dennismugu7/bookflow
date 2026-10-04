@@ -1,6 +1,6 @@
 import Feather from "@expo/vector-icons/Feather";
 import type { ReactNode } from "react";
-import { Modal, Pressable, StyleSheet, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors, minTouch, space } from "../theme";
@@ -12,7 +12,8 @@ export function BottomSheet({ visible, onClose, children }: Props) {
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+      {/* Keeps the sheet's fields above the keyboard (the hours day editor). */}
+      <KeyboardAvoidingView style={styles.backdrop} behavior="padding">
         <Pressable accessibilityLabel="Close" style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={[styles.sheet, { paddingBottom: insets.bottom + space(6) }]}>
           <Pressable
@@ -26,7 +27,7 @@ export function BottomSheet({ visible, onClose, children }: Props) {
           </Pressable>
           {children}
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

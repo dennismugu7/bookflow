@@ -4,8 +4,9 @@
 //   2. in apps/owner: CAPTURE_WEB=1 EXPO_NO_WEB_SETUP=1 EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 //      EXPO_PUBLIC_SUPABASE_ANON_KEY=<local publishable key> npx expo start --web --port 8099
 //   3. SUPABASE_SECRET_KEY=<local secret key> node apps/owner/scripts/capture.mjs
-// Live shots go to docs/portfolio/evidence/2026-10-04-owner-fidelity/; when Dennis's originals are
-// in design-ref/original-owner/ (git-ignored), design | live images go to design-ref/compare/.
+// Live shots go to docs/portfolio/evidence/2026-10-04-owner-polish/. Side-by-sides go to
+// design-ref/compare/: owner2-<nn>.png against the approved mockups in docs/design/owner-v2/, and
+// owner-<nn>.png against Dennis's originals in design-ref/original-owner/ (git-ignored).
 import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -15,8 +16,9 @@ const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-const OUT = path.join(ROOT, "docs/portfolio/evidence/2026-10-04-owner-fidelity");
+const OUT = path.join(ROOT, "docs/portfolio/evidence/2026-10-04-owner-polish");
 const DESIGNS = path.join(ROOT, "design-ref/original-owner");
+const MOCKUPS = path.join(ROOT, "docs/design/owner-v2");
 const COMPARE = path.join(ROOT, "design-ref/compare");
 const APP = process.env.CAPTURE_URL ?? "http://localhost:8099";
 const API = process.env.CAPTURE_SUPABASE_URL ?? "http://127.0.0.1:54321";
@@ -26,7 +28,7 @@ if (!SECRET) throw new Error("Set SUPABASE_SECRET_KEY to the local stack's secre
 if (!/^http:\/\/(127\.0\.0\.1|localhost)/.test(API)) throw new Error("Local Supabase only.");
 
 const NEW_OWNER = "new.owner@example.com";
-const FULL_OWNER = "amina.owner@example.com";
+const FULL_OWNER = "dennis@example.com";
 const SLUGS = ["kito-hair-lounge", "amani-beauty-showcase"];
 
 const admin = { apikey: SECRET, Authorization: `Bearer ${SECRET}` };
@@ -82,10 +84,11 @@ async function seedFullSalon(browser) {
     body: {
       slug: "amani-beauty-showcase",
       name: "Amani Beauty Studio",
-      tagline: "Look your best, feel your best",
-      about: "Natural hair, braids and silk presses in Kilimani.",
-      address: "2nd floor, Galana Plaza, Kilimani, Nairobi",
-      maps_url: "https://www.google.com/maps?q=-1.29207,36.78614",
+      // One letter short, so the capture can type it and show a focused field (owner-v2 01).
+      tagline: "Look your best, feel your bes",
+      about: "Natural hair, braids and silk presses in Kilimani. Walk-ins welcome on weekdays.",
+      address: "2nd floor, Galana Plaza, Kilimani",
+      maps_url: "https://www.google.com/maps/place/Galana+Plaza,+Kilimani/@-1.29207,36.78614,17z",
       latitude: -1.29207,
       longitude: 36.78614,
     },
@@ -124,7 +127,7 @@ async function seedFullSalon(browser) {
     method: "POST",
     headers: { Prefer: "return=representation" },
     body: [
-      { salon_id: salon.id, name: "Silk press", duration_min: 60, price_kes: 1500, sort_order: 1 },
+      { salon_id: salon.id, name: "Silk press", duration_min: 30, price_kes: 1500, sort_order: 1 },
       { salon_id: salon.id, name: "Box braids", duration_min: 180, price_kes: 3500, sort_order: 2 },
       {
         salon_id: salon.id,
@@ -133,28 +136,15 @@ async function seedFullSalon(browser) {
         price_kes: 400,
         sort_order: 3,
       },
-      { salon_id: salon.id, name: "Cornrows", duration_min: 90, price_kes: 1800, sort_order: 4 },
     ],
   });
+  // No photos, so the rows show initials circles as in owner-v2 04.
   const team = [
-    ["Njeri Kamau", "Stylist", "#c98f6b"],
-    ["Achieng Ouma", "Braider", "#8f6bc9"],
-    ["Wanjiru Mwangi", "Silk press specialist", "#6bc9a8"],
+    ["Njeri Kamau", "Stylist"],
+    ["Achieng Ouma", "Braider"],
   ];
   const staff = [];
-  for (const [index, [name, title, tint]] of team.entries()) {
-    const photo = await render(
-      browser,
-      `<div style="width:400px;height:400px;background:radial-gradient(circle at 50% 38%,#f3e3d3 0 22%,${tint} 23% 100%);display:flex;align-items:flex-end;justify-content:center"><div style="width:250px;height:150px;border-radius:125px 125px 0 0;background:#3a3a4a"></div></div>`,
-      400,
-      400,
-    );
-    const photoPath = await upload(
-      salon.id,
-      "staff",
-      `c0ffee00-0000-4000-8000-00000000001${index}`,
-      photo,
-    );
+  for (const [index, [name, title]] of team.entries()) {
     const [row] = await rest("/rest/v1/staff", {
       method: "POST",
       headers: { Prefer: "return=representation" },
@@ -163,7 +153,6 @@ async function seedFullSalon(browser) {
         display_name: name,
         title,
         bio: `${name.split(" ")[0]} has eight years of experience with natural hair, protective styles and silk presses, and loves a look that lasts all week.`,
-        photo_path: photoPath,
         sort_order: index + 1,
       },
     });
@@ -177,12 +166,14 @@ async function seedFullSalon(browser) {
   });
   await rest("/rest/v1/opening_hours", {
     method: "POST",
-    body: [1, 2, 3, 4, 5, 6, 7].map((weekday) => ({
-      salon_id: salon.id,
-      weekday,
-      opens: weekday === 5 ? "12:30" : "10:00",
-      closes: weekday === 7 ? "16:00" : "20:00",
-    })),
+    // As in owner-v2 05: weekdays 09–18 with a lunch break on Thursday, a short Saturday,
+    // Sunday closed.
+    body: [
+      ...[1, 2, 3, 5].map((weekday) => ({ weekday, opens: "09:00", closes: "18:00" })),
+      { weekday: 4, opens: "09:00", closes: "13:00" },
+      { weekday: 4, opens: "14:00", closes: "18:00" },
+      { weekday: 6, opens: "10:00", closes: "16:00" },
+    ].map((row) => ({ salon_id: salon.id, ...row })),
   });
   await rest(`/rest/v1/salons?id=eq.${salon.id}`, {
     method: "PATCH",
@@ -215,13 +206,20 @@ async function clearMailbox(email) {
 
 const settle = (page, ms = 1200) => page.waitForTimeout(ms);
 
-/** Saves the live screen and, when the original is present, a design | live image. */
+/**
+ * Saves the live screen and, when the design is present, a design | live image. `design` is an
+ * original ("51-add-team-member") or an owner-v2 mockup ("v2/01-my-brand").
+ */
 async function shot(page, name, design) {
   mkdirSync(OUT, { recursive: true });
   const live = path.join(OUT, `${name}.png`);
   await page.screenshot({ path: live });
   console.log("captured", name);
-  const original = design ? path.join(DESIGNS, `${design}.png`) : null;
+  const original = !design
+    ? null
+    : design.startsWith("v2/")
+      ? path.join(MOCKUPS, `${design.slice(3)}.png`)
+      : path.join(DESIGNS, `${design}.png`);
   if (!original || !existsSync(original)) return;
   mkdirSync(COMPARE, { recursive: true });
   const dataUrl = (file) => `data:image/png;base64,${readFileSync(file, "base64")}`;
@@ -231,7 +229,7 @@ async function shot(page, name, design) {
     .newPage({ viewport: { width: 900, height: 900 } });
   await sheet.setContent(
     `<body style="margin:0;background:#888;display:flex;gap:12px;padding:12px;width:max-content">
-      <figure style="margin:0;font:600 14px sans-serif;color:#fff">design ${design}<div style="width:390px;height:844px;background:#ccc"><img src="${dataUrl(original)}" style="width:390px;display:block"></div></figure>
+      <figure style="margin:0;font:600 14px sans-serif;color:#fff">design ${design}<div style="width:390px;height:844px;overflow:hidden;background:#ccc"><img src="${dataUrl(original)}" style="width:390px;display:block"></div></figure>
       <figure style="margin:0;font:600 14px sans-serif;color:#fff">live ${name}<img src="${dataUrl(live)}" style="width:390px;display:block"></figure>
     </body>`,
   );
@@ -265,99 +263,180 @@ const noFocusRing = (context) =>
     });
   });
 
-// Signed out, then a brand-new owner with an empty salon.
+const go = async (page, route, ms = 2500) => {
+  await page.goto(`${APP}${route}`);
+  await settle(page, ms);
+};
+
+// A brand-new owner: sign-in and onboarding, the empty screens, then every save (regression).
 {
   const context = await browser.newContext(device);
   await noFocusRing(context);
   const page = await context.newPage();
   await page.goto(APP);
-  await page.getByRole("button", { name: "Create for free" }).waitFor();
-  await settle(page);
-  await shot(page, "owner-02-welcome", "02-welcome");
-  await page.getByRole("button", { name: "Create for free" }).click();
-  await settle(page);
-  await shot(page, "owner-03-create-account", "03-create-account");
-  await page.getByRole("button", { name: "Back" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).waitFor();
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await settle(page);
-  await shot(page, "owner-05-sign-in", "05-sign-in");
   await clearMailbox(NEW_OWNER);
   await page.getByLabel("Enter email:").fill(NEW_OWNER);
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Verification code").waitFor();
-  await settle(page);
-  await shot(page, "owner-04-enter-code", "04-enter-code");
   await page.getByLabel("Verification code").fill(await latestCode(NEW_OWNER));
   await page.getByLabel("Salon name:").waitFor();
-  await settle(page);
-  await shot(page, "owner-create-salon", "03-create-account");
   await page.getByLabel("Salon name:").fill("Kito Hair Lounge");
   await page.getByRole("button", { name: "Create salon" }).click();
   await page.getByText("Get ready to take bookings").waitFor();
-  for (const [route, name, design] of [
-    ["/business/brand", "owner-44-my-brand-empty", "44-my-brand-empty"],
-    ["/business/services", "owner-47-services-empty", "47-services-empty"],
-    ["/business/team", "owner-50-team-empty", "50-team-empty"],
-    ["/business/hours", "owner-56-opening-hours-edit", "56-opening-hours-edit"],
-    ["/business/location", "owner-58-location-edit", "58-location-edit"],
-  ]) {
-    await page.goto(`${APP}${route}`);
-    await settle(page, 2500);
-    await shot(page, name, design);
+
+  await go(page, "/business/brand");
+  await shot(page, "owner2-01-my-brand-empty", "v2/01-my-brand");
+  await go(page, "/business/services");
+  await shot(page, "owner2-02-services-empty", "47-services-empty");
+  await go(page, "/business/team");
+  await shot(page, "owner2-04-team-empty", "50-team-empty");
+  await go(page, "/business/hours");
+  await shot(page, "owner2-05-hours-empty", "v2/05-hours");
+  await go(page, "/business/location");
+  await page
+    .getByRole("textbox", { name: "Address", exact: true })
+    .fill("2nd floor, Galana Plaza, Kilimani");
+  await page.getByRole("textbox", { name: "Google Maps link", exact: true }).click();
+  await settle(page, 400);
+  await shot(page, "owner2-06-location-no-pin", "v2/06-location-no-pin");
+
+  // Saves, one per screen, each checked after a reload.
+  await page
+    .getByRole("textbox", { name: "Google Maps link", exact: true })
+    .fill("https://www.google.com/maps/place/Kito+Hair+Lounge/@-1.29,36.78,17z");
+  await page.getByText("✓ Kito Hair Lounge").waitFor();
+  await page.getByRole("button", { name: "Save location" }).click();
+  await page.getByRole("button", { name: "Change pin" }).waitFor();
+  await go(page, "/business/location");
+  await page.getByRole("button", { name: "Change pin" }).waitFor();
+  await page.getByText("Kito Hair Lounge", { exact: true }).last().waitFor();
+  console.log("ok: location saves the pin and address");
+
+  await go(page, "/business/brand");
+  await page
+    .getByRole("textbox", { name: "About", exact: true })
+    .fill("Fresh cuts and braids in Kilimani.");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await settle(page, 1500);
+  await go(page, "/business/brand");
+  if (
+    (await page.getByRole("textbox", { name: "About", exact: true }).inputValue()) !==
+    "Fresh cuts and braids in Kilimani."
+  ) {
+    throw new Error("brand did not save");
   }
+  console.log("ok: brand saves");
+
+  await go(page, "/business/services/new");
+  await page.getByRole("textbox", { name: "Service name", exact: true }).fill("Wash and set");
+  await page.getByRole("radio", { name: "45 min" }).click();
+  await page
+    .getByRole("textbox", { name: "Price in KES, whole shillings", exact: true })
+    .fill("1200");
+  await page.getByRole("button", { name: "Save service" }).click();
+  await page.getByText("Wash and set").waitFor();
+  console.log("ok: a service saves");
+
+  await go(page, "/business/team");
+  await page.getByRole("button", { name: "Add me as a team member" }).click();
+  await settle(page);
+  await page.getByRole("textbox", { name: "Name", exact: true }).fill("Kito Owner");
+  await page.getByRole("button", { name: /^Services offered/ }).click();
+  await page.getByRole("checkbox", { name: "Wash and set" }).click();
+  await settle(page, 400);
+  await shot(page, "owner2-04b-add-yourself", "51-add-team-member");
+  await page.getByRole("button", { name: "Save and add to team" }).click();
+  await page.getByText("Kito Owner").waitFor();
+  console.log("ok: a team member saves");
+
+  await go(page, "/business/hours");
+  await page.getByRole("button", { name: /^Tuesday/ }).click();
+  await settle(page, 800);
+  await page.getByRole("switch", { name: "Closed" }).click();
+  await page.getByRole("button", { name: "Add a break" }).click();
+  await page.getByRole("textbox", { name: "Opens", exact: true }).nth(1).fill("12:00");
+  await page.getByRole("textbox", { name: "Closes", exact: true }).nth(1).fill("19:00");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.getByText("These times overlap.").waitFor();
+  await settle(page, 400);
+  await shot(page, "owner2-05c-day-overlap");
+  await page.getByRole("textbox", { name: "Opens", exact: true }).nth(1).fill("19:00");
+  await page.getByRole("textbox", { name: "Closes", exact: true }).nth(1).fill("21:00");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.getByText("09:00 – 18:00, 19:00 – 21:00").waitFor();
+  await go(page, "/business/hours");
+  await page.getByText("09:00 – 18:00, 19:00 – 21:00").waitFor();
+  console.log("ok: a day with a break saves; overlaps are rejected");
+
+  await go(page, "/");
+  await page.getByRole("button", { name: "Publish salon" }).click();
+  await page.getByRole("button", { name: "Share your booking link" }).waitFor();
+  await go(page, "/menu");
+  await page.getByText("Kito Hair Lounge · Live").waitFor();
+  console.log("ok: publish, and Menu shows Live");
+
+  await page.getByRole("button", { name: "Log out" }).click();
+  await page.getByRole("button", { name: "Confirm" }).click();
+  await page.getByRole("button", { name: "Create for free" }).waitFor();
+  console.log("ok: log out");
   await context.close();
 }
 
-// An owner with a published, fully set-up salon.
+// An owner with a published, fully set-up salon, as in the mockups.
 {
   const context = await browser.newContext(device);
   await noFocusRing(context);
   const page = await context.newPage();
   await signIn(page, FULL_OWNER);
-  await shot(page, "owner-12-today-empty", "12-today-empty");
-  // The splash stays up while the salon loads; hold that request back to capture it.
-  await page.route(/salon_members/, async (route) => {
-    await new Promise((r) => setTimeout(r, 3000));
-    await route.continue();
-  });
-  await page.reload();
-  await settle(page, 1000);
-  await shot(page, "owner-01-splash", "01-splash");
-  await page.unrouteAll({ behavior: "wait" });
-  await page.goto(`${APP}/account`);
-  await settle(page, 2000);
-  await shot(page, "owner-29-account", "29-account");
+  await shot(page, "owner2-today", "12-today-empty");
+
+  await go(page, "/business/brand");
+  await page.getByRole("textbox", { name: "Tagline", exact: true }).click();
+  await page.keyboard.press("End");
+  await page.keyboard.type("t");
+  await settle(page, 400);
+  await shot(page, "owner2-01-my-brand", "v2/01-my-brand");
+
+  await go(page, "/business/services");
+  await shot(page, "owner2-02-services", "v2/02-services");
+  await go(page, "/business/services/new");
+  await page.getByRole("radio", { name: "30 min" }).click();
+  await page.getByRole("textbox", { name: "Service name", exact: true }).fill("Silk press");
+  await settle(page, 400);
+  await shot(page, "owner2-03-add-service", "v2/03-add-service");
+
+  await go(page, "/business/team");
+  await shot(page, "owner2-04-team", "v2/04-team");
+  await go(page, `/business/team/${full.staffId}`);
+  await shot(page, "owner2-04b-edit-team-member", "51-add-team-member");
+  await go(page, `/business/team/profile/${full.staffId}`);
+  await shot(page, "owner2-04c-team-profile", "53-team-member-profile");
+
+  // The mockup's "today" is a Saturday.
+  await page.clock.setFixedTime(new Date("2026-10-03T10:00:00+03:00"));
+  await go(page, "/business/hours");
+  await shot(page, "owner2-05-hours", "v2/05-hours");
+  await page.getByRole("button", { name: /^Thursday/ }).click();
+  await settle(page, 800);
+  await shot(page, "owner2-05b-day-editor");
+  await page.getByRole("button", { name: "Close" }).last().click();
+
+  await go(page, "/business/location");
+  await shot(page, "owner2-07-location-pin", "v2/07-location-pin");
+  await page.getByRole("button", { name: "Change pin" }).click();
+  await settle(page, 400);
+  await shot(page, "owner2-07b-change-pin", "v2/06-location-no-pin");
+
+  await go(page, "/menu");
+  await shot(page, "owner2-08-menu", "v2/08-menu");
   await page.mouse.wheel(0, 1000);
   await settle(page, 600);
-  await shot(page, "owner-30-account-logout", "30-account-logout");
+  await shot(page, "owner2-08b-menu-log-out", "30-account-logout");
   await page.getByRole("button", { name: "Log out" }).click();
   await settle(page);
-  await shot(page, "owner-31-logout-confirm", "31-logout-confirm");
-
-  const pages = [
-    ["/business/brand", "owner-45-my-brand", "45-my-brand"],
-    ["/business/services", "owner-49-services-list", "49-services-list"],
-    ["/business/services/new", "owner-48-add-service", "48-add-service"],
-    ["/business/team", "owner-52-team-list", "52-team-list"],
-    ["/business/team/new", "owner-51-add-team-member", "51-add-team-member"],
-    [
-      `/business/team/profile/${full.staffId}`,
-      "owner-53-team-member-profile",
-      "53-team-member-profile",
-    ],
-    ["/business/hours", "owner-57-opening-hours", "57-opening-hours"],
-    ["/business/location", "owner-59-location", "59-location"],
-  ];
-  for (const [route, name, design] of pages) {
-    await page.goto(`${APP}${route}`);
-    await settle(page, 2500);
-    await shot(page, name, design);
-  }
-  await page.goto(`${APP}/business/brand`);
-  await settle(page, 2500);
-  await page.getByRole("button", { name: "Edit brand" }).click();
-  await settle(page);
-  await shot(page, "owner-46-my-brand-edit", "46-my-brand-edit");
+  await shot(page, "owner2-08c-log-out-confirm", "31-logout-confirm");
   await context.close();
 }
 
