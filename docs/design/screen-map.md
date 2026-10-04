@@ -69,3 +69,7 @@ Files are numbered as Dennis made them (`NN-name.png`). The current app on Denni
 - Account rows for features that don't exist yet (Profile, Settings, Share feedback, Support, Portfolio) are hidden, not shown as dead links.
 - The Today stat tiles ("Booked / Expected / Gaps") and booking cards come with Phase 4; the empty Today copies `12` without the tiles until then.
 - Calendar and Clients stay "Coming soon" until Phase 4.
+- The "By proceeding, you agree to the Terms of Service and Privacy Policy" line on `03` is left out until those pages exist (release phase) (Dennis, 2026-10-04).
+- Account shows the signed-in email as the name, and its initials in the avatar, until Profile stores an owner name (Dennis, 2026-10-04).
+- Location (`59`) shows our own drawn street-pattern map that opens Google Maps, not a live map; revisit with the next APK (Dennis, 2026-10-04).
+- Kept for existing behaviour (Dennis, 2026-10-04): a back arrow and save tick on the My brand, Opening hours and Location edit cards (as in `51`); the "Working alone? Add me as a team member" link on My team; Booking link (share, Live badge) and Unpublish salon under Account "General"; duration chips 20/30/45/60/90 + Custom as in `48` (15 min via Custom).
