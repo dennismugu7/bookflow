@@ -155,3 +155,7 @@ Mockups in `docs/design/owner-v5/` (fake data). Sign in and Create account keep 
 | Turn on notifications (shown once) | `owner-v5/03-allow-notifications.png` |
 | Android notifications (content and tap target) | `owner-v5/04-notifications.png` |
 | Menu → Notifications switches | `owner-v5/05-notification-settings.png` |
+
+Release 0.5.0 deviations (Dennis, 2026-10-04):
+- Menu → Notifications uses the shared owner top bar (arrow, title and height as on every other owner screen), not the tighter bar drawn in `05`.
+- The code screen (original `04`) sits on the same light-blue background and wordmark as Sign in (`01`), instead of the purple gradient. Its content is unchanged.

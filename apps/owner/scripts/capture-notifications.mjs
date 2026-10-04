@@ -112,7 +112,7 @@ await context.addInitScript(() => {
   });
 });
 const page = await context.newPage();
-await page.goto(APP);
+await page.goto(APP, { waitUntil: "domcontentloaded" });
 
 // 01: Sign in, the email field focused with the mockup's address.
 await page.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -180,6 +180,8 @@ await seedOwner(owner);
 await page.getByLabel("Email", { exact: true }).fill(owner);
 await page.getByRole("button", { name: "Send me a code" }).click();
 await page.getByLabel("Verification code").waitFor();
+await settle(page);
+await shot(page, "owner5-04b-enter-code");
 await page.getByLabel("Verification code").fill(await latestCode(owner));
 await page.getByRole("tab", { name: "Menu" }).waitFor({ timeout: 15_000 });
 check(true, "an email code still signs in with the PKCE flow");
@@ -214,7 +216,7 @@ await page.getByRole("switch", { name: "Morning summary" }).click();
 await settle(page, 1000);
 
 // 03: Turn on notifications (shown automatically on Android only; opened directly here).
-await page.goto(`${APP}/allow-notifications`);
+await page.goto(`${APP}/allow-notifications`, { waitUntil: "domcontentloaded" });
 await page.getByText("Know the moment someone books").waitFor();
 await settle(page);
 await shot(page, "owner5-03-allow-notifications", "03-allow-notifications");
