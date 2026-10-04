@@ -6,12 +6,20 @@ import { useImageSlot } from "../../../../lib/media";
 import { useSession } from "../../../../lib/session";
 import { diffIds, validateStaff, type StaffErrors, type StaffForm } from "../../../../lib/setup";
 import { getSupabase } from "../../../../lib/supabase";
-import { colors, fonts, minTouch, space, type } from "../../../../theme";
-import { Button, CardScreen, CardTitle, Chip, TextField, UploadBox } from "../../../../ui";
+import { colors, fonts, minTouch, type } from "../../../../theme";
+import { Button, Chip, Page, SaveBar, TextField, UploadBox } from "../../../../ui";
 
 type ServiceOption = { id: string; name: string };
 
-/** Add or edit a team member (51). */
+const EMPTY: StaffForm = { name: "", title: "", about: "", serviceIds: [] };
+
+const sameStaff = (a: StaffForm, b: StaffForm) =>
+  a.name.trim() === b.name.trim() &&
+  a.title.trim() === b.title.trim() &&
+  a.about.trim() === b.about.trim() &&
+  [...a.serviceIds].sort().join() === [...b.serviceIds].sort().join();
+
+/** Add or edit a team member (51), with the owner-v2 TopBar, Fields and Save bar. */
 export default function TeamMemberScreen() {
   const params = useLocalSearchParams<{ id: string; me?: string }>();
   const isNew = params.id === "new";
@@ -19,7 +27,8 @@ export default function TeamMemberScreen() {
   const { session, membership, reloadMembership } = useSession();
   const salonId = membership?.salon.id;
 
-  const [form, setForm] = useState<StaffForm>({ name: "", title: "", about: "", serviceIds: [] });
+  const [form, setForm] = useState<StaffForm>(EMPTY);
+  const [initial, setInitial] = useState<StaffForm>(EMPTY);
   const [savedServiceIds, setSavedServiceIds] = useState<string[]>([]);
   const [isActive, setIsActive] = useState(true);
   const [services, setServices] = useState<ServiceOption[]>();
@@ -65,12 +74,14 @@ export default function TeamMemberScreen() {
           return;
         }
         const ids = data.staff_services.map((s) => s.service_id);
-        setForm({
+        const loaded = {
           name: data.display_name,
           title: data.title ?? "",
           about: data.bio ?? "",
           serviceIds: ids,
-        });
+        };
+        setForm(loaded);
+        setInitial(loaded);
         setSavedServiceIds(ids);
         loadPhoto(data.photo_path, data.updated_at);
         setIsActive(data.is_active);
@@ -177,25 +188,31 @@ export default function TeamMemberScreen() {
     }));
 
   // A new member's photo is saved with the form, so wait for its upload.
-  const canSave = loaded && !photo.uploading && !saving;
+  // An existing member's photo saves on its own, so only the form counts as a change.
+  const changed = !sameStaff(form, initial) || (isNew && !!photo.path);
+  const canSave = loaded && changed && !photo.uploading && !saving;
   const selectedNames = (services ?? [])
     .filter((s) => form.serviceIds.includes(s.id))
     .map((s) => s.name);
 
   return (
-    <CardScreen
-      left={{ icon: "arrow-left", label: "Back", onPress: () => router.back() }}
-      right={{ icon: "check", label: "Save", onPress: () => canSave && void save() }}
+    <Page
+      title={isMe ? "Add yourself" : isNew ? "Add a team member" : "Edit team member"}
+      footer={
+        <SaveBar
+          title={isNew ? "Save and add to team" : "Save changes"}
+          onPress={() => void save()}
+          loading={saving}
+          disabled={!canSave}
+        />
+      }
     >
-      <CardTitle>
-        {isMe ? "Add yourself" : isNew ? "Add a team member" : "Edit team member"}
-      </CardTitle>
       {loaded ? (
-        <View style={styles.fields}>
+        <>
           <TextField
-            variant="card"
             label="Name"
-            placeholder={isMe ? "Your name" : "John Doe"}
+            required
+            placeholder={isMe ? "Your name" : "e.g. Njeri Kamau"}
             value={form.name}
             onChangeText={(name) => setForm({ ...form, name })}
             error={errors.name}
@@ -203,7 +220,6 @@ export default function TeamMemberScreen() {
             autoCapitalize="words"
           />
           <TextField
-            variant="card"
             label="Title"
             placeholder="Stylist"
             value={form.title}
@@ -213,13 +229,15 @@ export default function TeamMemberScreen() {
           />
 
           <View style={styles.group}>
-            <Text style={styles.label}>Services offered</Text>
+            <Text style={styles.label}>
+              Services offered<Text style={styles.star}> *</Text>
+            </Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Services offered, ${form.serviceIds.length} selected`}
               accessibilityState={{ expanded: picking }}
               onPress={() => setPicking(!picking)}
-              style={styles.box}
+              style={[styles.box, picking && styles.boxOpen]}
             >
               <Text style={selectedNames.length ? styles.boxValue : styles.boxPlaceholder}>
                 {selectedNames.length
@@ -230,12 +248,10 @@ export default function TeamMemberScreen() {
             {picking ? (
               services?.length === 0 ? (
                 <View style={styles.noServices}>
-                  <Text style={[type.body, { color: colors.muted }]}>
-                    Add your services first, then pick them here.
-                  </Text>
+                  <Text style={styles.muted}>Add your services first, then pick them here.</Text>
                   <Button
                     title="Go to My services"
-                    variant="secondary"
+                    variant="outline"
                     onPress={() => router.push("/business/services")}
                   />
                 </View>
@@ -261,34 +277,24 @@ export default function TeamMemberScreen() {
               label="Photo"
               uri={photo.uri}
               busy={photo.uploading}
-              height={83}
+              height={96}
               onPress={() => void photo.change()}
             />
           </View>
 
           <TextField
-            variant="card"
             label="About"
             placeholder="A short introduction for clients"
             value={form.about}
             onChangeText={(about) => setForm({ ...form, about })}
             error={errors.about}
             maxLength={300}
+            counter
             multiline
-            style={styles.multiline}
           />
 
           {photo.error ? <Text style={styles.error}>{photo.error}</Text> : null}
           {errors.form ? <Text style={styles.error}>{errors.form}</Text> : null}
-
-          <Button
-            title={isNew ? "Save and add to team" : "Save changes"}
-            variant="blue"
-            compact
-            onPress={() => void save()}
-            loading={saving}
-            disabled={!canSave}
-          />
 
           {!isNew ? (
             <Pressable
@@ -297,45 +303,39 @@ export default function TeamMemberScreen() {
               onPress={toggleActive}
               style={styles.link}
             >
-              <Text
-                style={[styles.linkText, { color: isActive ? colors.danger : colors.inputBlue }]}
-              >
+              <Text style={[styles.linkText, { color: isActive ? colors.danger : colors.action }]}>
                 {isActive ? "Deactivate" : "Reactivate"}
               </Text>
             </Pressable>
           ) : null}
-        </View>
+        </>
       ) : errors.form ? (
         <Text style={styles.error}>{errors.form}</Text>
       ) : null}
-    </CardScreen>
+    </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  fields: { gap: space(3), paddingHorizontal: space(5), marginTop: space(1) },
-  group: { gap: space(2) },
-  label: { fontFamily: fonts.bold, fontSize: 15, color: "#3A3A3A" },
+  group: { gap: 8 },
+  label: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
+  star: { color: colors.required },
   box: {
     minHeight: 52,
-    borderRadius: 13,
-    borderWidth: 1.5,
-    borderColor: colors.inputBlue,
-    paddingHorizontal: space(3),
-    paddingVertical: space(2),
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.field,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     justifyContent: "center",
   },
-  boxPlaceholder: {
-    fontFamily: fonts.medium,
-    fontSize: 15,
-    lineHeight: 19,
-    color: colors.placeholder,
-  },
-  boxValue: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 19, color: colors.ink },
-  noServices: { gap: space(2) },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: space(2) },
-  multiline: { maxHeight: 120, paddingTop: 12, textAlignVertical: "top" },
+  boxOpen: { borderWidth: 2, borderColor: colors.action, paddingHorizontal: 15 },
+  boxPlaceholder: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 21, color: colors.faint },
+  boxValue: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 22, color: colors.ink },
+  noServices: { gap: 8 },
+  muted: { fontFamily: fonts.regular, fontSize: 15, color: colors.subtle },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   error: { ...type.caption, color: colors.danger },
-  link: { minHeight: minTouch, justifyContent: "center", alignSelf: "center" },
-  linkText: { fontFamily: fonts.bold, fontSize: 15 },
+  link: { minHeight: minTouch, justifyContent: "center", alignSelf: "flex-start" },
+  linkText: { fontFamily: fonts.semibold, fontSize: 15 },
 });

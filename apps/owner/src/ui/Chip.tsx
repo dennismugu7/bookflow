@@ -14,7 +14,7 @@ export function Chip({ label, selected, onPress }: Props) {
       onPress={onPress}
       style={[styles.chip, selected ? styles.selected : styles.idle]}
     >
-      <Text style={[styles.text, { color: selected ? colors.brand : colors.ink }]}>{label}</Text>
+      <Text style={[styles.text, { color: selected ? colors.action : colors.ink }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -28,7 +28,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  idle: { backgroundColor: colors.white, borderColor: colors.border },
-  selected: { backgroundColor: colors.brandTint, borderColor: colors.select, borderWidth: 2 },
-  text: { fontFamily: fonts.bold, fontSize: 14 },
+  // Same look as the duration chips (owner-v2 03).
+  idle: { backgroundColor: colors.white, borderColor: colors.field },
+  selected: {
+    backgroundColor: colors.actionTint,
+    borderColor: colors.action,
+    borderWidth: 2,
+    paddingHorizontal: space(4) - 1,
+  },
+  text: { fontFamily: fonts.regular, fontSize: 16 },
 });

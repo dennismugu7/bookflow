@@ -1,56 +1,39 @@
-import { bookingLink } from "@bookflow/shared";
+import { bookingLink, initialsFor } from "@bookflow/shared";
 import Feather from "@expo/vector-icons/Feather";
-import Ionicons from "@expo/vector-icons/Ionicons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router, type Href } from "expo-router";
 import * as Updates from "expo-updates";
-import { useState, type ReactNode } from "react";
+import { useState, type ComponentProps } from "react";
 import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { formatBuildInfo } from "../../../build-info";
-import { initials } from "../../../lib/display";
 import { useSession } from "../../../lib/session";
 import { getSupabase } from "../../../lib/supabase";
-import { colors, fonts, minTouch, space, type } from "../../../theme";
-import { Badge, BottomSheet, Button } from "../../../ui";
+import { colors, fonts, type } from "../../../theme";
+import { BottomSheet, Button } from "../../../ui";
 
 const buildInfo = formatBuildInfo(Updates);
 
-const ICON = { size: 24, color: colors.ink };
+type Icon = ComponentProps<typeof Feather>["name"];
 
-// Portfolio is hidden until it exists (approved deviation), as are Profile, Settings,
-// Share feedback and Support in "General".
-const BUSINESS_PROFILE: { title: string; icon: ReactNode; href: Href }[] = [
-  {
-    title: "My brand",
-    icon: <MaterialCommunityIcons name="medal-outline" {...ICON} />,
-    href: "/business/brand",
-  },
-  {
-    title: "My services",
-    icon: <MaterialCommunityIcons name="content-cut" {...ICON} />,
-    href: "/business/services",
-  },
-  {
-    title: "My team",
-    icon: <MaterialCommunityIcons name="account-group-outline" {...ICON} />,
-    href: "/business/team",
-  },
-  { title: "Opening hours", icon: <Feather name="clock" {...ICON} />, href: "/business/hours" },
-  {
-    title: "Location",
-    icon: <Ionicons name="location-outline" {...ICON} />,
-    href: "/business/location",
-  },
+// Portfolio, Profile, Settings, Share feedback and Support stay hidden until they exist.
+const BUSINESS_PROFILE: { title: string; icon: Icon; href: Href }[] = [
+  { title: "My brand", icon: "award", href: "/business/brand" },
+  { title: "My services", icon: "scissors", href: "/business/services" },
+  { title: "My team", icon: "user", href: "/business/team" },
+  { title: "Opening hours", icon: "clock", href: "/business/hours" },
+  { title: "Location", icon: "map-pin", href: "/business/location" },
 ];
 
-export default function AccountScreen() {
+/** Menu (was Account): who you are, your salon's status and its settings (owner-v2 08). */
+export default function MenuScreen() {
   const { session, membership, signOut, reloadMembership } = useSession();
   const [error, setError] = useState<string>();
   const [confirmingLogOut, setConfirmingLogOut] = useState(false);
   const isOwner = membership?.role === "owner";
   const email = session?.user.email ?? "";
+  const live = !!membership?.salon.isPublished;
 
   function confirmUnpublish() {
     if (!membership) return;
@@ -81,54 +64,45 @@ export default function AccountScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.profile}>
           <View style={styles.avatar}>
-            <Text style={styles.initials}>{initials(email)}</Text>
+            <Text style={styles.initials}>{initialsFor(email)}</Text>
           </View>
-          <Text style={styles.name} numberOfLines={1} adjustsFontSizeToFit>
+          <Text style={styles.email} numberOfLines={1} adjustsFontSizeToFit>
             {email}
           </Text>
+          {membership ? (
+            <Text style={styles.salon} numberOfLines={1}>
+              {membership.salon.name} ·{" "}
+              <Text style={live ? styles.live : styles.notLive}>{live ? "Live" : "Not live"}</Text>
+            </Text>
+          ) : null}
         </View>
 
         {membership ? (
           <>
             <Text style={styles.band}>General</Text>
-            <View style={styles.rows}>
-              <Row
-                icon={<Feather name="share-2" {...ICON} />}
-                title="Booking link"
-                trailing={
-                  <Badge
-                    label={membership.salon.isPublished ? "Live" : "Not published"}
-                    variant={membership.salon.isPublished ? "confirmed" : "completed"}
-                  />
-                }
-                accessibilityLabel={`Share your booking link, ${bookingLink(membership.salon.slug)}`}
-                onPress={() => void Share.share({ message: bookingLink(membership.salon.slug) })}
-              />
-              {isOwner && membership.salon.isPublished ? (
-                <Row
-                  icon={<Feather name="eye-off" size={ICON.size} color={colors.danger} />}
-                  title="Unpublish salon"
-                  danger
-                  onPress={confirmUnpublish}
-                />
-              ) : null}
-            </View>
+            <Row
+              icon="share-2"
+              title="Booking link"
+              accessibilityLabel={`Share your booking link, ${bookingLink(membership.salon.slug)}`}
+              onPress={() => void Share.share({ message: bookingLink(membership.salon.slug) })}
+            />
+            {isOwner && live ? (
+              <Row icon="eye-off" title="Unpublish salon" onPress={confirmUnpublish} />
+            ) : null}
           </>
         ) : null}
 
         {isOwner ? (
           <>
             <Text style={styles.band}>Business Profile</Text>
-            <View style={styles.rows}>
-              {BUSINESS_PROFILE.map((item) => (
-                <Row
-                  key={item.title}
-                  icon={item.icon}
-                  title={item.title}
-                  onPress={() => router.push(item.href)}
-                />
-              ))}
-            </View>
+            {BUSINESS_PROFILE.map((item) => (
+              <Row
+                key={item.title}
+                icon={item.icon}
+                title={item.title}
+                onPress={() => router.push(item.href)}
+              />
+            ))}
           </>
         ) : null}
 
@@ -176,15 +150,11 @@ export default function AccountScreen() {
 function Row({
   icon,
   title,
-  trailing,
-  danger = false,
   accessibilityLabel,
   onPress,
 }: {
-  icon: ReactNode;
+  icon: Icon;
   title: string;
-  trailing?: ReactNode;
-  danger?: boolean;
   accessibilityLabel?: string;
   onPress: () => void;
 }) {
@@ -195,68 +165,54 @@ function Row({
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
     >
-      <View style={styles.rowIcon}>{icon}</View>
-      <Text style={[styles.rowTitle, danger && { color: colors.danger }]}>{title}</Text>
-      {trailing}
+      <Feather name={icon} size={22} color={colors.subtle} style={styles.rowIcon} />
+      <Text style={styles.rowTitle}>{title}</Text>
+      <Feather name="chevron-right" size={20} color={colors.faint} />
     </Pressable>
   );
 }
 
+const AVATAR = 96;
+
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: colors.band },
+  page: { flex: 1, backgroundColor: colors.white },
   scroll: { flexGrow: 1 },
-  profile: {
-    backgroundColor: colors.white,
-    alignItems: "center",
-    paddingTop: space(8),
-    paddingBottom: space(8),
-    paddingHorizontal: space(6),
-    gap: space(4),
-  },
+  profile: { alignItems: "center", paddingTop: 24, paddingBottom: 22, paddingHorizontal: 20 },
   avatar: {
-    width: 116,
-    height: 116,
-    borderRadius: 58,
+    width: AVATAR,
+    height: AVATAR,
+    borderRadius: AVATAR / 2,
     borderWidth: 3,
-    borderColor: colors.avatarGreen,
+    borderColor: colors.menuGreen,
     alignItems: "center",
     justifyContent: "center",
   },
-  initials: { fontFamily: fonts.bold, fontSize: 46, color: colors.avatarGreen },
-  name: { fontFamily: fonts.bold, fontSize: 22, color: colors.forest },
+  initials: { fontFamily: fonts.bold, fontSize: 44, color: colors.menuGreen },
+  email: { fontFamily: fonts.semibold, fontSize: 20, color: colors.ink, marginTop: 12 },
+  salon: { fontFamily: fonts.regular, fontSize: 15, color: colors.subtle, marginTop: 4 },
+  live: { fontFamily: fonts.semibold, color: colors.success },
+  notLive: { fontFamily: fonts.semibold, color: colors.subtle },
   band: {
-    backgroundColor: colors.band,
-    paddingLeft: 42,
-    paddingVertical: space(3),
-    fontFamily: fonts.medium,
+    backgroundColor: colors.softFill,
+    paddingHorizontal: 20,
+    paddingVertical: 9,
+    fontFamily: fonts.semibold,
     fontSize: 17,
-    color: "#111111",
+    lineHeight: 21,
+    color: colors.ink,
   },
-  rows: { backgroundColor: colors.white, paddingVertical: space(2) },
   row: {
-    minHeight: minTouch,
+    minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
-    paddingLeft: 40,
-    paddingRight: space(6),
-    gap: space(5),
+    paddingLeft: 21,
+    paddingRight: 20,
   },
-  rowPressed: { backgroundColor: colors.band },
-  rowIcon: { width: 28, alignItems: "center" },
-  rowTitle: {
-    flex: 1,
-    fontFamily: fonts.regular,
-    fontSize: 16.5,
-    letterSpacing: 1.8,
-    color: "#222222",
-  },
-  bottom: {
-    flexGrow: 1,
-    justifyContent: "flex-end",
-    padding: 26,
-    paddingTop: space(10),
-    gap: space(3),
-  },
+  rowPressed: { backgroundColor: colors.softFill },
+  rowIcon: { width: 22, marginRight: 17 },
+  rowTitle: { flex: 1, fontFamily: fonts.regular, fontSize: 17, color: colors.ink },
+  bottom: { flexGrow: 1, justifyContent: "flex-end", padding: 20, paddingTop: 32, gap: 12 },
+  // Log out as before (30).
   logOut: {
     minHeight: 49,
     borderRadius: 14,
@@ -266,15 +222,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 26,
-    gap: space(2),
+    gap: 8,
   },
   logOutText: { fontFamily: fonts.bold, fontSize: 19, color: colors.ink },
   pressed: { opacity: 0.85 },
-  version: { color: colors.muted, textAlign: "center" },
+  version: { color: colors.subtle, textAlign: "center" },
   error: { ...type.caption, color: colors.danger },
   sheetTitle: { fontFamily: fonts.bold, fontSize: 28, color: colors.ink },
   sheetBody: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 25, color: colors.ink },
   sheetEmail: { fontFamily: fonts.bold },
-  sheetActions: { flexDirection: "row", gap: space(3), marginTop: space(6) },
+  sheetActions: { flexDirection: "row", gap: 12, marginTop: 24 },
   flex: { flex: 1 },
 });

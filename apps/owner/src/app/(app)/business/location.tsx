@@ -1,31 +1,36 @@
 import { inspectMapsLink, isGoogleMapsUrl, type MapsLinkInfo } from "@bookflow/shared";
-import { router } from "expo-router";
+import Feather from "@expo/vector-icons/Feather";
 import { useEffect, useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useSession } from "../../../lib/session";
 import { getSupabase } from "../../../lib/supabase";
-import { colors, fonts, space, type } from "../../../theme";
-import { CardScreen, CardTitle, Illustration, TextField } from "../../../ui";
+import { colors, fonts, minTouch, type } from "../../../theme";
+import { Button, DrawnMap, Page, SaveBar, TextField } from "../../../ui";
 
 type Saved = { address: string; mapsUrl: string | null; lat: number | null; lng: number | null };
+type Pin = Pick<Saved, "mapsUrl" | "lat" | "lng">;
 
-/** What we know about the link in the field. */
+/** What we know about the link in the paste field. */
 type LinkCheck =
   | { state: "empty" }
-  | { state: "saved" }
   | { state: "checking" }
   | { state: "notGoogle" }
   | { state: "failed" }
   | { state: "ok"; info: MapsLinkInfo };
 
-/** Location: view (59) and edit (58). */
+const GOOGLE_MAPS = "https://www.google.com/maps";
+
+/** Location: no pin yet (owner-v2 06) or pin set (07). No pencil, no frame. */
 export default function LocationScreen() {
   const { membership } = useSession();
   const salonId = membership?.salon.id;
   const [saved, setSaved] = useState<Saved>();
-  const [editing, setEditing] = useState(false);
+  const [placeName, setPlaceName] = useState<string | null>(null);
   const [address, setAddress] = useState("");
+  // "Change pin" switches a set pin to the paste field; cancelling keeps the old pin.
+  const [changingPin, setChangingPin] = useState(false);
+  const [removingPin, setRemovingPin] = useState(false);
   const [link, setLink] = useState("");
   const [check, setCheck] = useState<LinkCheck>({ state: "empty" });
   const [error, setError] = useState<string>();
@@ -43,29 +48,34 @@ export default function LocationScreen() {
           setError("Couldn't load your location. Go back and try again.");
           return;
         }
-        const loaded = {
+        setSaved({
           address: data.address ?? "",
           mapsUrl: data.maps_url,
           lat: data.latitude,
           lng: data.longitude,
-        };
-        setSaved(loaded);
-        setAddress(loaded.address);
-        setLink(loaded.mapsUrl ?? "");
-        // Nothing saved yet: go straight to the editor (58).
-        if (!loaded.address && !loaded.mapsUrl) setEditing(true);
+        });
+        setAddress(data.address ?? "");
       });
   }, [salonId]);
+
+  // The saved pin's place name isn't stored; read it from the link (long links need no fetch).
+  useEffect(() => {
+    const url = saved?.mapsUrl;
+    setPlaceName(null);
+    if (!url) return;
+    let current = true;
+    void inspectMapsLink(url).then((info) => {
+      if (current) setPlaceName(info?.placeName ?? null);
+    });
+    return () => {
+      current = false;
+    };
+  }, [saved?.mapsUrl]);
 
   useEffect(() => {
     const url = link.trim();
     if (!url) {
       setCheck({ state: "empty" });
-      return;
-    }
-    // The saved link was checked when it was saved; don't refetch it on every visit.
-    if (url === saved?.mapsUrl) {
-      setCheck({ state: "saved" });
       return;
     }
     if (!isGoogleMapsUrl(url)) {
@@ -84,7 +94,24 @@ export default function LocationScreen() {
       current = false;
       clearTimeout(timer);
     };
-  }, [link, saved?.mapsUrl]);
+  }, [link]);
+
+  const hasPin = !!saved?.mapsUrl && !removingPin;
+  const pasting = !hasPin || changingPin;
+
+  /** The pin to save: a checked link replaces it; removing clears it; otherwise it stays. */
+  function nextPin(): Pin {
+    if (!saved) return { mapsUrl: null, lat: null, lng: null };
+    if (pasting && check.state === "ok") {
+      return {
+        mapsUrl: check.info.mapsUrl,
+        lat: check.info.pin?.lat ?? null,
+        lng: check.info.pin?.lng ?? null,
+      };
+    }
+    if (removingPin) return { mapsUrl: null, lat: null, lng: null };
+    return { mapsUrl: saved.mapsUrl, lat: saved.lat, lng: saved.lng };
+  }
 
   async function save() {
     if (!salonId || !saved || saving || check.state === "checking") return;
@@ -92,17 +119,7 @@ export default function LocationScreen() {
       setError("Keep the address under 200 characters.");
       return;
     }
-    // Only a checked link (or clearing the field) changes the map fields; otherwise keep them.
-    const pin =
-      check.state === "empty"
-        ? { mapsUrl: null, lat: null, lng: null }
-        : check.state === "ok"
-          ? {
-              mapsUrl: check.info.mapsUrl,
-              lat: check.info.pin?.lat ?? null,
-              lng: check.info.pin?.lng ?? null,
-            }
-          : { mapsUrl: saved.mapsUrl, lat: saved.lat, lng: saved.lng };
+    const pin = nextPin();
     setSaving(true);
     setError(undefined);
     const { error: saveError } = await getSupabase()
@@ -119,123 +136,161 @@ export default function LocationScreen() {
       setError("Couldn't save. Check your connection and try again.");
       return;
     }
-    const next = { address: address.trim(), ...pin };
-    setSaved(next);
-    setLink(next.mapsUrl ?? "");
-    setEditing(false);
+    setSaved({ address: address.trim(), ...pin });
+    setAddress(address.trim());
+    setLink("");
+    setChangingPin(false);
+    setRemovingPin(false);
   }
 
-  const intro = (
-    <Text style={styles.intro}>
-      Help your clients find you without the guesswork. Just share your{" "}
-      <Text style={styles.bold}>Google Maps location pin</Text>, and we’ll show them exactly where
-      to go.
-    </Text>
-  );
-
-  if (editing) {
-    const hasSaved = !!saved && (!!saved.address || !!saved.mapsUrl);
-    return (
-      <CardScreen
-        left={{
-          icon: "arrow-left",
-          label: hasSaved ? "Cancel editing" : "Back",
-          onPress: () => {
-            if (!hasSaved) return router.back();
-            setAddress(saved.address);
-            setLink(saved.mapsUrl ?? "");
-            setError(undefined);
-            setEditing(false);
-          },
-        }}
-        right={{
-          icon: "check",
-          label: saving ? "Saving" : "Save location",
-          onPress: () => void save(),
-        }}
-      >
-        <CardTitle>Location</CardTitle>
-        {intro}
-        {saved ? (
-          <View style={styles.fields}>
-            <TextField
-              variant="card"
-              label="Google Maps pin"
-              hideLabel
-              placeholder="Google Maps pin"
-              value={link}
-              onChangeText={setLink}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-              hint="In the Google Maps app, open your salon, tap Share, then Copy link."
-            />
-            <LinkStatus check={check} saved={saved} />
-            <TextField
-              variant="card"
-              label="Address"
-              hideLabel
-              placeholder="Address"
-              value={address}
-              onChangeText={setAddress}
-              maxLength={200}
-              multiline
-            />
-          </View>
-        ) : null}
-        {saving ? <Text style={styles.muted}>Saving…</Text> : null}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-      </CardScreen>
-    );
+  function cancelChange() {
+    setChangingPin(false);
+    setRemovingPin(false);
+    setLink("");
   }
+
+  const changed =
+    !!saved &&
+    (address.trim() !== saved.address || removingPin || (pasting && check.state === "ok"));
+  // A set pin with nothing changed shows no Save bar, as in 07.
+  const showSave = pasting || changed;
 
   return (
-    <CardScreen
-      right={
-        saved
-          ? { icon: "edit-2", label: "Edit location", onPress: () => setEditing(true) }
-          : undefined
+    <Page
+      title="Location"
+      footer={
+        showSave ? (
+          <SaveBar
+            title="Save location"
+            onPress={() => void save()}
+            disabled={!changed || check.state === "checking"}
+            loading={saving}
+          />
+        ) : null
       }
     >
-      <CardTitle>Location</CardTitle>
-      {intro}
-      {saved?.mapsUrl ? (
-        <Pressable
-          accessibilityRole="link"
-          accessibilityLabel="Open in Google Maps"
-          onPress={() => void Linking.openURL(saved.mapsUrl!)}
-          style={styles.map}
-        >
-          <Illustration name="map" style={styles.mapArt} />
-        </Pressable>
+      {saved ? (
+        <>
+          {hasPin && !changingPin ? (
+            <>
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel="Open your pin in Google Maps"
+                onPress={() => void Linking.openURL(saved.mapsUrl!)}
+                style={styles.mapTap}
+              >
+                <DrawnMap />
+              </Pressable>
+              <View style={styles.place}>
+                <View style={styles.placeRow}>
+                  <Feather name="check" size={20} color={colors.success} />
+                  <Text style={styles.placeName}>{placeName ?? "Pin set"}</Text>
+                </View>
+                <Text style={styles.hint}>
+                  Clients get directions to this place. Tap the map to check it.
+                </Text>
+              </View>
+            </>
+          ) : null}
+
+          <TextField
+            label="Address"
+            placeholder="e.g. 2nd floor, Galana Plaza, Kilimani"
+            value={address}
+            onChangeText={setAddress}
+            maxLength={200}
+          />
+
+          {hasPin && !changingPin ? (
+            <Button title="Change pin" variant="outline" onPress={() => setChangingPin(true)} />
+          ) : (
+            <View style={styles.dropPin}>
+              <Text style={styles.label}>Drop your pin</Text>
+              <View style={styles.steps}>
+                <Text style={styles.step}>
+                  <Text style={styles.bold}>1.</Text> Open Google Maps and find your salon
+                </Text>
+                <Text style={styles.step}>
+                  <Text style={styles.bold}>2.</Text> Tap <Text style={styles.bold}>Share</Text> →{" "}
+                  <Text style={styles.bold}>Copy link</Text>
+                </Text>
+                <Text style={styles.step}>
+                  <Text style={styles.bold}>3.</Text> Paste it below
+                </Text>
+                <View style={styles.openMaps}>
+                  <Button
+                    title="Open Google Maps"
+                    variant="outline"
+                    onPress={() => void Linking.openURL(GOOGLE_MAPS)}
+                  />
+                </View>
+              </View>
+              <View style={styles.paste}>
+                <TextField
+                  label="Google Maps link"
+                  hideLabel
+                  placeholder="Paste your Google Maps link"
+                  value={link}
+                  onChangeText={setLink}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                />
+                <LinkStatus check={check} />
+              </View>
+              {changingPin ? (
+                <View style={styles.links}>
+                  <TextLink title="Cancel" onPress={cancelChange} />
+                  <TextLink
+                    title="Remove pin"
+                    danger
+                    onPress={() => {
+                      setRemovingPin(true);
+                      setChangingPin(false);
+                      setLink("");
+                    }}
+                  />
+                </View>
+              ) : removingPin ? (
+                <View style={styles.links}>
+                  <Text style={styles.hint}>Your pin will be removed when you save.</Text>
+                  <TextLink title="Keep pin" onPress={cancelChange} />
+                </View>
+              ) : null}
+            </View>
+          )}
+        </>
       ) : null}
-      {saved?.address ? <Text style={styles.address}>{saved.address}</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
-    </CardScreen>
+    </Page>
   );
 }
 
-function LinkStatus({ check, saved }: { check: LinkCheck; saved: Saved }) {
+function TextLink({
+  title,
+  danger = false,
+  onPress,
+}: {
+  title: string;
+  danger?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={styles.textLink}>
+      <Text style={[styles.textLinkText, danger && { color: colors.danger }]}>{title}</Text>
+    </Pressable>
+  );
+}
+
+function LinkStatus({ check }: { check: LinkCheck }) {
   switch (check.state) {
     case "empty":
-      return null;
+      return <Text style={styles.hint}>Clients get directions to this exact spot.</Text>;
     case "checking":
       return (
-        <Text style={styles.muted} accessibilityLiveRegion="polite">
+        <Text style={styles.hint} accessibilityLiveRegion="polite">
           Checking link…
         </Text>
-      );
-    case "saved":
-      return (
-        <View style={styles.status} accessibilityLiveRegion="polite">
-          <Text style={styles.ok}>✓ Saved</Text>
-          <Text style={styles.muted}>
-            Clients will get directions from this link.
-            {saved.lat !== null && saved.lng !== null
-              ? ` Pin ${saved.lat.toFixed(5)}, ${saved.lng.toFixed(5)}.`
-              : ""}
-          </Text>
-        </View>
       );
     case "notGoogle":
       return (
@@ -252,11 +307,11 @@ function LinkStatus({ check, saved }: { check: LinkCheck; saved: Saved }) {
     case "ok": {
       const { placeName, pin } = check.info;
       return (
-        <View style={styles.status} accessibilityLiveRegion="polite">
+        <View accessibilityLiveRegion="polite">
           <Text style={styles.ok}>
             {placeName ? `✓ ${placeName}` : pin ? "✓ Pin found" : "✓ Google Maps link"}
           </Text>
-          <Text style={styles.muted}>
+          <Text style={styles.hint}>
             {placeName
               ? "Clients will get directions to this place."
               : "Clients will get directions from this link."}
@@ -268,28 +323,22 @@ function LinkStatus({ check, saved }: { check: LinkCheck; saved: Saved }) {
 }
 
 const styles = StyleSheet.create({
-  intro: {
-    fontFamily: fonts.regular,
-    fontSize: 12.5,
-    lineHeight: 17,
-    color: colors.text,
-    textAlign: "center",
-    marginTop: space(2),
-    paddingHorizontal: space(1),
-  },
-  bold: { fontFamily: fonts.bold },
-  fields: { gap: space(3), marginTop: space(2), paddingRight: space(6) },
-  map: { marginTop: space(4), marginHorizontal: space(2), borderRadius: 14, overflow: "hidden" },
-  mapArt: { width: "100%", height: undefined, aspectRatio: 280 / 156 },
-  address: {
-    fontFamily: fonts.regular,
-    fontSize: 13.5,
-    color: "#111111",
-    marginHorizontal: space(2),
-  },
-  status: { gap: space(1) },
+  mapTap: { borderRadius: 16, overflow: "hidden", marginTop: -8 },
+  place: { gap: 6, marginTop: -2 },
+  placeRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  placeName: { fontFamily: fonts.semibold, fontSize: 17, color: colors.ink },
+  label: { fontFamily: fonts.semibold, fontSize: 15, color: colors.ink },
+  dropPin: { gap: 8 },
+  steps: { backgroundColor: colors.softFill, borderRadius: 16, padding: 16, gap: 6 },
+  step: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 20, color: colors.ink },
+  bold: { fontFamily: fonts.semibold },
+  openMaps: { marginTop: 10 },
+  paste: { gap: 8, marginTop: 4 },
+  links: { flexDirection: "row", alignItems: "center", gap: 20 },
+  textLink: { minHeight: minTouch, justifyContent: "center" },
+  textLinkText: { fontFamily: fonts.medium, fontSize: 16, color: colors.action },
+  hint: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 19, color: colors.subtle },
   ok: { ...type.bodyStrong, color: colors.success },
-  muted: { ...type.caption, color: colors.muted },
-  warn: { ...type.caption, color: colors.attentionText },
+  warn: { ...type.caption, fontSize: 14, color: colors.attentionText },
   error: { ...type.caption, color: colors.danger },
 });

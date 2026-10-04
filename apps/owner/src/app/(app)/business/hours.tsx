@@ -1,36 +1,33 @@
 import Feather from "@expo/vector-icons/Feather";
-import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Switch, Text, View } from "react-native";
 
 import {
-  hourRowsToWeek,
-  hoursLabel,
-  validateHourRows,
-  weekToHourRows,
+  addBreak,
+  applyDayDraft,
+  dayDraft,
+  dayDraftError,
   weekdayIn,
-  type HourRow,
+  type DayDraft,
 } from "../../../lib/display";
 import { useSession } from "../../../lib/session";
-import { WEEKDAYS, rowsToWeek, weekToRows, type Week } from "../../../lib/setup";
+import { WEEKDAYS, describeDay, rowsToWeek, weekToRows, type Week } from "../../../lib/setup";
 import { getSupabase } from "../../../lib/supabase";
-import { colors, fonts, minTouch, space, type } from "../../../theme";
-import { BottomSheet, CardScreen, CardSubtitle, CardTitle } from "../../../ui";
+import { colors, fonts, minTouch, type } from "../../../theme";
+import { BottomSheet, Button, Page, TextField } from "../../../ui";
 
-const BLANK: HourRow = { day: null, opens: "", closes: "" };
 const dayName = (day: number) => WEEKDAYS.find((d) => d.day === day)?.name ?? "";
 
-/** Opening hours: view (57) and edit (56). */
+/** Opening hours: a row per day, and a small editor for the day you tap (owner-v2 05). */
 export default function HoursScreen() {
   const { membership } = useSession();
   const salonId = membership?.salon.id;
   const timeZone = membership?.salon.timezone ?? "Africa/Nairobi";
   const [week, setWeek] = useState<Week>();
-  const [rows, setRows] = useState<HourRow[]>();
-  const [errors, setErrors] = useState<Record<number, string>>({});
-  const [formError, setFormError] = useState<string>();
+  const [loadError, setLoadError] = useState<string>();
+  const [editing, setEditing] = useState<{ day: number; draft: DayDraft }>();
+  const [dayError, setDayError] = useState<string>();
   const [saving, setSaving] = useState(false);
-  const [pickingDayFor, setPickingDayFor] = useState<number>();
 
   useEffect(() => {
     if (!salonId) return;
@@ -39,267 +36,224 @@ export default function HoursScreen() {
       .select("weekday, opens, closes")
       .eq("salon_id", salonId)
       .then(({ data, error }) => {
-        if (error) {
-          setFormError("Couldn't load your hours. Go back and try again.");
-          return;
-        }
-        const loaded = rowsToWeek(data ?? []);
-        setWeek(loaded);
-        // With no hours yet, start in the editor with one blank line (56).
-        if ((data ?? []).length === 0) setRows([BLANK]);
+        if (error) setLoadError("Couldn't load your hours. Go back and try again.");
+        else setWeek(rowsToWeek(data ?? []));
       });
   }, [salonId]);
 
-  function edit(addLine = false) {
+  function open(day: number) {
     if (!week) return;
-    const current = weekToHourRows(week);
-    setRows(addLine || current.length === 0 ? [...current, BLANK] : current);
-    setErrors({});
-    setFormError(undefined);
+    setEditing({ day, draft: dayDraft(week[day] ?? []) });
+    setDayError(undefined);
   }
 
-  function update(index: number, change: Partial<HourRow>) {
-    setRows((all) => all?.map((row, i) => (i === index ? { ...row, ...change } : row)));
-    setErrors((e) => {
-      const { [index]: _removed, ...rest } = e;
-      return rest;
-    });
+  function change(draft: DayDraft) {
+    setEditing((e) => (e ? { ...e, draft } : e));
+    setDayError(undefined);
   }
 
   async function save() {
-    if (!rows || !salonId || saving) return;
-    const rowErrors = validateHourRows(rows);
-    setErrors(rowErrors);
-    if (Object.keys(rowErrors).length > 0) return;
-    const next = hourRowsToWeek(rows);
+    if (!week || !editing || !salonId || saving) return;
+    const problem = dayDraftError(week, editing.day, editing.draft);
+    if (problem) {
+      setDayError(problem);
+      return;
+    }
+    // set_opening_hours replaces the whole week in one transaction.
+    const rows = weekToRows(applyDayDraft(week, editing.day, editing.draft));
     setSaving(true);
-    setFormError(undefined);
     const { error } = await getSupabase().rpc("set_opening_hours", {
       p_salon_id: salonId,
-      p_hours: weekToRows(next),
+      p_hours: rows,
     });
     setSaving(false);
     if (error) {
-      setFormError(
+      setDayError(
         error.code === "BF400"
           ? error.message
           : "Couldn't save. Check your connection and try again.",
       );
       return;
     }
-    setWeek(rowsToWeek(weekToRows(next)));
-    setRows(undefined);
-  }
-
-  if (rows) {
-    const hasSaved = !!week && weekToHourRows(week).length > 0;
-    return (
-      <CardScreen
-        left={
-          hasSaved
-            ? { icon: "arrow-left", label: "Cancel editing", onPress: () => setRows(undefined) }
-            : { icon: "arrow-left", label: "Back", onPress: () => router.back() }
-        }
-        right={{
-          icon: "check",
-          label: saving ? "Saving" : "Save hours",
-          onPress: () => void save(),
-        }}
-      >
-        <View style={styles.heading}>
-          <CardTitle>Opening hours</CardTitle>
-          <CardSubtitle>
-            Let your clients know when you&apos;re open and ready to serve them.
-          </CardSubtitle>
-        </View>
-        <Text style={styles.label}>Opening times</Text>
-        {rows.map((row, index) => (
-          <View key={index} style={styles.rowGroup}>
-            <View style={[styles.line, errors[index] ? styles.lineInvalid : null]}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={row.day ? `Day, ${dayName(row.day)}` : "Pick a day"}
-                onPress={() => setPickingDayFor(index)}
-                style={styles.day}
-              >
-                <Text style={row.day ? styles.value : styles.placeholder} numberOfLines={1}>
-                  {row.day ? dayName(row.day) : "Day"}
-                </Text>
-              </Pressable>
-              <Text style={styles.placeholder}>:</Text>
-              <TextInput
-                accessibilityLabel={`${row.day ? dayName(row.day) : "Line " + (index + 1)} opens`}
-                value={row.opens}
-                onChangeText={(opens) => update(index, { opens })}
-                placeholder="Open time"
-                placeholderTextColor={colors.placeholder}
-                keyboardType="numbers-and-punctuation"
-                maxLength={5}
-                style={styles.time}
-              />
-              <Text style={styles.placeholder}>-</Text>
-              <TextInput
-                accessibilityLabel={`${row.day ? dayName(row.day) : "Line " + (index + 1)} closes`}
-                value={row.closes}
-                onChangeText={(closes) => update(index, { closes })}
-                placeholder="Close time"
-                placeholderTextColor={colors.placeholder}
-                keyboardType="numbers-and-punctuation"
-                maxLength={5}
-                style={styles.time}
-              />
-              {rows.length > 1 ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Remove line ${index + 1}`}
-                  onPress={() => {
-                    setRows(rows.filter((_, i) => i !== index));
-                    setErrors({});
-                  }}
-                  style={styles.remove}
-                >
-                  <Feather name="x" size={18} color={colors.muted} />
-                </Pressable>
-              ) : null}
-            </View>
-            {errors[index] ? <Text style={styles.error}>{errors[index]}</Text> : null}
-          </View>
-        ))}
-        <AddLine onPress={() => setRows([...rows, BLANK])} />
-        <Text style={styles.note}>
-          Days without a line are closed. Use 24:00 if you close at midnight.
-        </Text>
-        {saving ? <Text style={styles.note}>Saving…</Text> : null}
-        {formError ? <Text style={styles.error}>{formError}</Text> : null}
-
-        <BottomSheet
-          visible={pickingDayFor !== undefined}
-          onClose={() => setPickingDayFor(undefined)}
-        >
-          <Text style={styles.sheetTitle}>Day</Text>
-          <View>
-            {WEEKDAYS.map(({ day, name }) => (
-              <Pressable
-                key={day}
-                accessibilityRole="button"
-                accessibilityLabel={name}
-                onPress={() => {
-                  if (pickingDayFor !== undefined) update(pickingDayFor, { day });
-                  setPickingDayFor(undefined);
-                }}
-                style={styles.dayOption}
-              >
-                <Text style={styles.dayOptionText}>{name}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </BottomSheet>
-      </CardScreen>
-    );
+    setWeek(rowsToWeek(rows));
+    setEditing(undefined);
   }
 
   const today = weekdayIn(timeZone);
-  return (
-    <CardScreen
-      right={
-        week ? { icon: "edit-2", label: "Edit opening hours", onPress: () => edit() } : undefined
-      }
-    >
-      <CardTitle>Opening hours</CardTitle>
-      {week ? (
-        <>
-          <View style={styles.week}>
-            {WEEKDAYS.map(({ day, name }) => {
-              const ranges = week[day] ?? [];
-              const bold = day === today ? styles.today : null;
-              return (
-                <View
-                  key={day}
-                  style={styles.weekRow}
-                  accessible
-                  accessibilityLabel={`${name}${day === today ? ", today" : ""}: ${hoursLabel(ranges)}`}
-                >
-                  <View style={[styles.dot, ranges.length === 0 && styles.dotClosed]} />
-                  <Text style={[styles.weekDay, bold]}>{name}</Text>
-                  <Text style={[styles.weekHours, bold]}>{hoursLabel(ranges)}</Text>
-                </View>
-              );
-            })}
-          </View>
-          <AddLine onPress={() => edit(true)} />
-        </>
-      ) : null}
-      {formError ? <Text style={styles.error}>{formError}</Text> : null}
-    </CardScreen>
-  );
-}
+  const draft = editing?.draft;
 
-function AddLine({ onPress }: { onPress: () => void }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Add opening times"
-      onPress={onPress}
-      style={styles.add}
-    >
-      <Feather name="plus-circle" size={24} color={colors.blue} />
-    </Pressable>
+    <Page title="Opening hours" gap={0} padding={20}>
+      <Text style={styles.hint}>Tap a day to change it. Today is in bold.</Text>
+      {week
+        ? WEEKDAYS.map(({ day, name }) => {
+            const ranges = week[day] ?? [];
+            const closed = ranges.length === 0;
+            const bold = day === today ? styles.today : null;
+            return (
+              <Pressable
+                key={day}
+                accessibilityRole="button"
+                accessibilityLabel={`${name}${day === today ? ", today" : ""}: ${describeDay(ranges)}. Change`}
+                onPress={() => open(day)}
+                style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+              >
+                <View style={[styles.dot, closed && styles.dotClosed]} />
+                <Text style={[styles.day, bold]}>{name}</Text>
+                <Text
+                  style={[styles.hours, closed && styles.closed, bold]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {describeDay(ranges)}
+                </Text>
+                <Feather name="chevron-right" size={20} color={colors.faint} />
+              </Pressable>
+            );
+          })
+        : null}
+      {loadError ? <Text style={styles.error}>{loadError}</Text> : null}
+
+      <BottomSheet visible={!!editing} onClose={() => setEditing(undefined)}>
+        {editing && draft ? (
+          <>
+            <Text style={styles.sheetTitle} accessibilityRole="header">
+              {dayName(editing.day)}
+            </Text>
+            <View style={styles.closedRow}>
+              <Text style={styles.closedLabel}>Closed</Text>
+              <Switch
+                accessibilityLabel="Closed"
+                value={draft.closed}
+                onValueChange={(closed) => change({ ...draft, closed })}
+                trackColor={{ false: colors.field, true: colors.action }}
+                thumbColor={colors.white}
+              />
+            </View>
+            {draft.closed ? null : (
+              <View style={styles.ranges}>
+                {draft.ranges.map((range, index) => (
+                  <View key={index} style={styles.range}>
+                    <View style={styles.flex}>
+                      <TextField
+                        label="Opens"
+                        placeholder="09:00"
+                        value={range.opens}
+                        onChangeText={(opens) =>
+                          change({
+                            ...draft,
+                            ranges: draft.ranges.map((r, i) => (i === index ? { ...r, opens } : r)),
+                          })
+                        }
+                        keyboardType="numbers-and-punctuation"
+                        maxLength={5}
+                      />
+                    </View>
+                    <View style={styles.flex}>
+                      <TextField
+                        label="Closes"
+                        placeholder="18:00"
+                        value={range.closes}
+                        onChangeText={(closes) =>
+                          change({
+                            ...draft,
+                            ranges: draft.ranges.map((r, i) =>
+                              i === index ? { ...r, closes } : r,
+                            ),
+                          })
+                        }
+                        keyboardType="numbers-and-punctuation"
+                        maxLength={5}
+                      />
+                    </View>
+                    {draft.ranges.length > 1 ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Remove ${range.opens || "this"} to ${range.closes || "time"}`}
+                        onPress={() =>
+                          change({ ...draft, ranges: draft.ranges.filter((_, i) => i !== index) })
+                        }
+                        style={styles.remove}
+                      >
+                        <Feather name="x" size={20} color={colors.subtle} />
+                      </Pressable>
+                    ) : null}
+                  </View>
+                ))}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Add a break"
+                  onPress={() => change({ ...draft, ranges: addBreak(draft.ranges) })}
+                  style={styles.addBreak}
+                >
+                  <Feather name="plus" size={18} color={colors.action} />
+                  <Text style={styles.addBreakText}>Add a break</Text>
+                </Pressable>
+              </View>
+            )}
+            {dayError ? (
+              <Text style={styles.error} accessibilityLiveRegion="polite">
+                {dayError}
+              </Text>
+            ) : null}
+            <Button title="Save" onPress={() => void save()} loading={saving} />
+          </>
+        ) : null}
+      </BottomSheet>
+    </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  heading: { gap: space(4), marginBottom: space(2) },
-  label: { fontFamily: fonts.bold, fontSize: 15, color: "#3A3A3A", marginLeft: space(1) },
-  rowGroup: { gap: space(1) },
-  line: {
-    minHeight: 40,
+  hint: {
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    lineHeight: 20,
+    color: colors.subtle,
+    marginTop: -2,
+    marginBottom: 4,
+  },
+  row: {
+    height: 56,
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: colors.inputBlue,
-    borderRadius: 18,
-    paddingLeft: space(3),
-    paddingRight: space(1),
-    gap: space(1),
+    borderBottomWidth: 1,
+    borderBottomColor: colors.hairline,
   },
-  lineInvalid: { borderColor: colors.danger },
-  day: { minHeight: 40, justifyContent: "center", width: 68 },
-  value: { fontFamily: fonts.medium, fontSize: 13, color: colors.ink },
-  placeholder: { fontFamily: fonts.medium, fontSize: 13, color: colors.placeholder },
-  time: {
+  pressed: { backgroundColor: colors.softFill },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.openDotV2,
+    marginRight: 12,
+  },
+  dotClosed: { backgroundColor: colors.closedDot },
+  day: { width: 100, fontFamily: fonts.regular, fontSize: 16, color: colors.ink },
+  hours: {
     flex: 1,
-    flexBasis: 0,
-    minWidth: 0,
-    minHeight: 40,
-    padding: 0,
-    fontFamily: fonts.medium,
-    fontSize: 13,
+    fontFamily: fonts.regular,
+    fontSize: 15,
     color: colors.ink,
-    textAlign: "center",
+    textAlign: "right",
+    marginRight: 14,
   },
-  remove: { width: 28, height: minTouch, alignItems: "center", justifyContent: "center" },
-  add: {
-    alignSelf: "center",
-    width: minTouch,
-    height: minTouch,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  note: { ...type.caption, color: colors.muted, textAlign: "center" },
+  closed: { color: colors.faint },
+  today: { fontFamily: fonts.bold },
   error: { ...type.caption, color: colors.danger },
-  week: { marginTop: space(8), gap: space(2) + 2, paddingHorizontal: space(2) },
-  weekRow: { flexDirection: "row", alignItems: "center", gap: space(2) + 2, minHeight: 14 },
-  dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.openDot },
-  dotClosed: { backgroundColor: "#CFCFCF" },
-  weekDay: { flex: 1, fontFamily: fonts.regular, fontSize: 13.5, color: "#222222" },
-  weekHours: { fontFamily: fonts.regular, fontSize: 13.5, color: "#222222", textAlign: "right" },
-  today: { fontFamily: fonts.bold, color: "#000000" },
-  sheetTitle: { fontFamily: fonts.bold, fontSize: 24, color: colors.ink },
-  dayOption: {
-    minHeight: minTouch + 4,
-    justifyContent: "center",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+  sheetTitle: { fontFamily: fonts.bold, fontSize: 22, color: colors.ink },
+  closedRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  closedLabel: { fontFamily: fonts.semibold, fontSize: 17, color: colors.ink },
+  ranges: { gap: 12 },
+  range: { flexDirection: "row", alignItems: "flex-end", gap: 12 },
+  flex: { flex: 1 },
+  remove: { width: minTouch, height: 52, alignItems: "center", justifyContent: "center" },
+  addBreak: {
+    minHeight: minTouch,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
   },
-  dayOptionText: { fontFamily: fonts.medium, fontSize: 17, color: colors.ink },
+  addBreakText: { fontFamily: fonts.medium, fontSize: 16, color: colors.action },
 });

@@ -11,7 +11,7 @@ type Props = {
   onPress: () => void;
 };
 
-/** Blue-outlined "Upload image" box (46, 51); shows the photo once there is one. */
+/** "Upload image" box with the Field outline (owner-v2); shows the photo once there is one. */
 export function UploadBox({ label, uri, busy = false, height = 87, onPress }: Props) {
   return (
     <Pressable
@@ -24,11 +24,11 @@ export function UploadBox({ label, uri, busy = false, height = 87, onPress }: Pr
       {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
       {busy ? (
         <View style={uri ? styles.badge : undefined} accessibilityLabel="Uploading">
-          <ActivityIndicator color={uri ? colors.white : colors.inputBlue} />
+          <ActivityIndicator color={uri ? colors.white : colors.action} />
         </View>
       ) : !uri ? (
         <>
-          <MaterialCommunityIcons name="cloud-upload-outline" size={24} color={colors.ink} />
+          <MaterialCommunityIcons name="cloud-upload-outline" size={24} color={colors.subtle} />
           <Text style={styles.text}>Upload image</Text>
         </>
       ) : null}
@@ -38,16 +38,16 @@ export function UploadBox({ label, uri, busy = false, height = 87, onPress }: Pr
 
 const styles = StyleSheet.create({
   box: {
-    borderWidth: 1.5,
-    borderColor: colors.inputBlue,
-    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.field,
+    borderRadius: 12,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
     gap: space(2),
     backgroundColor: colors.white,
   },
-  text: { fontFamily: fonts.medium, fontSize: 15, color: colors.placeholder },
+  text: { fontFamily: fonts.regular, fontSize: 16, color: colors.faint },
   badge: {
     position: "absolute",
     right: space(2),

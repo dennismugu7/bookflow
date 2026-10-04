@@ -1,52 +1,38 @@
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import Feather from "@expo/vector-icons/Feather";
 import { Pressable, StyleSheet } from "react-native";
 
 import { colors } from "../theme";
 
-type Props = {
-  label: string;
-  onPress: () => void;
-  /** "teal" on My services (47, 49), "blue" on My team (50, 52). */
-  tone?: "teal" | "blue";
-  size?: number;
-};
+type Props = { label: string; onPress: () => void };
 
-/** The round "+" add button. */
-export function Fab({ label, onPress, tone = "blue", size = 58 }: Props) {
+/** The one round blue "+" add button, the same on every add screen (owner-v2 02, 04). */
+export function Fab({ label, onPress }: Props) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.fab,
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: tone === "teal" ? colors.fabTeal : colors.fabBlue,
-        },
-        pressed && styles.pressed,
-      ]}
+      style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
     >
-      <MaterialCommunityIcons
-        name={tone === "teal" ? "plus-thick" : "plus"}
-        size={size * 0.55}
-        color={colors.white}
-      />
+      <Feather name="plus" size={32} color={colors.white} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   fab: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: colors.action,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 4,
+    // A soft blue glow, as in the mockups.
+    shadowColor: colors.action,
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
   pressed: { opacity: 0.85 },
 });

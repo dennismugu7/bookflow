@@ -1,0 +1,89 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bookflow welcome</title>
+<style>
+@font-face{font-family:U;src:url(file:///mnt/user-data/uploads/bookflow/design-ref/_fonts/Urbanist_500Medium.ttf);font-weight:500}
+@font-face{font-family:U;src:url(file:///mnt/user-data/uploads/bookflow/design-ref/_fonts/Urbanist_600SemiBold.ttf);font-weight:600}
+@font-face{font-family:U;src:url(file:///mnt/user-data/uploads/bookflow/design-ref/_fonts/Urbanist_700Bold.ttf);font-weight:700}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:U,system-ui,sans-serif;color:#16131F;display:flex;justify-content:center;background:#dfeef8}
+.phone{position:relative;width:390px;height:844px;overflow:hidden;
+  background:radial-gradient(120% 70% at 75% 15%,#F4FBFE 0%,rgba(244,251,254,0) 55%),
+             radial-gradient(90% 60% at 10% 70%,#7FCBF0 0%,rgba(127,203,240,0) 60%),
+             radial-gradient(80% 50% at 90% 95%,#5FD3EE 0%,rgba(95,211,238,0) 60%),
+             linear-gradient(170deg,#DDF2FB 0%,#A9DDF5 55%,#79C9EE 100%)}
+.brand{position:absolute;top:96px;left:0;right:0;text-align:center}
+.brand .word{font-size:40px;font-weight:700;color:#2A1E8C;letter-spacing:-.5px}
+.brand .sub{margin-top:6px;font-size:16px;font-weight:500;color:#3B3A4A}
+.stage{position:absolute;top:210px;left:28px;right:28px;height:330px}
+/* beat 1: shared link */
+.bubble{position:absolute;left:0;top:0;width:250px;padding:12px 14px;border-radius:16px 16px 16px 4px;background:#DCF8C6;box-shadow:0 6px 18px rgba(20,60,90,.12);font-size:14px;line-height:1.35;opacity:0;transform:translateY(16px)}
+.bubble b{display:block;font-weight:700;margin-bottom:2px}
+.bubble .link{color:#1E7BF2;font-weight:600}
+/* beat 2: time chips */
+.times{position:absolute;right:0;top:92px;display:flex;gap:8px;opacity:0;transform:translateY(16px)}
+.chip{height:40px;padding:0 14px;border-radius:20px;background:#fff;display:flex;align-items:center;font-weight:600;font-size:15px;box-shadow:0 4px 12px rgba(20,60,90,.10)}
+.chip.pick{position:relative}
+.chip.pick::after{content:"";position:absolute;inset:0;border-radius:20px;background:#5B45E0;opacity:0}
+.chip.pick span{position:relative;z-index:1}
+.tap{position:absolute;width:44px;height:44px;border-radius:22px;border:3px solid rgba(91,69,224,.6);opacity:0;pointer-events:none}
+/* beat 3: today list */
+.today{position:absolute;left:0;right:0;top:160px;padding:14px;border-radius:18px;background:rgba(255,255,255,.92);box-shadow:0 10px 30px rgba(20,60,90,.15);opacity:0;transform:translateY(16px)}
+.today h3{font-size:14px;font-weight:700;color:#6B6878;margin-bottom:10px;display:flex;justify-content:space-between}
+.row{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:#F6F5FA;margin-top:8px;font-size:14px}
+.row .t{font-weight:700;width:46px}
+.row .bar{width:4px;align-self:stretch;border-radius:2px;background:#C9C6D6}
+.row.new{background:#fff;border:2px solid #5B45E0;opacity:0;transform:translateY(-14px) scale(.96)}
+.row.new .bar{background:#5B45E0}
+.badge{margin-left:auto;font-size:12px;font-weight:700;color:#1E7F4F;background:#DDF3E6;padding:3px 8px;border-radius:10px}
+/* buttons */
+.cta{position:absolute;left:28px;right:28px;bottom:120px;text-align:center}
+.create{height:56px;border-radius:14px;background:#2FD573;color:#0B2A17;font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(47,213,115,.35)}
+.signin{margin-top:18px;font-size:17px;font-weight:600;color:#16131F}
+.cap{position:absolute;left:0;right:0;bottom:0;background:#FFF6D6;color:#5A4500;font-size:12px;padding:8px 12px;line-height:1.35}
+
+/* 6 s loop */
+.run .bubble{animation:b1 6s infinite}
+.run .times{animation:b2 6s infinite}
+.run .chip.pick::after{animation:pick 6s infinite}
+.run .chip.pick span{animation:pickt 6s infinite}
+.run .tap.t1{left:150px;top:44px;animation:tap1 6s infinite}
+.run .tap.t2{right:62px;top:90px;animation:tap2 6s infinite}
+.run .today{animation:b3 6s infinite}
+.run .row.new{animation:drop 6s infinite}
+@keyframes b1{0%{opacity:0;transform:translateY(16px)}6%,88%{opacity:1;transform:none}96%,100%{opacity:0;transform:translateY(-8px)}}
+@keyframes tap1{0%,14%{opacity:0;transform:scale(.4)}18%{opacity:1;transform:scale(.8)}26%,100%{opacity:0;transform:scale(1.6)}}
+@keyframes b2{0%,28%{opacity:0;transform:translateY(16px)}36%,88%{opacity:1;transform:none}96%,100%{opacity:0;transform:translateY(-8px)}}
+@keyframes tap2{0%,44%{opacity:0;transform:scale(.4)}48%{opacity:1;transform:scale(.8)}56%,100%{opacity:0;transform:scale(1.6)}}
+@keyframes pick{0%,47%{opacity:0}52%,100%{opacity:1}}
+@keyframes pickt{0%,47%{color:#16131F}52%,100%{color:#fff}}
+@keyframes b3{0%,55%{opacity:0;transform:translateY(16px)}62%,88%{opacity:1;transform:none}96%,100%{opacity:0;transform:translateY(-8px)}}
+@keyframes drop{0%,66%{opacity:0;transform:translateY(-14px) scale(.96)}72%{opacity:1;transform:translateY(2px) scale(1.02)}76%,88%{opacity:1;transform:none}96%,100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.run *{animation:none!important}.bubble,.times,.today,.row.new{opacity:1;transform:none}.chip.pick::after{opacity:1}.chip.pick span{color:#fff}}
+</style>
+<body>
+<div class="phone run" id="phone">
+  <div class="brand"><div class="word">Bookflow</div><div class="sub">Share your link. Bookings land.</div></div>
+  <div class="stage">
+    <div class="bubble"><b id="salon">Book with Amani Beauty Studio</b><span id="svc">Silk press, braids & more</span><br><span class="link">bookflow.app/s/amani</span></div>
+    <div class="tap t1"></div>
+    <div class="times"><div class="chip"><span>8:00</span></div><div class="chip pick"><span id="time">10:30</span></div><div class="chip"><span>14:00</span></div></div>
+    <div class="tap t2"></div>
+    <div class="today"><h3><span>Today</span><span>Sat 4 Oct</span></h3>
+      <div class="row"><span class="bar"></span><span class="t">09:00</span><span>Box braids · Achieng</span></div>
+      <div class="row new"><span class="bar"></span><span class="t" id="t2">10:30</span><span id="who">Silk press · Wanjiru</span><span class="badge">New</span></div>
+    </div>
+  </div>
+  <div class="cta"><div class="create">Create for free</div><div class="signin">Sign in</div></div>
+  <div class="cap">Welcome animation, 6-second loop: a link is shared → a client taps a time → the booking lands in Today. Each loop shows a different service.</div>
+</div>
+<script>
+const sets=[["Silk press, braids & more","10:30","Silk press · Wanjiru"],["Nails, lashes & brows","11:00","Gel nails · Akinyi"],["Fades, beard & trims","9:30","Fade & beard · Brian"]];
+let i=0;
+document.querySelector('.bubble').addEventListener('animationiteration',()=>{i=(i+1)%sets.length;const s=sets[i];
+ svc.textContent=s[0];time.textContent=s[1];t2.textContent=s[1];who.textContent=s[2];
+ document.querySelectorAll('.chip span').forEach((el,k)=>{if(!el.id){}});});
+</script>
+</body>

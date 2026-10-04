@@ -34,6 +34,19 @@ export const colors = {
   placeholder: "#9AA5B4",
   chipBlueTint: "#D3E6FC",
   chipBlueText: "#2A63B8",
+  // Approved redesign (docs/design/owner-v2, Dennis 2026-10-04), sampled from the mockups.
+  action: "#1E7BF2",
+  actionTint: "#EEF5FF",
+  field: "#DAD8E0",
+  hairline: "#EEEDF2",
+  cardLine: "#E7E6EC",
+  softFill: "#F4F3F7",
+  subtle: "#6B6878",
+  faint: "#9A97A6",
+  required: "#D92D20",
+  openDotV2: "#5BC236",
+  closedDot: "#CFCDD6",
+  menuGreen: "#3DBE29",
 } as const;
 
 /** Urbanist (400–700; see docs/design/README.md); React Native needs one family per weight. */

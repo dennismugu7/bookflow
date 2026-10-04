@@ -73,3 +73,19 @@ Files are numbered as Dennis made them (`NN-name.png`). The current app on Denni
 - Account shows the signed-in email as the name, and its initials in the avatar, until Profile stores an owner name (Dennis, 2026-10-04).
 - Location (`59`) shows our own drawn street-pattern map that opens Google Maps, not a live map; revisit with the next APK (Dennis, 2026-10-04).
 - Kept for existing behaviour (Dennis, 2026-10-04): a back arrow and save tick on the My brand, Opening hours and Location edit cards (as in `51`); the "Working alone? Add me as a team member" link on My team; Booking link (share, Live badge) and Unpublish salon under Account "General"; duration chips 20/30/45/60/90 + Custom as in `48` (15 min via Custom).
+
+### Approved redesigns (Dennis, 2026-10-04): these replace the originals
+Mockups in `docs/design/owner-v2/` (fake data). For these screens, copy the mockup, not the original image:
+
+| Screen | Copy from |
+| --- | --- |
+| My brand (one screen, banner + overlapping logo) | `owner-v2/01-my-brand.png` |
+| My services / Add a service | `owner-v2/02-services.png`, `owner-v2/03-add-service.png` |
+| My team | `owner-v2/04-team.png` |
+| Opening hours (day list, tap a day to edit) | `owner-v2/05-hours.png` |
+| Location (no pin / pin set) | `owner-v2/06-location-no-pin.png`, `owner-v2/07-location-pin.png` |
+| Menu tab (was Account) | `owner-v2/08-menu.png` |
+| Today, no bookings | `owner-v2/09-today-options.png`, option **A** |
+| Welcome (gradient + animation) | `owner-v2/10-welcome-frames.png`, `10-welcome-animation.mp4`, `10-welcome-animation.html` |
+
+Everywhere in the owner app: white pages without framed view cards, a fixed top bar with a back arrow, a grey field outline at rest that turns blue while typing, and one blue round add button.
