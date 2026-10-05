@@ -9,6 +9,7 @@ import {
   columnsFor,
   headerLabel,
   hourMarks,
+  isShortBlock,
   isView,
   lanes,
   minuteOfDay,
@@ -173,6 +174,13 @@ describe("blocks", () => {
         }),
       ),
     ).toBe("Wash & set, trim");
+  });
+
+  it("puts blocks under 45 minutes on one line (owner-v6 05)", () => {
+    expect(isShortBlock(booking())).toBe(true);
+    expect(isShortBlock(booking({ ends_at: "2026-10-03T06:44:00Z" }))).toBe(true);
+    expect(isShortBlock(booking({ ends_at: "2026-10-03T06:45:00Z" }))).toBe(false);
+    expect(isShortBlock(booking({ ends_at: "2026-10-03T07:30:00Z" }))).toBe(false);
   });
 
   it("labels time off", () => {

@@ -15,7 +15,7 @@ type Props = Omit<PressableProps, "children" | "style"> & {
 };
 
 const variants: Record<Variant, { background: string; text: string; border?: string }> = {
-  primary: { background: colors.ink, text: colors.white },
+  primary: { background: colors.primary, text: colors.white },
   secondary: { background: colors.white, text: colors.ink, border: colors.border },
   // White with an ink outline: Open Google Maps, Change pin, Log out (owner-v2 06–08).
   outline: { background: colors.white, text: colors.ink, border: colors.ink },
@@ -27,7 +27,7 @@ const variants: Record<Variant, { background: string; text: string; border?: str
   action: { background: colors.action, text: colors.white },
 };
 
-/** One black (primary) button per screen; brand for sharing and links, never for destructive actions. */
+/** One blue (primary) button per screen; brand for sharing and links, never for destructive actions. */
 export function Button({
   title,
   variant = "primary",

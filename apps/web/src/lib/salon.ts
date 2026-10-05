@@ -6,6 +6,7 @@ import { unstable_cache } from "next/cache";
 import { cache } from "react";
 
 import { getEnv } from "../env";
+import { slidePaths } from "./slider";
 
 export type SalonService = { id: string; name: string; duration_min: number; price_kes: number };
 export type SalonStaff = {
@@ -29,6 +30,10 @@ export type PublicSalon = {
   timezone: string;
   logoUrl: string | null;
   bannerUrl: string | null;
+  /** The salon photos in order (the first is the banner); empty when there are none. */
+  photoUrls: string[];
+  /** Changes whenever the salon is edited; versions the share image URL. */
+  updatedAt: string;
   services: SalonService[];
   staff: SalonStaff[];
   hours: { weekday: number; opens: string; closes: string }[];
@@ -56,7 +61,7 @@ export const getPublicSalon = cache(async (slug: string): Promise<PublicSalon | 
     .maybeSingle();
   if (!salon) return null;
 
-  const [services, staff, hours] = await Promise.all([
+  const [services, staff, hours, photos] = await Promise.all([
     supabase
       .from("services")
       .select("id, name, duration_min, price_kes")
@@ -76,6 +81,7 @@ export const getPublicSalon = cache(async (slug: string): Promise<PublicSalon | 
       .select("weekday, opens, closes")
       .eq("salon_id", salon.id)
       .order("opens"),
+    supabase.from("salon_photos").select("path").eq("salon_id", salon.id).order("position"),
   ]);
 
   const media = (path: string | null, version: string) =>
@@ -97,6 +103,11 @@ export const getPublicSalon = cache(async (slug: string): Promise<PublicSalon | 
     timezone: salon.timezone,
     logoUrl: media(salon.logo_path, salon.updated_at),
     bannerUrl: media(salon.banner_path, salon.updated_at),
+    photoUrls: slidePaths(
+      (photos.data ?? []).map((p) => p.path),
+      salon.banner_path,
+    ).map((path) => media(path, salon.updated_at)!),
+    updatedAt: salon.updated_at,
     services: services.data ?? [],
     staff: (staff.data ?? [])
       .map((s) => ({

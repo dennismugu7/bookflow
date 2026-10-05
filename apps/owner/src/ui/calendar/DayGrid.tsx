@@ -16,6 +16,7 @@ import {
   columnsFor,
   hourMarks,
   isClosed,
+  isShortBlock,
   minuteOfDay,
   nowMinute,
   placeOnScale,
@@ -239,10 +240,16 @@ function Column({
                 pressed && styles.pressed,
               ]}
             >
-              <Text style={styles.blockName} numberOfLines={1}>
-                {blockName(b)}
-              </Text>
-              {place.height >= 30 ? (
+              {isShortBlock(b) ? (
+                <Text style={styles.blockText} numberOfLines={1}>
+                  <Text style={styles.blockName}>{blockName(b)}</Text> · {blockServices(b)}
+                </Text>
+              ) : (
+                <Text style={styles.blockName} numberOfLines={1}>
+                  {blockName(b)}
+                </Text>
+              )}
+              {!isShortBlock(b) && place.height >= 30 ? (
                 <Text style={styles.blockText} numberOfLines={1}>
                   {blockServices(b)}
                 </Text>

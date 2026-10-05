@@ -194,6 +194,11 @@ export function blockName(booking: AgendaBooking): string {
   return last ? `${first} ${last.toUpperCase()}.` : first;
 }
 
+/** Day-view blocks shorter than 45 minutes show "Name · service" on one line (owner-v6 05). */
+export function isShortBlock(booking: Pick<AgendaBooking, "starts_at" | "ends_at">): boolean {
+  return Date.parse(booking.ends_at) - Date.parse(booking.starts_at) < 45 * 60_000;
+}
+
 /** "Box braids", or "Wash & set, trim" for several services. */
 export function blockServices(booking: AgendaBooking): string {
   return booking.services

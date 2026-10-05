@@ -4,7 +4,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router, type Href } from "expo-router";
 import * as Updates from "expo-updates";
 import { useState, type ComponentProps } from "react";
-import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { formatBuildInfo } from "../../../build-info";
@@ -12,6 +12,7 @@ import { useSession } from "../../../lib/session";
 import { getSupabase } from "../../../lib/supabase";
 import { colors, fonts, type } from "../../../theme";
 import { BottomSheet, Button } from "../../../ui";
+import { ShareLinkSheet } from "../../../ui/ShareLinkSheet";
 
 const buildInfo = formatBuildInfo(Updates);
 
@@ -31,6 +32,7 @@ export default function MenuScreen() {
   const { session, membership, signOut, reloadMembership } = useSession();
   const [error, setError] = useState<string>();
   const [confirmingLogOut, setConfirmingLogOut] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const isOwner = membership?.role === "owner";
   const email = session?.user.email ?? "";
   const live = !!membership?.salon.isPublished;
@@ -84,7 +86,7 @@ export default function MenuScreen() {
               icon="share-2"
               title="Booking link"
               accessibilityLabel={`Share your booking link, ${bookingLink(membership.salon.slug)}`}
-              onPress={() => void Share.share({ message: bookingLink(membership.salon.slug) })}
+              onPress={() => setSharing(true)}
             />
             {isOwner && live ? (
               <Row icon="eye-off" title="Unpublish salon" onPress={confirmUnpublish} />
@@ -121,6 +123,15 @@ export default function MenuScreen() {
           <Text style={[type.caption, styles.version]}>Version {buildInfo}</Text>
         </View>
       </ScrollView>
+
+      {membership ? (
+        <ShareLinkSheet
+          visible={sharing}
+          onClose={() => setSharing(false)}
+          salon={membership.salon}
+          canSave={isOwner}
+        />
+      ) : null}
 
       <BottomSheet visible={confirmingLogOut} onClose={() => setConfirmingLogOut(false)}>
         <Text style={styles.sheetTitle} accessibilityRole="header">

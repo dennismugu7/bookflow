@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
   },
   outline: { borderWidth: 1, borderColor: colors.cardLine, backgroundColor: colors.white },
   outlineText: { fontFamily: fonts.medium, fontSize: 16, color: colors.ink },
-  book: { backgroundColor: colors.ink },
+  book: { backgroundColor: colors.primary },
   bookText: { fontFamily: fonts.medium, fontSize: 16, color: colors.white },
   stats: { flexDirection: "row", gap: 10, marginTop: 17 },
   stat: {

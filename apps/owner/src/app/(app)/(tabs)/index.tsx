@@ -11,7 +11,7 @@ import { getSupabase } from "../../../lib/supabase";
 import { zonedParts } from "../../../lib/time";
 import { useAgenda, useNow } from "../../../lib/use-agenda";
 import { colors, fonts, minTouch, space, type } from "../../../theme";
-import { Button, Card, Fab, Illustration, Screen } from "../../../ui";
+import { Button, Card, FAB_SIZE, Fab, Illustration, Screen } from "../../../ui";
 import { AgendaList, EmptyDayGaps, SharePill } from "../../../ui/today/AgendaList";
 import { useBookingActions } from "../../../ui/today/useBookingActions";
 
@@ -67,6 +67,8 @@ function Header({ membership, high = false }: { membership: Membership; high?: b
     </View>
   );
 }
+
+const FAB_MARGIN = 24;
 
 const newBooking = (start: Date, from: "gap" | "add") => newBookingHref({ start, from });
 
@@ -126,6 +128,8 @@ function Day({ membership }: { membership: Membership }) {
               label="Next up"
             />
           )}
+          {/* Room under the last card, so the + never covers an opened card's buttons. */}
+          {isOwner ? <View style={styles.fabClearance} /> : null}
         </View>
       </Screen>
       {isOwner ? (
@@ -243,7 +247,8 @@ const styles = StyleSheet.create({
   headerHigh: { marginTop: 2 },
   salon: { fontFamily: fonts.bold, fontSize: 24, lineHeight: 30, color: colors.ink },
   date: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 22, color: colors.subtle },
-  fab: { position: "absolute", right: 20, bottom: 24 },
+  fab: { position: "absolute", right: 20, bottom: FAB_MARGIN },
+  fabClearance: { height: FAB_SIZE + FAB_MARGIN },
   loadError: { marginTop: 12 },
   card: { alignItems: "stretch", padding: space(5), gap: space(3) },
   step: {

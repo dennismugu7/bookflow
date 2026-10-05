@@ -3,7 +3,7 @@ export { Badge, type BadgeVariant } from "./Badge";
 export { BottomSheet } from "./BottomSheet";
 export { Button } from "./Button";
 export { Card } from "./Card";
-export { Fab } from "./Fab";
+export { FAB_SIZE, Fab } from "./Fab";
 export { Illustration, brandBackground, logoMark, welcomeBackground } from "./illustrations";
 export { DrawnMap } from "./DrawnMap";
 export { LiveMap } from "./LiveMap";

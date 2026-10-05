@@ -5,6 +5,8 @@ import { colors } from "../theme";
 
 type Props = { label: string; onPress: () => void };
 
+export const FAB_SIZE = 60;
+
 /** The one round blue "+" add button, the same on every add screen (owner-v2 02, 04). */
 export function Fab({ label, onPress }: Props) {
   return (
@@ -21,9 +23,9 @@ export function Fab({ label, onPress }: Props) {
 
 const styles = StyleSheet.create({
   fab: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: FAB_SIZE,
+    height: FAB_SIZE,
+    borderRadius: FAB_SIZE / 2,
     backgroundColor: colors.action,
     alignItems: "center",
     justifyContent: "center",

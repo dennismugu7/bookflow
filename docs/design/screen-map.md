@@ -159,3 +159,16 @@ Mockups in `docs/design/owner-v5/` (fake data). Sign in and Create account keep 
 Release 0.5.0 deviations (Dennis, 2026-10-04):
 - Menu → Notifications uses the shared owner top bar (arrow, title and height as on every other owner screen), not the tighter bar drawn in `05`.
 - The code screen (original `04`) sits on the same light-blue background and wordmark as Sign in (`01`), instead of the purple gradient. Its content is unchanged.
+
+### Release 0.5.1, salon photos and sharing (Dennis, 2026-10-05)
+Mockups in `docs/design/owner-v6/` (plain colours stand in for photos):
+
+| Screen | Copy from |
+| --- | --- |
+| My brand with Salon photos (up to 6, first is the banner) | `owner-v6/01-my-brand-photos.png` |
+| Menu → Booking link sheet (message + Share) | `owner-v6/02-share-link.png` |
+| WhatsApp link preview (share image, message, link) | `owner-v6/03-whatsapp-preview.png` |
+| Client salon page photo slider (original 01's 1/6 counter) | `owner-v6/04-salon-page-photos.png` |
+| Day view one-line short blocks; blue main buttons | `owner-v6/05-small-fixes.png` |
+
+Approved change (Dennis, 2026-10-05): primary filled buttons are the app blue `#1E7BF2`, not black.
