@@ -44,10 +44,25 @@ export function LegalDocument({ name }: { name: "privacy.md" | "terms.md" }) {
                 </h1>
               );
             case "updated":
+              // The contents line sits at the top, under the date (Dennis, 2026-10-05).
               return (
-                <p key={i} className="text-[14px] text-muted">
-                  {block.text}
-                </p>
+                <div key={i}>
+                  <p className="text-[14px] text-muted">{block.text}</p>
+                  <nav
+                    aria-label="Contents"
+                    className="mt-[10px] text-[14px] leading-[17px] text-muted"
+                  >
+                    Contents
+                    {sections.map((s) => (
+                      <span key={s.id}>
+                        {" · "}
+                        <a href={`#${s.id}`} className="hover:underline">
+                          {s.text}
+                        </a>
+                      </span>
+                    ))}
+                  </nav>
+                </div>
               );
             case "h2":
               return (
@@ -88,17 +103,6 @@ export function LegalDocument({ name }: { name: "privacy.md" | "terms.md" }) {
               );
           }
         })}
-        <nav aria-label="Contents" className="mt-6 text-[14px] leading-[17px] text-muted">
-          Contents
-          {sections.map((s) => (
-            <span key={s.id}>
-              {" · "}
-              <a href={`#${s.id}`} className="hover:underline">
-                {s.text}
-              </a>
-            </span>
-          ))}
-        </nav>
       </main>
     </>
   );

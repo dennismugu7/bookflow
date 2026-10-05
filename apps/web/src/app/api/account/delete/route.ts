@@ -6,6 +6,7 @@ import { getEnv } from "../../../../env";
 import {
   MEDIA_BUCKET,
   bearerToken,
+  isSameOriginJson,
   createRateLimit,
   deleteAccount,
   deleteAccountBody,
@@ -43,6 +44,11 @@ export async function POST(request: Request) {
   }
 
   const token = bearerToken(request.headers);
+  if (!token && !isSameOriginJson(request.headers, request.url))
+    return json(403, {
+      code: "FORBIDDEN",
+      message: "Delete your account from Bookflow's own page.",
+    });
   const env = getEnv();
   const supabase = token
     ? createSupabaseClient<Database>(

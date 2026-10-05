@@ -369,6 +369,20 @@ await web.goto(`${WEB}/terms`);
 await web.getByRole("heading", { name: "Terms of service" }).waitFor();
 await shot(web, "owner7-07b-web-terms");
 
+// The cookie path only accepts JSON from the site itself.
+const crossSite = await fetch(`${WEB}/api/account/delete`, {
+  method: "POST",
+  headers: { Origin: "https://evil.example", "Content-Type": "application/json" },
+  body: JSON.stringify({ reason: "accident" }),
+});
+check(crossSite.status === 403, "a request from another site is refused (403)");
+const formPost = await fetch(`${WEB}/api/account/delete`, {
+  method: "POST",
+  headers: { Origin: WEB, "Content-Type": "application/x-www-form-urlencoded" },
+  body: "reason=accident",
+});
+check(formPost.status === 403, "a form post is refused (403)");
+
 const errors = [];
 web.on("pageerror", (e) => errors.push(e.message));
 await web.goto(`${WEB}/delete-account`);

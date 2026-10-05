@@ -5,6 +5,7 @@ import {
   createRateLimit,
   deleteAccount,
   deleteAccountBody,
+  isSameOriginJson,
   listRecursive,
   type DeletionSteps,
 } from "./account-deletion";
@@ -155,5 +156,56 @@ describe("bearerToken", () => {
     expect(bearerToken(new Headers({ authorization: "Bearer abc.def" }))).toBe("abc.def");
     expect(bearerToken(new Headers({ authorization: "Basic abc" }))).toBeNull();
     expect(bearerToken(new Headers())).toBeNull();
+  });
+});
+
+describe("isSameOriginJson", () => {
+  const url = "https://bookflow.example/api/account/delete";
+  const headers = (h: Record<string, string>) => new Headers(h);
+
+  it("accepts JSON from the site's own origin", () => {
+    expect(
+      isSameOriginJson(
+        headers({ origin: "https://bookflow.example", "content-type": "application/json" }),
+        url,
+      ),
+    ).toBe(true);
+    expect(
+      isSameOriginJson(
+        headers({
+          origin: "https://bookflow.example",
+          "content-type": "application/json; charset=utf-8",
+        }),
+        url,
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects another origin or a missing Origin", () => {
+    expect(
+      isSameOriginJson(
+        headers({ origin: "https://evil.example", "content-type": "application/json" }),
+        url,
+      ),
+    ).toBe(false);
+    expect(isSameOriginJson(headers({ "content-type": "application/json" }), url)).toBe(false);
+    expect(
+      isSameOriginJson(
+        headers({ origin: "http://bookflow.example", "content-type": "application/json" }),
+        url,
+      ),
+    ).toBe(false);
+  });
+
+  it("rejects form posts and plain text", () => {
+    for (const type of ["application/x-www-form-urlencoded", "text/plain", "multipart/form-data"]) {
+      expect(
+        isSameOriginJson(
+          headers({ origin: "https://bookflow.example", "content-type": type }),
+          url,
+        ),
+      ).toBe(false);
+    }
+    expect(isSameOriginJson(headers({ origin: "https://bookflow.example" }), url)).toBe(false);
   });
 });

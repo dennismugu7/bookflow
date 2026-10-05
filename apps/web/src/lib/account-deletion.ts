@@ -108,3 +108,13 @@ export function bearerToken(headers: Headers): string | null {
   const match = /^Bearer\s+(\S+)$/i.exec(headers.get("authorization")?.trim() ?? "");
   return match?.[1] ?? null;
 }
+
+/**
+ * The web page's cookie session is only accepted from Bookflow's own pages, sending JSON: a form
+ * or script on another site can't trigger a deletion with the visitor's cookies.
+ */
+export function isSameOriginJson(headers: Headers, requestUrl: string): boolean {
+  const origin = headers.get("origin");
+  const mediaType = headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
+  return !!origin && origin === new URL(requestUrl).origin && mediaType === "application/json";
+}
