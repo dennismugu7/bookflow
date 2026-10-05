@@ -100,8 +100,16 @@ $env:CI = '1'
 Push-Location $ownerDir
 try {
   Step 'expo prebuild --platform android --clean'
-  & npx expo prebuild --platform android --clean --no-install
-  if ($LASTEXITCODE -ne 0) { Fail 'expo prebuild failed.' }
+  # Prebuild rewrites package.json's "android" script; put the committed file back afterwards.
+  $packageJson = Join-Path $ownerDir 'package.json'
+  $packageJsonBefore = [IO.File]::ReadAllBytes($packageJson)
+  try {
+    & npx expo prebuild --platform android --clean --no-install
+    $prebuildExit = $LASTEXITCODE
+  } finally {
+    [IO.File]::WriteAllBytes($packageJson, $packageJsonBefore)
+  }
+  if ($prebuildExit -ne 0) { Fail 'expo prebuild failed.' }
 
   # 3. Gradle ----------------------------------------------------------------------------------------
   Step 'gradlew assembleDebug'
