@@ -161,15 +161,34 @@ isOneToOne: false
       referencedColumns: ["salon_id","id"]
     }
                   ]
-                },"salons": {
+                },"salon_photos": {
                   Row: {
-                    "about": string | null,"address": string | null,"banner_path": string | null,"created_at": string,"id": string,"is_published": boolean,"latitude": number | null,"logo_path": string | null,"longitude": number | null,"maps_url": string | null,"name": string,"phone": string | null,"slug": string,"tagline": string | null,"timezone": string,"updated_at": string
+                    "created_at": string,"id": string,"path": string,"position": number,"salon_id": string
                   }
                   Insert: {
-                    "about"?: string | null,"address"?: string | null,"banner_path"?: string | null,"created_at"?: string,"id"?: string,"is_published"?: boolean,"latitude"?: number | null,"logo_path"?: string | null,"longitude"?: number | null,"maps_url"?: string | null,"name": string,"phone"?: string | null,"slug": string,"tagline"?: string | null,"timezone"?: string,"updated_at"?: string
+                    "created_at"?: string,"id"?: string,"path": string,"position": number,"salon_id": string
                   }
                   Update: {
-                    "about"?: string | null,"address"?: string | null,"banner_path"?: string | null,"created_at"?: string,"id"?: string,"is_published"?: boolean,"latitude"?: number | null,"logo_path"?: string | null,"longitude"?: number | null,"maps_url"?: string | null,"name"?: string,"phone"?: string | null,"slug"?: string,"tagline"?: string | null,"timezone"?: string,"updated_at"?: string
+                    "created_at"?: string,"id"?: string,"path"?: string,"position"?: number,"salon_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "salon_photos_salon_id_fkey"
+      columns: ["salon_id"]
+isOneToOne: false
+      referencedRelation: "salons"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"salons": {
+                  Row: {
+                    "about": string | null,"address": string | null,"banner_path": string | null,"created_at": string,"id": string,"is_published": boolean,"latitude": number | null,"logo_path": string | null,"longitude": number | null,"maps_url": string | null,"name": string,"phone": string | null,"share_message": string | null,"slug": string,"tagline": string | null,"timezone": string,"updated_at": string
+                  }
+                  Insert: {
+                    "about"?: string | null,"address"?: string | null,"banner_path"?: string | null,"created_at"?: string,"id"?: string,"is_published"?: boolean,"latitude"?: number | null,"logo_path"?: string | null,"longitude"?: number | null,"maps_url"?: string | null,"name": string,"phone"?: string | null,"share_message"?: string | null,"slug": string,"tagline"?: string | null,"timezone"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "about"?: string | null,"address"?: string | null,"banner_path"?: string | null,"created_at"?: string,"id"?: string,"is_published"?: boolean,"latitude"?: number | null,"logo_path"?: string | null,"longitude"?: number | null,"maps_url"?: string | null,"name"?: string,"phone"?: string | null,"share_message"?: string | null,"slug"?: string,"tagline"?: string | null,"timezone"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -347,6 +366,9 @@ isOneToOne: false
                            },
 "set_opening_hours":
 { Args: { "p_hours": Json,"p_salon_id": string }; Returns: undefined
+                           },
+"set_salon_photos":
+{ Args: { "p_paths": (string)[],"p_salon_id": string }; Returns: undefined
                            },
 "set_salon_published":
 { Args: { "p_published": boolean,"p_salon_id": string }; Returns: undefined

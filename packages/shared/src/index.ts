@@ -5,6 +5,7 @@ export { initialsFor } from "./initials";
 export { areaLine, shortArea } from "./area";
 export { formatKenyanPhone, normalizeKenyanPhone } from "./phone";
 export { WEB_BASE_URL, bookingLink } from "./links";
+export { SHARE_MESSAGE_MAX, defaultShareMessage, shareText } from "./share";
 export {
   GOOGLE_MAPS_URL,
   inspectMapsLink,
