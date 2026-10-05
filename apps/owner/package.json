@@ -5,10 +5,11 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
+    "android": "expo run:android",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:debug-apk": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-debug-apk.ps1"
   },
   "dependencies": {
     "@bookflow/shared": "workspace:*",
