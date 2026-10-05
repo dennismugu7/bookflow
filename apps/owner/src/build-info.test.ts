@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatBuildInfo } from "./build-info";
+import { debugApkLabel, formatBuildInfo } from "./build-info";
 
 describe("formatBuildInfo", () => {
   it("shows channel and short update id for an OTA update", () => {
@@ -27,5 +27,19 @@ describe("formatBuildInfo", () => {
     expect(formatBuildInfo({ channel: null, updateId: null, isEmbeddedLaunch: false })).toBe(
       "dev · embedded",
     );
+  });
+});
+
+describe("debugApkLabel", () => {
+  it("reads the debug APK's label", () => {
+    expect(debugApkLabel({ debugApk: { label: "0.5.0-debug · 1a2b3c4" } })).toBe(
+      "0.5.0-debug · 1a2b3c4",
+    );
+  });
+
+  it("is null for every other build", () => {
+    expect(debugApkLabel({ eas: { projectId: "x" } })).toBeNull();
+    expect(debugApkLabel(undefined)).toBeNull();
+    expect(debugApkLabel({ debugApk: {} })).toBeNull();
   });
 });

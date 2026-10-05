@@ -1,20 +1,21 @@
 import { bookingLink, initialsFor } from "@bookflow/shared";
 import Feather from "@expo/vector-icons/Feather";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import Constants from "expo-constants";
 import { router, type Href } from "expo-router";
 import * as Updates from "expo-updates";
 import { useState, type ComponentProps } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { formatBuildInfo } from "../../../build-info";
+import { debugApkLabel, formatBuildInfo } from "../../../build-info";
 import { useSession } from "../../../lib/session";
 import { getSupabase } from "../../../lib/supabase";
 import { colors, fonts, type } from "../../../theme";
 import { BottomSheet, Button } from "../../../ui";
 import { ShareLinkSheet } from "../../../ui/ShareLinkSheet";
 
-const buildInfo = formatBuildInfo(Updates);
+const buildInfo = debugApkLabel(Constants.expoConfig?.extra) ?? formatBuildInfo(Updates);
 
 type Icon = ComponentProps<typeof Feather>["name"];
 

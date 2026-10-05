@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:debug-apk": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-debug-apk.ps1"
   },
   "dependencies": {
     "@bookflow/shared": "workspace:*",
