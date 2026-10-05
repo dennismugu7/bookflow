@@ -105,7 +105,8 @@ export function ShareLinkSheet({ visible, onClose, salon, canSave }: Props) {
           <Text style={styles.reset}>Reset to default</Text>
         </Pressable>
         <Text style={styles.counter}>
-          {message.length} / {SHARE_MESSAGE_MAX}
+          {/* Characters as the database counts them (an emoji is one). */}
+          {Array.from(message).length} / {SHARE_MESSAGE_MAX}
         </Text>
       </View>
       <Text style={styles.help}>
@@ -120,8 +121,8 @@ export function ShareLinkSheet({ visible, onClose, salon, canSave }: Props) {
 }
 
 const styles = StyleSheet.create({
-  title: { marginTop: 8, fontFamily: fonts.bold, fontSize: 20, lineHeight: 26, color: colors.ink },
-  linkRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 15 },
+  title: { fontFamily: fonts.bold, fontSize: 20, lineHeight: 26, color: colors.ink },
+  linkRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 14 },
   linkBox: {
     flex: 1,
     height: 52,
@@ -143,9 +144,9 @@ const styles = StyleSheet.create({
   },
   copyText: { fontFamily: fonts.medium, fontSize: 16, color: colors.ink },
   pressed: { opacity: 0.8 },
-  label: { marginTop: 21, fontFamily: fonts.medium, fontSize: 15, color: colors.ink },
+  label: { marginTop: 16, fontFamily: fonts.medium, fontSize: 15, color: colors.ink },
   message: {
-    marginTop: 10,
+    marginTop: 8,
     minHeight: 76,
     borderWidth: 1,
     borderColor: colors.field,
@@ -167,7 +168,7 @@ const styles = StyleSheet.create({
   reset: { fontFamily: fonts.medium, fontSize: 13, color: colors.action },
   counter: { fontFamily: fonts.regular, fontSize: 13, color: colors.subtle },
   help: {
-    marginTop: 18,
+    marginTop: 11,
     fontFamily: fonts.regular,
     fontSize: 13,
     lineHeight: 15,

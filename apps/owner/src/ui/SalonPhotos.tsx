@@ -123,7 +123,7 @@ export function SalonPhotos({ photos, uriFor, adding, onAdd, onMakeBanner, onRem
 }
 
 const styles = StyleSheet.create({
-  section: { paddingHorizontal: SIDE, paddingTop: 26 },
+  section: { paddingHorizontal: SIDE, paddingTop: 19 },
   headRow: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
   title: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 20, color: colors.ink },
   count: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.subtle },

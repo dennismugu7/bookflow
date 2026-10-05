@@ -4,10 +4,12 @@ import { notFound } from "next/navigation";
 
 import { RememberSalon } from "../../../components/back-button";
 import { MyBookingsLink } from "../../../components/my-bookings-link";
+import { PhotoSlider } from "../../../components/photo-slider";
 import { SalonIdentity } from "../../../components/salon-header";
 import { initials } from "../../../lib/format";
 import { directionsUrl } from "../../../lib/my-booking";
 import { getPublicSalon, mapQuery, salonArea } from "../../../lib/salon";
+import { shareImagePath } from "../../../lib/share-image";
 import { isoWeekday, salonDate } from "../../../lib/time";
 import {
   AboutText,
@@ -27,16 +29,21 @@ export async function generateMetadata(props: PageProps<"/s/[slug]">): Promise<M
   const { slug } = await props.params;
   const salon = await getPublicSalon(slug);
   if (!salon) return { title: "Salon not found · Bookflow" };
-  const description = salon.tagline ?? `Book an appointment at ${salon.name}.`;
+  const title = `${salon.name} · Book online`;
+  const description = salon.tagline?.trim() || `Book an appointment at ${salon.name}.`;
+  // Absolute through the root layout's metadataBase (the production URL).
+  const image = {
+    url: shareImagePath(salon.slug, salon.updatedAt),
+    width: 1200,
+    height: 630,
+    type: "image/jpeg",
+    alt: salon.name,
+  };
   return {
-    title: `${salon.name} · Book online`,
+    title,
     description,
-    openGraph: {
-      title: salon.name,
-      description,
-      url: `/s/${salon.slug}`,
-      images: salon.bannerUrl ? [{ url: salon.bannerUrl, alt: salon.name }] : undefined,
-    },
+    openGraph: { type: "website", title, description, url: `/s/${salon.slug}`, images: [image] },
+    twitter: { card: "summary_large_image", title, description, images: [image.url] },
   };
 }
 
@@ -59,11 +66,10 @@ export default async function SalonPage(props: PageProps<"/s/[slug]">) {
   return (
     <main className="mx-auto w-full max-w-[560px] pb-[110px]">
       <RememberSalon slug={salon.slug} />
-      {/* Hero: banner at 4:3 with a share button (original 01) */}
+      {/* Hero: the salon photos at 4:3 with a share button (original 01, owner-v6 04) */}
       <div className="relative">
-        {salon.bannerUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- Supabase public URLs; no image optimiser on the free plan
-          <img src={salon.bannerUrl} alt="" className="aspect-[4/3] w-full object-cover" />
+        {salon.photoUrls.length > 0 ? (
+          <PhotoSlider name={salon.name} photos={salon.photoUrls} />
         ) : (
           <div
             aria-hidden="true"

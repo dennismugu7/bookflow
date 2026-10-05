@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.subtle,
   },
-  fields: { padding: 20, paddingTop: 24, gap: 18 },
+  fields: { padding: 20, paddingTop: 15, gap: 18 },
   formError: { ...type.caption, color: colors.danger },
   loadError: { padding: 20 },
 });
