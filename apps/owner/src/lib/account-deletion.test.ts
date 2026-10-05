@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import { DELETE_ERROR, requestAccountDeletion, webUrl } from "./account-deletion";
 
 const reply = (status: number, body: unknown) =>
-  vi.fn<typeof fetch>(async () => new Response(JSON.stringify(body), { status }));
+  vi.fn<(url: string, init: RequestInit) => Promise<Response>>(
+    async () => new Response(JSON.stringify(body), { status }),
+  );
 
 describe("requestAccountDeletion", () => {
   it("sends the token and the reason", async () => {
@@ -48,7 +50,7 @@ describe("requestAccountDeletion", () => {
   });
 
   it("falls back to a plain message offline", async () => {
-    const fetchImpl = vi.fn<typeof fetch>(async () => {
+    const fetchImpl = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(async () => {
       throw new Error("offline");
     });
     await expect(

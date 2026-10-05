@@ -17,7 +17,7 @@ export async function requestAccountDeletion(
   input: { reason: DeletionReason; details: string },
   accessToken: string,
   baseUrl: string,
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: (url: string, init: RequestInit) => Promise<Response> = fetch,
 ): Promise<DeleteResult> {
   try {
     const response = await fetchImpl(`${baseUrl}/api/account/delete`, {
