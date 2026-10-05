@@ -24,3 +24,19 @@ export function readGoogleResult(result: BrowserResult): GoogleResult {
   if (params.get("error") || !code) return { kind: "error" };
   return { kind: "code", code };
 }
+
+/** Whether a link the app received is Supabase's redirect back from Google. */
+export function isGoogleCallback(url: string | null | undefined): url is string {
+  return !!url && url.startsWith(GOOGLE_REDIRECT);
+}
+
+/** Supabase's reason when the redirect carries an error (query or fragment), for the log. */
+export function callbackErrorDescription(url: string): string | undefined {
+  const [beforeHash, hash = ""] = url.split("#");
+  for (const part of [beforeHash?.split("?")[1] ?? "", hash]) {
+    const params = new URLSearchParams(part);
+    const error = params.get("error");
+    if (error) return [error, params.get("error_description")].filter(Boolean).join(": ");
+  }
+  return undefined;
+}

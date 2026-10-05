@@ -1,10 +1,10 @@
-import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { AUTH_MESSAGES, isValidEmail, sendCodeErrorMessage } from "../../lib/auth-errors";
 import { GOOGLE_ERROR } from "../../lib/google-auth";
-import { signInWithGoogle } from "../../lib/google-sign-in";
+import { googleCallback, signInWithGoogle } from "../../lib/google-sign-in";
 import { openLegal } from "../../lib/legal";
 import { getSupabase } from "../../lib/supabase";
 import { colors, fonts } from "../../theme";
@@ -23,11 +23,20 @@ export default function SignInScreen() {
   const [sending, setSending] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
 
+  // A Google callback the root layout completed and that failed (release 1.0.0).
+  useFocusEffect(
+    useCallback(() => {
+      const failed = googleCallback.takeError();
+      if (failed) setGoogleError(failed);
+    }, []),
+  );
+
   async function google() {
     setGoogleError(undefined);
     setGoogleBusy(true);
     const result = await signInWithGoogle();
     setGoogleBusy(false);
+    googleCallback.takeError();
     if (result === "error") setGoogleError(GOOGLE_ERROR);
   }
 

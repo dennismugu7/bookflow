@@ -12,7 +12,8 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { getEnv } from "../env";
-import { appReady } from "../lib/launch";
+import { useGoogleCallbackLinks } from "../lib/google-sign-in";
+import { appReady, screenGroup } from "../lib/launch";
 import { setUpNotifications } from "../lib/push";
 import { SessionProvider, useSession } from "../lib/session";
 import { colors, space, type } from "../theme";
@@ -55,6 +56,7 @@ function RootNavigator() {
     Urbanist_700Bold,
   });
   const { session, membership, membershipError } = useSession();
+  const googleCallback = useGoogleCallbackLinks();
   const [launched, setLaunched] = useState(false);
 
   const ready = appReady({
@@ -62,6 +64,7 @@ function RootNavigator() {
     signedIn: !!session,
     sessionKnown: session !== undefined,
     membershipKnown: membership !== undefined || !!membershipError,
+    callbackPending: googleCallback.pending,
   });
 
   useEffect(() => {
@@ -87,6 +90,7 @@ function RootNavigator() {
 function Routes() {
   const { session, membership, membershipError, reloadMembership } = useSession();
   const signedIn = !!session;
+  const group = screenGroup({ signedIn, hasSalon: !!membership });
 
   if (signedIn && membershipError) {
     return (
@@ -102,13 +106,13 @@ function Routes() {
 
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.white } }}>
-      <Stack.Protected guard={!signedIn}>
+      <Stack.Protected guard={group === "auth"}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
-      <Stack.Protected guard={signedIn && membership === null}>
+      <Stack.Protected guard={group === "onboarding"}>
         <Stack.Screen name="(onboarding)" />
       </Stack.Protected>
-      <Stack.Protected guard={signedIn && !!membership}>
+      <Stack.Protected guard={group === "app"}>
         <Stack.Screen name="(app)" />
       </Stack.Protected>
       {/* After deleting the account (owner-v7 05): shown while the session is cleared. */}
