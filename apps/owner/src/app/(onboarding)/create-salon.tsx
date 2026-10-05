@@ -52,7 +52,7 @@ export default function CreateSalonScreen() {
       footer={
         <Button
           title="Create salon"
-          variant="blue"
+          variant="bluePrimary"
           onPress={() => void create()}
           loading={saving}
         />

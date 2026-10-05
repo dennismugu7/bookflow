@@ -2,7 +2,8 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, type PressableProps } f
 
 import { colors, controlHeight, fonts, radius, space } from "../theme";
 
-type Variant = "primary" | "secondary" | "outline" | "brand" | "danger" | "blue" | "action";
+type Variant =
+  "primary" | "secondary" | "outline" | "brand" | "danger" | "blue" | "bluePrimary" | "action";
 
 type Props = Omit<PressableProps, "children" | "style"> & {
   title: string;
@@ -23,6 +24,8 @@ const variants: Record<Variant, { background: string; text: string; border?: str
   danger: { background: colors.dangerTint, text: colors.danger },
   // The blue action of the sign-in sheet and setup cards (03–05, 44, 51).
   blue: { background: colors.blue, text: colors.white },
+  // The blue button's shape in the app blue: Create salon (Dennis, 2026-10-05).
+  bluePrimary: { background: colors.primary, text: colors.white },
   // The 52 px blue main action of owner-v5 (Send me a code, Turn on notifications).
   action: { background: colors.action, text: colors.white },
 };
@@ -47,7 +50,7 @@ export function Button({
       disabled={inactive}
       style={({ pressed }) => [
         styles.base,
-        variant === "blue" && styles.blue,
+        (variant === "blue" || variant === "bluePrimary") && styles.blue,
         variant === "outline" && styles.outline,
         variant === "action" && styles.action,
         shape === "pill" && styles.pill,
@@ -64,7 +67,7 @@ export function Button({
         <Text
           style={[
             styles.text,
-            variant === "blue" && styles.blueText,
+            (variant === "blue" || variant === "bluePrimary") && styles.blueText,
             variant === "outline" && styles.outlineText,
             variant === "action" && styles.actionText,
             compact && styles.compactText,

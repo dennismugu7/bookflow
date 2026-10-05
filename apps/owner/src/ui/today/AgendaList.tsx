@@ -1,8 +1,11 @@
 import { bookingLink } from "@bookflow/shared";
+import { useState } from "react";
 import { Pressable, Share, StyleSheet, Text, View } from "react-native";
 
 import { actionsFor, nextBookingId, timeline, type Agenda } from "../../lib/agenda";
+import { useSession } from "../../lib/session";
 import { colors, fonts } from "../../theme";
+import { ShareLinkSheet } from "../ShareLinkSheet";
 import { BookingCard } from "./BookingCard";
 import { GapRow } from "./GapRow";
 import { StatTiles } from "./StatTiles";
@@ -99,16 +102,31 @@ export function EmptyDayGaps({
  * client list (owner-v4 03).
  */
 export function SharePill({ slug, variant = "pill" }: { slug: string; variant?: "pill" | "link" }) {
+  const { membership } = useSession();
+  const [open, setOpen] = useState(false);
   const link = variant === "link";
+  // Opens the same sheet as Menu → Booking link (owner-v6 02), with the owner's message.
+  const share = () =>
+    membership ? setOpen(true) : void Share.share({ message: bookingLink(slug) });
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Share your booking link"
-      onPress={() => void Share.share({ message: bookingLink(slug) })}
-      style={({ pressed }) => [link ? styles.link : styles.share, pressed && styles.pressed]}
-    >
-      <Text style={link ? styles.linkText : styles.shareText}>Share your booking link ›</Text>
-    </Pressable>
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Share your booking link"
+        onPress={share}
+        style={({ pressed }) => [link ? styles.link : styles.share, pressed && styles.pressed]}
+      >
+        <Text style={link ? styles.linkText : styles.shareText}>Share your booking link ›</Text>
+      </Pressable>
+      {membership ? (
+        <ShareLinkSheet
+          visible={open}
+          onClose={() => setOpen(false)}
+          salon={membership.salon}
+          canSave={membership.role === "owner"}
+        />
+      ) : null}
+    </>
   );
 }
 
