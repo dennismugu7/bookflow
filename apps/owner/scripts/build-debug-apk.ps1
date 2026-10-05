@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Builds the testers' debug APK of Bookflow Owner on this laptop (docs/specs/ops-03-debug-apk.md).
+  Builds the testers' debug APK of Bookflow on this laptop (docs/specs/ops-03-debug-apk.md).
 
 .DESCRIPTION
   Debuggable, signed with the standard Android debug key, JS bundle embedded (opens without
@@ -83,7 +83,7 @@ $version = (Get-Content (Join-Path $ownerDir 'app.json') -Raw | ConvertFrom-Json
 $sha = (& git -C $ownerDir rev-parse --short HEAD).Trim()
 $dirty = (& git -C $ownerDir status --porcelain -- .) -ne $null
 if ($dirty) { Write-Host 'Note: apps/owner has uncommitted changes; they are included in this build.' -ForegroundColor Yellow }
-Write-Host "Bookflow Owner $version-debug at $sha"
+Write-Host "Bookflow $version-debug at $sha"
 
 # 2. Prebuild with the debug-APK flag ---------------------------------------------------------------
 # Set for this build only; the previous values come back at the end.

@@ -7,7 +7,7 @@ export const dynamic = "force-static";
 
 export const metadata: Metadata = {
   title: "Terms of service · Bookflow",
-  description: "The terms for using Bookflow's booking website and the Bookflow Owner app.",
+  description: "The terms for using Bookflow's booking website and the Bookflow app for salon owners.",
 };
 
 export default function TermsPage() {

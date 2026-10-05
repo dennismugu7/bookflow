@@ -159,7 +159,7 @@ enabled = true
 # keep the two in step (site URL, redirect URLs, Google, OTP expiry and email templates).
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "https://bookflow-web-pearl.vercel.app"
+site_url = "https://bookflow.mugu-labs.com"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
@@ -167,6 +167,7 @@ additional_redirect_urls = [
   "http://localhost:3000/**",
   "https://*-dennismugu7-6048s-projects.vercel.app/**",
   "https://bookflow-web-pearl.vercel.app/**",
+  "https://bookflow.mugu-labs.com/**",
   "bookflow://**",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
