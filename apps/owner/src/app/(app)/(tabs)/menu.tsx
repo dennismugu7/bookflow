@@ -18,7 +18,7 @@ const buildInfo = formatBuildInfo(Updates);
 
 type Icon = ComponentProps<typeof Feather>["name"];
 
-// Portfolio, Profile, Settings, Share feedback and Support stay hidden until they exist.
+// Portfolio, Profile, Share feedback and Support stay hidden until they exist.
 const BUSINESS_PROFILE: { title: string; icon: Icon; href: Href }[] = [
   { title: "My brand", icon: "award", href: "/business/brand" },
   { title: "My services", icon: "scissors", href: "/business/services" },
@@ -92,6 +92,7 @@ export default function MenuScreen() {
               <Row icon="eye-off" title="Unpublish salon" onPress={confirmUnpublish} />
             ) : null}
             <Row icon="bell" title="Notifications" onPress={() => router.push("/notifications")} />
+            <Row icon="settings" title="Settings" onPress={() => router.push("/settings")} />
           </>
         ) : null}
 

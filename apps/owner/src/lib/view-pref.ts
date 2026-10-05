@@ -32,3 +32,9 @@ export function useCalendarView(): [CalendarView, (view: CalendarView) => void] 
   };
   return [view, choose];
 }
+
+/** After deleting the account: back to the Day view. */
+export async function forgetCalendarView(): Promise<void> {
+  remembered = undefined;
+  if (Platform.OS !== "web") await SecureStore.deleteItemAsync(KEY).catch(() => undefined);
+}

@@ -112,6 +112,52 @@ Entry format: **Context → Challenge → What we did → Outcome.** Decisions w
 - **Lesson:** a test fixture is a claim about the outside world. Capture a real sample before writing one. The acceptance test now uses the actual redirect captured from Dennis's phone.
 - **Milestone:** Phase 2b complete and verified on the phone on day 2 (3 Oct), about 10 days ahead of plan.
 
+### Phase 3a: clients book online (PR #15)
+- **What we did:** the public salon page and the booking flow: services → team member → time → a short hold → sign in → confirmed. **Holds are created only on the server (ADR 0008):** behind Cloudflare Turnstile, with the client's IP read from Vercel's headers and an httpOnly cookie, so a script can't block a salon's diary.
+
+### Design fidelity: the build must look like the designs (PRs #16 to #22, ADR 0009)
+- **What happened:** Dennis compared the live screens with his original designs and the drift was obvious: wrong font, grey tints, cropped cards, missing back buttons.
+- **Root cause:** specs described screens in words, and words leave room for interpretation.
+- **Fix (ADR 0009):**
+  - the design images win over the spec text;
+  - `docs/design/screen-map.md` names the image each screen copies, and lists approved deviations;
+  - every UI PR includes side-by-sides (mockup | live) and a differences table;
+  - UI work starts in a fresh Claude Code session.
+- **Also:** switched to Urbanist, the owner app redesign (Menu tab, white pages, a one-time welcome animation) and a single splash screen.
+- **Lesson:** "make it match" is not a spec. A picture plus a rule that the picture wins is.
+
+### Release 0.4.0 and installing builds (PR #23)
+- **Challenge:** after the version bump, updates stopped reaching the phone. That's by design: an update only applies to the same runtime version, and the phone still had 0.3.0. Play Protect then blocked the correct APK.
+- **Fix:** install 0.4.0 ("More details → Install anyway") and identify builds by their git ref.
+- **Lesson:** say in the release note when a new APK is required.
+
+### Phases 3b, 4a, 4b and 4c: the core product (PRs #24 to #27)
+- **3b:** clients see their bookings, rebook, and cancel up to 2 hours before.
+- **4a:** Today shows the real day: stats, next up, free gaps you can fill, and walk-in bookings. It updates live.
+- **4b/4c:**
+  - Calendar has Day (a column per team member, with time off), Week and List views.
+  - Clients has search and segments (new, regular, lapsed), defined in SQL so the app and the tests agree.
+  - The client profile has stats and private notes.
+
+### Release 0.5.0: Google sign-in and push notifications (PR #28)
+- **Google:** the web OAuth flow (PKCE) through Supabase, so no new Google client was needed.
+- **Notifications:**
+  - database triggers queue an alert for each new web booking and each client cancellation;
+  - `pg_net` sends it to Expo's push service, and `pg_cron` sends a 07:00 morning summary;
+  - no server code and no secrets.
+- **Firebase:** the file comes from an EAS file variable, so it's never committed.
+- **Tested on the phone end to end:** both alerts arrived within seconds, and tapping one opened the booking.
+- **Incident:** a cleanup command in the build session damaged the lead's mockups. They were restored byte for byte, and nothing damaged was committed.
+
+### Release 0.5.1: salon photos and link sharing (PRs #29 and #30)
+- **What we did:**
+  - up to 6 salon photos (the first is the banner) with a swipeable slider on the salon page;
+  - an owner-editable share message;
+  - a 1200×630 JPEG preview card made for WhatsApp, about 97 KB.
+- **Why:** Dennis noticed the shared link arrived in WhatsApp as a bare URL. The page already pointed to the banner, but WhatsApp skips large images.
+- **Lesson:** platform limits (here, the size WhatsApp accepts) belong in the spec as numbers.
+- **Milestone:** owner app at feature parity with the plan's core scope on day 5 (5 Oct).
+
 ---
 
 ## Evidence to capture as we go

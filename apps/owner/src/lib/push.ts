@@ -99,3 +99,9 @@ export async function markIntroShown(): Promise<void> {
   if (!supported) return;
   await SecureStore.setItemAsync(INTRO_KEY, "1").catch(() => undefined);
 }
+
+/** After deleting the account: this phone shows the notifications intro again for a new owner. */
+export async function forgetIntroShown(): Promise<void> {
+  if (!supported) return;
+  await SecureStore.deleteItemAsync(INTRO_KEY).catch(() => undefined);
+}

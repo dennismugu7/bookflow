@@ -8,7 +8,8 @@ import { supabaseSecretKey } from "../server-env";
 
 /**
  * Supabase client with the secret key. Server only, and used only for create_hold and
- * release_hold (ADR 0008). Returns null when the key isn't configured.
+ * release_hold (ADR 0008) and for deleting an account (/api/account/delete). Returns null when
+ * the key isn't configured.
  */
 export function createAdminClient() {
   const key = supabaseSecretKey();

@@ -4,7 +4,25 @@ export { formatUsualGap } from "./gap";
 export { initialsFor } from "./initials";
 export { areaLine, shortArea } from "./area";
 export { formatKenyanPhone, normalizeKenyanPhone } from "./phone";
-export { WEB_BASE_URL, bookingLink } from "./links";
+export { DELETE_ACCOUNT_URL, PRIVACY_URL, TERMS_URL, WEB_BASE_URL, bookingLink } from "./links";
+export {
+  DELETION_COUNTER_FROM,
+  DELETION_DETAILS_MAX,
+  DELETION_REASONS,
+  DELETION_REASON_VALUES,
+  SUPPORT_EMAIL,
+  canContinueDeletion,
+  deletionConfirmParts,
+  deletionCounter,
+  deletionStatement,
+  isDeletionReason,
+  parseDeletionSummary,
+  upcomingWarningParts,
+  type DeletionReason,
+  type DeletionSummary,
+  type DeletionSummarySalon,
+  type TextPart,
+} from "./account-deletion";
 export { SHARE_MESSAGE_MAX, defaultShareMessage, shareText } from "./share";
 export {
   GOOGLE_MAPS_URL,

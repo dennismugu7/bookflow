@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { RememberSalon } from "../../../components/back-button";
+import { LegalFooter } from "../../../components/legal-footer";
 import { MyBookingsLink } from "../../../components/my-bookings-link";
 import { PhotoSlider } from "../../../components/photo-slider";
 import { SalonIdentity } from "../../../components/salon-header";
@@ -209,6 +210,7 @@ export default async function SalonPage(props: PageProps<"/s/[slug]">) {
           ) : null}
         </section>
         <MyBookingsLink className="mt-8" />
+        <LegalFooter />
       </div>
 
       <BookNowBar slug={salon.slug} count={count} />

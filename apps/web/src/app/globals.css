@@ -44,6 +44,8 @@
   --done-tint: #eef0f5;
   --done-text: #4a4858;
   --cancelled-tint: #fdecea;
+  /* Release prep 1 (docs/design/owner-v7): the app blue of the owner app's buttons */
+  --action-blue: #1e7bf2;
   color-scheme: light;
 }
 
@@ -82,6 +84,7 @@
   --color-done-tint: var(--done-tint);
   --color-done-text: var(--done-text);
   --color-cancelled-tint: var(--cancelled-tint);
+  --color-action-blue: var(--action-blue);
   --radius-ds: 12px;
 }
 
