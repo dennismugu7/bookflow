@@ -55,6 +55,8 @@ export const colors = {
   scrim: "rgba(22, 19, 31, 0.45)",
   // Phase 4b/4c Calendar and Clients (docs/design/owner-v4), sampled from the mockups.
   missedTint: "#FDECEA",
+  // Release 0.5.1 (screen map, Dennis 2026-10-05): every primary filled button is the app blue.
+  primary: "#1E7BF2",
 } as const;
 
 /** Urbanist (400–700; see docs/design/README.md); React Native needs one family per weight. */

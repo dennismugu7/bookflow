@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -18,6 +18,8 @@ type Props = {
   /** Page padding; the screens with full-width content (My brand) use 0. */
   padding?: number;
   gap?: number;
+  /** For screens that scroll to a section (My brand's banner → Salon photos). */
+  scrollRef?: Ref<ScrollView>;
 };
 
 /**
@@ -33,6 +35,7 @@ export function Page({
   fab,
   padding = 20,
   gap = 18,
+  scrollRef,
 }: Props) {
   const insets = useSafeAreaInsets();
   return (
@@ -40,6 +43,7 @@ export function Page({
       <TopBar title={title} onBack={onBack} right={right} />
       <KeyboardAvoidingView style={styles.flex} behavior="height">
         <ScrollView
+          ref={scrollRef}
           style={styles.flex}
           contentContainerStyle={[
             styles.content,
@@ -64,7 +68,7 @@ type SaveBarProps = {
   loading?: boolean;
 };
 
-/** The black full-width save button in a fixed bottom bar (owner-v2 01, 03, 06). */
+/** The blue full-width save button in a fixed bottom bar (owner-v2 01, 03, 06). */
 export function SaveBar({ title, onPress, disabled, loading }: SaveBarProps) {
   const insets = useSafeAreaInsets();
   return (
