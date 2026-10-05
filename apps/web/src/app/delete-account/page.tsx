@@ -1,5 +1,6 @@
 import { parseDeletionSummary } from "@bookflow/shared";
 import type { Metadata } from "next";
+import { connection } from "next/server";
 
 import { LegalFooter } from "../../components/legal-footer";
 import { SiteHeader } from "../../components/site-header";
@@ -18,6 +19,8 @@ export const metadata: Metadata = {
  * reasons.
  */
 export default async function DeleteAccountPage() {
+  // Per visitor (their session), never prerendered at build time.
+  await connection();
   const supabase = await createClient();
   const {
     data: { user },
