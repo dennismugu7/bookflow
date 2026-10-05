@@ -70,42 +70,17 @@ export function GoogleButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-export function SignIn({
-  title,
-  lead: leadText,
-  footnote,
-  signInFailed,
-}: {
-  title: string;
-  lead: string;
-  footnote?: string;
-  signInFailed: boolean;
-}) {
+/** The email → 6-digit code sign-in state, shared by SignIn and /delete-account. */
+export function useEmailCode(initialError?: string) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const [email, setEmail] = useState("");
   const [sentTo, setSentTo] = useState<string>();
   const [sentAt, setSentAt] = useState(0);
   const [code, setCode] = useState("");
-  const [focused, setFocused] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | undefined>(
-    signInFailed ? "Google sign-in didn't finish. Try again or use your email." : undefined,
-  );
+  const [error, setError] = useState<string | undefined>(initialError);
   const now = useNow();
   const resendIn = Math.max(0, Math.ceil((sentAt + 60_000 - now.getTime()) / 1000));
-
-  async function google() {
-    setError(undefined);
-    const next = `${window.location.pathname}${window.location.search}`;
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-      },
-    });
-    if (oauthError) setError("Couldn't open Google sign-in. Try again or use your email.");
-  }
 
   async function sendCode(address: string) {
     if (!EMAIL.test(address)) {
@@ -151,97 +126,155 @@ export function SignIn({
       setCode("");
       return;
     }
-    // The session cookie is set; the server now renders the details step.
+    // The session cookie is set; the server now renders the next step.
     router.refresh();
   }
 
-  if (sentTo) {
-    const active = Math.min(code.length, 5);
-    return (
-      <section className="px-[35px] pt-[52px]" aria-labelledby="code-heading">
-        <h1 id="code-heading" className={heading}>
-          Check your email
-        </h1>
-        <p className={lead}>
-          We sent a 6-digit code to <strong className="text-ink">{sentTo}</strong>. It&apos;s from
-          Bookflow and expires in 10 minutes.
-        </p>
-        <form
-          className="mt-6 flex flex-col"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void verify(code);
-          }}
-        >
-          <label htmlFor="otp" className={fieldLabel}>
-            6-digit code
-          </label>
-          {/* Six boxes as in the sign-in design; one invisible input on top takes typing and paste. */}
-          <div className="relative mt-2 flex gap-2">
-            {Array.from({ length: 6 }, (_, i) => (
-              <span
-                key={i}
-                aria-hidden="true"
-                className={`flex h-[52px] flex-1 items-center justify-center rounded-[10px] bg-white text-[22px] font-bold ${
-                  focused && i === active ? "border-2 border-select" : "border border-line-strong"
-                }`}
-              >
-                {code[i] ?? ""}
-              </span>
-            ))}
-            <input
-              id="otp"
-              className="absolute inset-0 h-full w-full caret-transparent opacity-0"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              value={code}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              onChange={(e) => {
-                const next = e.target.value.replace(/\D/g, "").slice(0, 6);
-                setCode(next);
-                if (next.length === 6) void verify(next);
-              }}
-              autoFocus
-            />
-          </div>
-          <p className="mt-2 text-[13px] text-muted">Tip: you can paste the whole code.</p>
-          <button type="submit" disabled={busy || code.length !== 6} className={`${primary} mt-5`}>
-            {busy ? "Checking…" : "Verify"}
-          </button>
-        </form>
-        {error ? (
-          <p role="alert" className="mt-3 text-[15px] text-danger">
-            {error}
-          </p>
-        ) : null}
-        <div className="mt-3 flex items-center justify-between gap-4 text-[15px]">
-          <button
-            type="button"
-            disabled={resendIn > 0 || busy}
-            onClick={() => void sendCode(sentTo)}
-            className="press min-h-11 text-muted enabled:font-semibold enabled:text-brand"
-          >
-            {resendIn > 0 ? `Resend code in 0:${String(resendIn).padStart(2, "0")}` : "Resend code"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSentTo(undefined);
-              setError(undefined);
+  return {
+    supabase,
+    sentTo,
+    code,
+    setCode,
+    busy,
+    error,
+    setError,
+    resendIn,
+    sendCode,
+    verify,
+    reset: () => {
+      setSentTo(undefined);
+      setError(undefined);
+    },
+  };
+}
+
+export type EmailCode = ReturnType<typeof useEmailCode>;
+
+/** "Check your email": the six code boxes, resend and use a different email. */
+export function CodeStep({
+  flow,
+  className = "px-[35px] pt-[52px]",
+}: {
+  flow: EmailCode;
+  className?: string;
+}) {
+  const { sentTo, code, setCode, busy, error, resendIn, sendCode, verify, reset } = flow;
+  const [focused, setFocused] = useState(false);
+  if (!sentTo) return null;
+  const active = Math.min(code.length, 5);
+  return (
+    <section className={className} aria-labelledby="code-heading">
+      <h1 id="code-heading" className={heading}>
+        Check your email
+      </h1>
+      <p className={lead}>
+        We sent a 6-digit code to <strong className="text-ink">{sentTo}</strong>. It&apos;s from
+        Bookflow and expires in 10 minutes.
+      </p>
+      <form
+        className="mt-6 flex flex-col"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void verify(code);
+        }}
+      >
+        <label htmlFor="otp" className={fieldLabel}>
+          6-digit code
+        </label>
+        {/* Six boxes as in the sign-in design; one invisible input on top takes typing and paste. */}
+        <div className="relative mt-2 flex gap-2">
+          {Array.from({ length: 6 }, (_, i) => (
+            <span
+              key={i}
+              aria-hidden="true"
+              className={`flex h-[52px] flex-1 items-center justify-center rounded-[10px] bg-white text-[22px] font-bold ${
+                focused && i === active ? "border-2 border-select" : "border border-line-strong"
+              }`}
+            >
+              {code[i] ?? ""}
+            </span>
+          ))}
+          <input
+            id="otp"
+            className="absolute inset-0 h-full w-full caret-transparent opacity-0"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            value={code}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            onChange={(e) => {
+              const next = e.target.value.replace(/\D/g, "").slice(0, 6);
+              setCode(next);
+              if (next.length === 6) void verify(next);
             }}
-            className="press min-h-11 font-semibold text-brand underline"
-          >
-            Use a different email
-          </button>
+            autoFocus
+          />
         </div>
-        <p className="mt-10 text-center text-[13px] text-muted">
-          Can&apos;t find it? Check your spam or promotions folder.
+        <p className="mt-2 text-[13px] text-muted">Tip: you can paste the whole code.</p>
+        <button type="submit" disabled={busy || code.length !== 6} className={`${primary} mt-5`}>
+          {busy ? "Checking…" : "Verify"}
+        </button>
+      </form>
+      {error ? (
+        <p role="alert" className="mt-3 text-[15px] text-danger">
+          {error}
         </p>
-      </section>
-    );
+      ) : null}
+      <div className="mt-3 flex items-center justify-between gap-4 text-[15px]">
+        <button
+          type="button"
+          disabled={resendIn > 0 || busy}
+          onClick={() => void sendCode(sentTo)}
+          className="press min-h-11 text-muted enabled:font-semibold enabled:text-brand"
+        >
+          {resendIn > 0 ? `Resend code in 0:${String(resendIn).padStart(2, "0")}` : "Resend code"}
+        </button>
+        <button
+          type="button"
+          onClick={reset}
+          className="press min-h-11 font-semibold text-brand underline"
+        >
+          Use a different email
+        </button>
+      </div>
+      <p className="mt-10 text-center text-[13px] text-muted">
+        Can&apos;t find it? Check your spam or promotions folder.
+      </p>
+    </section>
+  );
+}
+
+export function SignIn({
+  title,
+  lead: leadText,
+  footnote,
+  signInFailed,
+}: {
+  title: string;
+  lead: string;
+  footnote?: string;
+  signInFailed: boolean;
+}) {
+  const flow = useEmailCode(
+    signInFailed ? "Google sign-in didn't finish. Try again or use your email." : undefined,
+  );
+  const { supabase, busy, error, setError, sendCode } = flow;
+  const [email, setEmail] = useState("");
+
+  async function google() {
+    setError(undefined);
+    const next = `${window.location.pathname}${window.location.search}`;
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+      },
+    });
+    if (oauthError) setError("Couldn't open Google sign-in. Try again or use your email.");
   }
+
+  if (flow.sentTo) return <CodeStep flow={flow} />;
 
   return (
     <section className="px-[35px] pt-[52px]" aria-labelledby="signin-heading">

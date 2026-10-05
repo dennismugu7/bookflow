@@ -1,7 +1,8 @@
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 
-import { unregisterThisPhone } from "./push";
+import { forgetIntroShown, unregisterThisPhone } from "./push";
+import { forgetCalendarView } from "./view-pref";
 import { getSupabase } from "./supabase";
 
 export type Membership = {
@@ -19,6 +20,8 @@ type SessionState = {
   membershipError: boolean;
   reloadMembership: () => Promise<void>;
   signOut: () => Promise<void>;
+  /** After the server deleted the account: forget this phone's token, local settings and session. */
+  signOutDeleted: () => Promise<void>;
 };
 
 const SessionContext = createContext<SessionState | null>(null);
@@ -89,9 +92,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await getSupabase().auth.signOut();
   }, []);
 
+  const signOutDeleted = useCallback(async () => {
+    await unregisterThisPhone();
+    await Promise.all([forgetIntroShown(), forgetCalendarView()]);
+    // The user no longer exists on the server, so only the stored session is removed.
+    await getSupabase().auth.signOut({ scope: "local" });
+  }, []);
+
   return (
     <SessionContext.Provider
-      value={{ session, membership, membershipError, reloadMembership, signOut }}
+      value={{ session, membership, membershipError, reloadMembership, signOut, signOutDeleted }}
     >
       {children}
     </SessionContext.Provider>

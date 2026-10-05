@@ -1,15 +1,14 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Linking, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { AUTH_MESSAGES, isValidEmail, sendCodeErrorMessage } from "../../lib/auth-errors";
 import { GOOGLE_ERROR } from "../../lib/google-auth";
 import { signInWithGoogle } from "../../lib/google-sign-in";
+import { openLegal } from "../../lib/legal";
 import { getSupabase } from "../../lib/supabase";
 import { colors, fonts } from "../../theme";
 import { Button, GoogleButton, OrDivider, SignInSheet, TextField } from "../../ui";
-
-const SITE = "https://bookflow-web-pearl.vercel.app";
 
 /**
  * Sign in (owner-v5 01) or Create account (02): Google first, or a 6-digit email code. On success
@@ -95,19 +94,11 @@ export default function SignInScreen() {
       {creating ? (
         <Text style={styles.terms}>
           By continuing you agree to the{" "}
-          <Text
-            accessibilityRole="link"
-            style={styles.link}
-            onPress={() => void Linking.openURL(`${SITE}/terms`)}
-          >
+          <Text accessibilityRole="link" style={styles.link} onPress={() => openLegal("terms")}>
             Terms
           </Text>{" "}
           and{" "}
-          <Text
-            accessibilityRole="link"
-            style={styles.link}
-            onPress={() => void Linking.openURL(`${SITE}/privacy`)}
-          >
+          <Text accessibilityRole="link" style={styles.link} onPress={() => openLegal("privacy")}>
             Privacy Policy
           </Text>
           .

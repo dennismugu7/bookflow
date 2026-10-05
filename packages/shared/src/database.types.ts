@@ -317,6 +317,12 @@ isOneToOne: false
 "create_salon":
 { Args: { "p_name": string,"p_slug": string }; Returns: string
                            },
+"delete_account_data":
+{ Args: { "p_details": string,"p_reason": string,"p_user_id": string }; Returns: undefined
+                           },
+"get_account_deletion_summary":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "get_availability":
 { Args: { "p_date": string,"p_salon_slug": string,"p_service_ids": (string)[],"p_staff_id"?: string }; Returns: {
               "ends_at": string,"staff_id": string,"starts_at": string

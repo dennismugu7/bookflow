@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { CloseButton } from "../../../../components/close-button";
+import { LegalFooter } from "../../../../components/legal-footer";
 import { MyBookingsLink } from "../../../../components/my-bookings-link";
 import { SalonHeader } from "../../../../components/salon-header";
 import { choiceQuery, readChoice } from "../../../../lib/booking-query";
@@ -78,6 +79,7 @@ export default async function ConfirmPage(props: PageProps<"/s/[slug]/confirm">)
           }
         />
         <MyBookingsLink className="mt-8" />
+        <LegalFooter />
       </main>
     </div>
   );

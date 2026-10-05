@@ -172,3 +172,16 @@ Mockups in `docs/design/owner-v6/` (plain colours stand in for photos):
 | Day view one-line short blocks; blue main buttons | `owner-v6/05-small-fixes.png` |
 
 Approved change (Dennis, 2026-10-05): primary filled buttons are the app blue `#1E7BF2`, not black.
+
+### Release prep 1, settings and deleting an account (Dennis, 2026-10-06): from originals 29, 33, 35–38
+Mockups in `docs/design/owner-v7/`. The app blue replaces the originals' black buttons and purple accents; "Change password" is left out (Bookflow has no passwords).
+
+| Screen | Copy from |
+| --- | --- |
+| Menu with Settings row (original 29) | `owner-v7/01-menu-settings.png` |
+| Settings (original 33) | `owner-v7/02-settings.png` |
+| Delete: reasons (originals 35/36) | `owner-v7/03-delete-reasons.png` |
+| Delete: confirm (original 37, plus salon name and upcoming warning) | `owner-v7/04-delete-confirm.png` |
+| Account deleted (original 38) | `owner-v7/05-account-deleted.png` |
+| Web /delete-account | `owner-v7/06-web-delete-account.png` |
+| Web /privacy and /terms | `owner-v7/07-web-privacy.png` |

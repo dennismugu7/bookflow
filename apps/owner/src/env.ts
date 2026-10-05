@@ -3,6 +3,8 @@ import { z } from "zod";
 const schema = z.object({
   EXPO_PUBLIC_SUPABASE_URL: z.url(),
   EXPO_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+  // Optional: the web app for /api/account/delete, e.g. a local `pnpm dev:web`. Production otherwise.
+  EXPO_PUBLIC_WEB_URL: z.url().optional(),
 });
 
 export type Env = z.infer<typeof schema>;
@@ -18,6 +20,7 @@ export function getEnv(): Env {
   const result = schema.safeParse({
     EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
     EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    EXPO_PUBLIC_WEB_URL: process.env.EXPO_PUBLIC_WEB_URL || undefined,
   });
   if (!result.success) {
     const keys = [...new Set(result.error.issues.map((issue) => issue.path.join(".")))];

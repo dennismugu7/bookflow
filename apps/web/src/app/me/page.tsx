@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { BackButton } from "../../components/back-button";
+import { LegalFooter } from "../../components/legal-footer";
 import { SignIn } from "../../components/sign-in";
 import type { MyBookingItem } from "../../lib/my-bookings";
 import { createClient } from "../../lib/supabase/server";
@@ -24,6 +25,7 @@ export default async function MyBookingsPage(props: PageProps<"/me">) {
           lead="Sign in with the Google account or email you booked with."
           signInFailed={params.signin === "failed"}
         />
+        <LegalFooter className="mt-8" />
       </main>
     );
   }
@@ -44,6 +46,7 @@ export default async function MyBookingsPage(props: PageProps<"/me">) {
   return (
     <main className="mx-auto w-full max-w-[560px] pb-6">
       <MyBookings email={user.email ?? ""} bookings={(data ?? []) as unknown as MyBookingItem[]} />
+      <LegalFooter className="mt-6" />
     </main>
   );
 }

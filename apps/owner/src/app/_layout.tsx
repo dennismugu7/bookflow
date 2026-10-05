@@ -111,6 +111,8 @@ function Routes() {
       <Stack.Protected guard={signedIn && !!membership}>
         <Stack.Screen name="(app)" />
       </Stack.Protected>
+      {/* After deleting the account (owner-v7 05): shown while the session is cleared. */}
+      <Stack.Screen name="account-deleted" options={{ gestureEnabled: false }} />
     </Stack>
   );
 }
