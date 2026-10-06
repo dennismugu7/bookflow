@@ -8,6 +8,10 @@ version = '1.0.0'
 
 android {
   namespace "expo.modules.googlecredential"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
 }
 
 // Android Credential Manager with Sign in with Google (release 1.0.0 part 4). All free.
