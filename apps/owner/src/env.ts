@@ -5,6 +5,9 @@ const schema = z.object({
   EXPO_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   // Optional: the web app for /api/account/delete, e.g. a local `pnpm dev:web`. Production otherwise.
   EXPO_PUBLIC_WEB_URL: z.url().optional(),
+  // Google's web OAuth client ID (public), for native Google sign-in. Without it Google says
+  // it isn't set up and email codes still work.
+  EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof schema>;
@@ -21,6 +24,7 @@ export function getEnv(): Env {
     EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
     EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     EXPO_PUBLIC_WEB_URL: process.env.EXPO_PUBLIC_WEB_URL || undefined,
+    EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || undefined,
   });
   if (!result.success) {
     const keys = [...new Set(result.error.issues.map((issue) => issue.path.join(".")))];

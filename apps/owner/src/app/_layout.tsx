@@ -12,7 +12,6 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { getEnv } from "../env";
-import { useGoogleCallbackLinks } from "../lib/google-sign-in";
 import { appReady, screenGroup } from "../lib/launch";
 import { setUpNotifications } from "../lib/push";
 import { SessionProvider, useSession } from "../lib/session";
@@ -56,7 +55,6 @@ function RootNavigator() {
     Urbanist_700Bold,
   });
   const { session, membership, membershipError } = useSession();
-  const googleCallback = useGoogleCallbackLinks();
   const [launched, setLaunched] = useState(false);
 
   const ready = appReady({
@@ -64,7 +62,6 @@ function RootNavigator() {
     signedIn: !!session,
     sessionKnown: session !== undefined,
     membershipKnown: membership !== undefined || !!membershipError,
-    callbackPending: googleCallback.pending,
   });
 
   useEffect(() => {

@@ -1,55 +1,39 @@
 import { describe, expect, it } from "vitest";
 
-import { callbackErrorDescription, isGoogleCallback, readGoogleResult } from "./google-auth";
+import { GOOGLE_ERROR, GOOGLE_NOT_SET_UP, googleErrorOutcome, googleMessage } from "./google-auth";
 
-describe("readGoogleResult", () => {
-  it("reads the PKCE code from the redirect", () => {
-    expect(
-      readGoogleResult({ type: "success", url: "bookflow://auth/callback?code=abc-123" }),
-    ).toEqual({ kind: "code", code: "abc-123" });
+const CODES = { cancelled: "SIGN_IN_CANCELLED", inProgress: "IN_PROGRESS", noPlayServices: "PLAY" };
+
+describe("googleErrorOutcome", () => {
+  it("stays quiet on a cancel or a second tap", () => {
+    expect(googleErrorOutcome({ code: "SIGN_IN_CANCELLED" }, CODES)).toBe("cancelled");
+    expect(googleErrorOutcome({ code: "IN_PROGRESS" }, CODES)).toBe("cancelled");
   });
 
-  it("treats a closed browser as a silent cancel", () => {
-    expect(readGoogleResult({ type: "cancel" })).toEqual({ kind: "cancel" });
-    expect(readGoogleResult({ type: "dismiss" })).toEqual({ kind: "cancel" });
-  });
-
-  it("reports errors from Supabase or a missing code", () => {
-    expect(
-      readGoogleResult({
-        type: "success",
-        url: "bookflow://auth/callback?error=access_denied&error_description=x",
-      }),
-    ).toEqual({ kind: "error" });
-    expect(
-      readGoogleResult({ type: "success", url: "bookflow://auth/callback#error=server_error" }),
-    ).toEqual({ kind: "error" });
-    expect(readGoogleResult({ type: "success", url: "bookflow://auth/callback" })).toEqual({
-      kind: "error",
-    });
-    expect(readGoogleResult({ type: "locked" })).toEqual({ kind: "error" });
-  });
-});
-
-describe("isGoogleCallback", () => {
-  it("matches only the Google redirect", () => {
-    expect(isGoogleCallback("bookflow://auth/callback?code=abc")).toBe(true);
-    expect(isGoogleCallback("bookflow:///")).toBe(false);
-    expect(isGoogleCallback("bookflow://booking/1")).toBe(false);
-    expect(isGoogleCallback(null)).toBe(false);
-  });
-});
-
-describe("callbackErrorDescription", () => {
-  it("reads Supabase's error from the query or the fragment", () => {
-    expect(
-      callbackErrorDescription(
-        "bookflow://auth/callback?error=server_error&error_description=Database+error+saving+new+user",
-      ),
-    ).toBe("server_error: Database error saving new user");
-    expect(callbackErrorDescription("bookflow://auth/callback#error=access_denied")).toBe(
-      "access_denied",
+  it("says not set up for an unregistered SHA-1 or no Play Services", () => {
+    expect(googleErrorOutcome({ code: "10", message: "DEVELOPER_ERROR" }, CODES)).toBe("not-set-up");
+    expect(googleErrorOutcome({ code: 10 }, CODES)).toBe("not-set-up");
+    expect(googleErrorOutcome({ message: "A non-recoverable sign in failure: DEVELOPER_ERROR" }, CODES)).toBe(
+      "not-set-up",
     );
-    expect(callbackErrorDescription("bookflow://auth/callback?code=abc")).toBeUndefined();
+    expect(googleErrorOutcome({ code: "PLAY" }, CODES)).toBe("not-set-up");
+  });
+
+  it("treats anything else as an error", () => {
+    expect(googleErrorOutcome({ code: "7", message: "NETWORK_ERROR" }, CODES)).toBe("error");
+    expect(googleErrorOutcome(new Error("boom"), CODES)).toBe("error");
+    expect(googleErrorOutcome(null, CODES)).toBe("error");
+  });
+});
+
+describe("googleMessage", () => {
+  it("shows a message only when the user needs one", () => {
+    expect(googleMessage("not-set-up")).toBe(
+      "Google sign-in isn't set up on this build yet. Use your email.",
+    );
+    expect(GOOGLE_NOT_SET_UP).toBe(googleMessage("not-set-up"));
+    expect(googleMessage("error")).toBe(GOOGLE_ERROR);
+    expect(googleMessage("cancelled")).toBeUndefined();
+    expect(googleMessage("signed-in")).toBeUndefined();
   });
 });

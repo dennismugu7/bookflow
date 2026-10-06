@@ -1,8 +1,6 @@
-import { router, useFocusEffect } from "expo-router";
-import { useCallback } from "react";
+import { router } from "expo-router";
 import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
-import { googleCallback } from "../../lib/google-sign-in";
 import { colors, fonts, minTouch } from "../../theme";
 import { WelcomeAnimation, welcomeBackground } from "../../ui";
 
@@ -16,13 +14,6 @@ const MOCKUP_HEIGHT = 844;
 export default function WelcomeScreen() {
   const { height } = useWindowDimensions();
   const k = Math.min(1, height / MOCKUP_HEIGHT);
-
-  // A Google callback that failed after the app restarted lands here: show it on Sign in.
-  useFocusEffect(
-    useCallback(() => {
-      if (googleCallback.getState().error) router.push("/sign-in");
-    }, []),
-  );
 
   return (
     <View style={styles.fill}>

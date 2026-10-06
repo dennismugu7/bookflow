@@ -14,7 +14,7 @@
   Signed with this laptop's Android debug key (-Keystore, default %USERPROFILE%\.android\debug.keystore),
   not the public key in Expo's template, so Google can tell it apart (release 1.0.0 part 2). Its SHA-1
   is printed at the end; register it on the Android OAuth client. Google sign-in needs the public web
-  client ID: -GoogleWebClientId or EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID.
+  client ID: -GoogleWebClientId, EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID or the GOOGLE_WEB_CLIENT_ID repository variable.
 
 .EXAMPLE
   pnpm --filter owner build:debug-apk
@@ -91,6 +91,9 @@ if ($missing.Count -gt 0) {
   exit 1
 }
 
+if (-not $GoogleWebClientId -and (Get-Command gh -ErrorAction SilentlyContinue)) {
+  $GoogleWebClientId = (& gh variable get GOOGLE_WEB_CLIENT_ID 2>$null)
+}
 if (-not $GoogleWebClientId) {
   Write-Host 'Note: no Google web client ID (-GoogleWebClientId or EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID); Google sign-in will say it is not set up.' -ForegroundColor Yellow
 }

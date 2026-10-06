@@ -70,7 +70,6 @@
       "expo-secure-store",
       "expo-font",
       "expo-web-browser",
-      "./plugins/with-callback-intent",
       [
         "expo-notifications",
         {

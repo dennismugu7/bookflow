@@ -20,13 +20,6 @@ describe("appReady", () => {
   });
 });
 
-describe("appReady while a Google callback is in progress", () => {
-  it("waits until the code is exchanged, signed in or not", () => {
-    expect(appReady({ ...known, callbackPending: true })).toBe(false);
-    expect(appReady({ ...known, signedIn: false, callbackPending: true })).toBe(false);
-    expect(appReady({ ...known, callbackPending: false })).toBe(true);
-  });
-});
 
 describe("screenGroup", () => {
   it("sends a signed-in user with no salon yet to create your salon", () => {

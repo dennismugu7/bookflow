@@ -1,56 +1,76 @@
-import * as WebBrowser from "expo-web-browser";
-import { useEffect, useSyncExternalStore } from "react";
-import { Linking } from "react-native";
+import {
+  GoogleSignin,
+  isCancelledResponse,
+  isSuccessResponse,
+  statusCodes,
+} from "@react-native-google-signin/google-signin";
 
-import { GOOGLE_REDIRECT, isGoogleCallback, readGoogleResult } from "./google-auth";
-import { createGoogleCallback, type GoogleCallbackState } from "./google-callback";
+import { getEnv } from "../env";
+import { googleErrorOutcome, type GoogleOutcome } from "./google-auth";
 import { getSupabase } from "./supabase";
 
-/** The one place a Google code becomes a session (see google-callback.ts). */
-export const googleCallback = createGoogleCallback((code) =>
-  getSupabase().auth.exchangeCodeForSession(code),
-);
+const CODES = {
+  cancelled: statusCodes.SIGN_IN_CANCELLED,
+  inProgress: statusCodes.IN_PROGRESS,
+  noPlayServices: statusCodes.PLAY_SERVICES_NOT_AVAILABLE,
+};
 
-/**
- * Google through Supabase (PKCE) in the system browser. Resolves "signed-in" (the root layout then
- * routes to onboarding or the tabs, as after a code), "cancelled" (stay silently) or "error".
- */
-export async function signInWithGoogle(): Promise<"signed-in" | "cancelled" | "error"> {
-  try {
-    const { data, error } = await getSupabase().auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: GOOGLE_REDIRECT,
-        skipBrowserRedirect: true,
-        // Always show Google's account chooser, so a phone with one signed-in account can still
-        // pick another (or add one) instead of being signed straight in.
-        queryParams: { prompt: "select_account" },
-      },
-    });
-    if (error || !data.url) return "error";
-    const browser = await WebBrowser.openAuthSessionAsync(data.url, GOOGLE_REDIRECT);
-    const result = readGoogleResult(browser);
-    if (result.kind === "cancel") return "cancelled";
-    if (browser.type !== "success") return "error";
-    return await googleCallback.complete(browser.url);
-  } catch {
-    return "error";
-  }
+let configured = false;
+
+/** Configures Google once; false when this build has no web client ID. */
+function configureGoogle(): boolean {
+  if (configured) return true;
+  const webClientId = getEnv().EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+  if (!webClientId) return false;
+  GoogleSignin.configure({ webClientId });
+  configured = true;
+  return true;
 }
 
 /**
- * Root layout: also completes the callback when it reaches the app only as a link, e.g. after
- * Android killed the app while the user was in Chrome (then openAuthSessionAsync is gone).
+ * Google's own account chooser over the app (release 1.0.0 part 2, A), then Supabase signs in with
+ * the ID token. The root layout then routes to create your salon or the tabs, as after a code.
  */
-export function useGoogleCallbackLinks(): GoogleCallbackState {
-  useEffect(() => {
-    void Linking.getInitialURL().then((url) => {
-      if (isGoogleCallback(url)) void googleCallback.complete(url);
-    });
-    const subscription = Linking.addEventListener("url", ({ url }) => {
-      if (isGoogleCallback(url)) void googleCallback.complete(url);
-    });
-    return () => subscription.remove();
-  }, []);
-  return useSyncExternalStore(googleCallback.subscribe, googleCallback.getState);
+export async function signInWithGoogle(): Promise<GoogleOutcome> {
+  if (!configureGoogle()) {
+    console.warn("Google sign-in: no EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in this build");
+    return "not-set-up";
+  }
+  try {
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    const response = await GoogleSignin.signIn();
+    if (isCancelledResponse(response)) return "cancelled";
+    if (!isSuccessResponse(response)) return "error";
+    return await idTokenToSession(response.data.idToken);
+  } catch (error) {
+    const outcome = googleErrorOutcome(error, CODES);
+    if (outcome !== "cancelled") {
+      console.warn("Google sign-in failed:", (error as { code?: unknown })?.code, String(error));
+    }
+    return outcome;
+  }
+}
+
+/** Google's ID token becomes a Supabase session (Supabase creates the user the first time). */
+export async function idTokenToSession(idToken: string | null): Promise<GoogleOutcome> {
+  if (!idToken) {
+    console.warn("Google sign-in: no ID token (is the web client ID right?)");
+    return "error";
+  }
+  const { error } = await getSupabase().auth.signInWithIdToken({ provider: "google", token: idToken });
+  if (error) {
+    console.warn("Google sign-in: Supabase refused the token:", error.message);
+    return "error";
+  }
+  return "signed-in";
+}
+
+/** On Log out and after Delete account, so the next Google sign-in shows the chooser again. */
+export async function signOutOfGoogle(): Promise<void> {
+  if (!configureGoogle()) return;
+  try {
+    await GoogleSignin.signOut();
+  } catch {
+    // Not signed in with Google, or offline: nothing to forget.
+  }
 }

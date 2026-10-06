@@ -1,6 +1,7 @@
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 
+import { signOutOfGoogle } from "./google-sign-in";
 import { forgetIntroShown, unregisterThisPhone } from "./push";
 import { forgetCalendarView } from "./view-pref";
 import { getSupabase } from "./supabase";
@@ -89,12 +90,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await unregisterThisPhone();
+    await signOutOfGoogle();
     await getSupabase().auth.signOut();
   }, []);
 
   const signOutDeleted = useCallback(async () => {
     await unregisterThisPhone();
-    await Promise.all([forgetIntroShown(), forgetCalendarView()]);
+    await Promise.all([forgetIntroShown(), forgetCalendarView(), signOutOfGoogle()]);
     // The user no longer exists on the server, so only the stored session is removed.
     await getSupabase().auth.signOut({ scope: "local" });
   }, []);

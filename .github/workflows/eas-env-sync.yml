@@ -3,6 +3,7 @@ name: EAS env sync
 # Copies the app's public Supabase values from GitHub repository variables into the EAS
 # `preview` and `development` environments, which builds and updates read at bundle time.
 # These are public client values (the anon key is protected by RLS), hence variables, not secrets.
+# GOOGLE_WEB_CLIENT_ID (optional) is Google's public web OAuth client ID, for native Google sign-in.
 
 on:
   workflow_dispatch:
@@ -24,6 +25,7 @@ jobs:
     env:
       SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+      GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
     steps:
       - name: Check the repository variables
         working-directory: .
@@ -60,4 +62,10 @@ jobs:
               --visibility plaintext --scope project --non-interactive
             eas env:set "$environment" --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "$SUPABASE_ANON_KEY" \
               --visibility plaintext --scope project --non-interactive
+            if [ -n "$GOOGLE_WEB_CLIENT_ID" ]; then
+              eas env:set "$environment" --name EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID --value "$GOOGLE_WEB_CLIENT_ID" \
+                --visibility plaintext --scope project --non-interactive
+            else
+              echo "::warning::No GOOGLE_WEB_CLIENT_ID repository variable: Google sign-in will say it isn't set up."
+            fi
           done

@@ -354,7 +354,9 @@ client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
 redirect_uri = ""
 url = ""
-skip_nonce_check = false
+# Native Google sign-in on Android (release 1.0.0 part 2): its ID token carries no nonce we set.
+# Keep in step with external_google_skip_nonce_check in .github/workflows/auth-config.yml.
+skip_nonce_check = true
 email_optional = false
 
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.
