@@ -7,6 +7,7 @@ import {
   barTone,
   firstName,
   nextBookingId,
+  nextBookingSummary,
   nextFreeSlot,
   ordinal,
   parseAgenda,
@@ -176,5 +177,26 @@ describe("nextFreeSlot", () => {
 
   it("falls back to the next quarter hour when the day is full", () => {
     expect(iso([], "2026-10-03T12:01:00Z")).toBe("2026-10-03T12:15:00.000Z");
+  });
+});
+
+describe("next booking on an empty Today", () => {
+  it("parses next, and accepts servers without it", () => {
+    const base = { date: "2026-10-06", stats: { booked: 0, expected_kes: 0, free_min: 0 }, gaps: [] };
+    expect(parseAgenda({ ...base, bookings: [], next: booking() }).next?.id).toBe("b1");
+    expect(parseAgenda({ ...base, bookings: [], next: null }).next).toBeNull();
+    expect(parseAgenda({ ...base, bookings: [] }).next).toBeUndefined();
+  });
+
+  it("says when, what and who, in the salon's zone", () => {
+    const next = booking({ starts_at: "2026-10-12T06:30:00Z" });
+    expect(nextBookingSummary(next, "Africa/Nairobi")).toEqual({
+      date: "2026-10-12",
+      when: "Mon 12 Oct · 09:30",
+      what: "Silk press · Wanjiru Otieno",
+    });
+    expect(nextBookingSummary(booking({ client: null }), "Africa/Nairobi").what).toBe(
+      "Silk press · Walk-in",
+    );
   });
 });

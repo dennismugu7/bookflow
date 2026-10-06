@@ -19,7 +19,7 @@ import { ceilToMinutes, zonedParts, zonedTime } from "../../../lib/time";
 import { useAgenda, useNow, useRangeAgenda } from "../../../lib/use-agenda";
 import { useCalendarView } from "../../../lib/view-pref";
 import { colors, fonts } from "../../../theme";
-import { Chip, Fab } from "../../../ui";
+import { Chip, Fab, LoadError } from "../../../ui";
 import { DatePickerSheet } from "../../../ui/calendar/DatePickerSheet";
 import { DayGrid } from "../../../ui/calendar/DayGrid";
 import { CalendarHeader, ViewSwitch } from "../../../ui/calendar/parts";
@@ -106,6 +106,9 @@ function Calendar({ membership }: { membership: Membership }) {
   };
 
   const error = view === "list" ? list.error : grid.error;
+  const gridRefresh = (
+    <RefreshControl refreshing={grid.refreshing} onRefresh={() => void grid.refresh()} />
+  );
 
   // A tapped notification (owner-v5 04): Day view on its date, then its sheet once that day has
   // been reloaded, if the booking is still on it (cancelled bookings are not).
@@ -141,9 +144,11 @@ function Calendar({ membership }: { membership: Membership }) {
         onPickDate={() => setPicking(true)}
       />
       <ViewSwitch value={view} onChange={changeView} />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      {view === "list" ? (
+      {error ? (
+        <View style={styles.flex}>
+          <LoadError message={error} onRetry={() => void reload()} />
+        </View>
+      ) : view === "list" ? (
         <ScrollView
           style={styles.flex}
           contentContainerStyle={styles.listContent}
@@ -205,6 +210,7 @@ function Calendar({ membership }: { membership: Membership }) {
                 : undefined
             }
             swipe={swipe}
+            refreshControl={gridRefresh}
           />
         ) : (
           <View style={styles.flex} />
@@ -248,6 +254,7 @@ function Calendar({ membership }: { membership: Membership }) {
                 changeView("day");
               }}
               swipe={swipe}
+              refreshControl={gridRefresh}
             />
           ) : (
             <View style={styles.flex} />

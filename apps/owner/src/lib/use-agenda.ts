@@ -112,7 +112,7 @@ export function useAgenda(
     return parseAgenda(data);
   }, [salonId, date]);
   const { data, ...rest } = useLiveLoad<Agenda>(salonId, channel, salonId ? fetch : undefined, {
-    load: `Couldn't load ${what}. Pull down to try again.`,
+    load: `Couldn't load ${what}. Check your connection.`,
     read: `Couldn't read ${what}. Update the app and try again.`,
   });
   return { agenda: data, ...rest };

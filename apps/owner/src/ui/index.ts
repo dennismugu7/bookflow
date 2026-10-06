@@ -2,6 +2,7 @@ export { AuthSheet, SheetText } from "./AuthSheet";
 export { Badge, type BadgeVariant } from "./Badge";
 export { BottomSheet } from "./BottomSheet";
 export { Button } from "./Button";
+export { LoadError } from "./LoadError";
 export { Card } from "./Card";
 export { FAB_SIZE, Fab } from "./Fab";
 export { Illustration, brandBackground, logoMark, welcomeBackground } from "./illustrations";
