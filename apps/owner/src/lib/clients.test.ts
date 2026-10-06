@@ -149,6 +149,7 @@ describe("adding a client", () => {
     expect(clientFormResult({ name: "Mary", phone: "12" })).toMatchObject({
       ok: false,
       field: "phone",
+      message: "Enter a valid phone number",
     });
     expect(clientFormResult({ name: "x".repeat(81), phone: "" })).toMatchObject({ ok: false });
   });

@@ -51,6 +51,8 @@ To pass options, run the script directly: `powershell -File apps/owner/scripts/b
 
 To move to a newer debug APK, uninstall the old one first, then install the new one.
 
+From 1.0.0 the APK is signed with the builder's own debug key (`%USERPROFILE%\.android\debug.keystore`), not Expo's public one, so Google sign-in can recognise it. The script prints the key's SHA-1 at the end; it must be registered on the Android OAuth client for `com.mugulabs.bookflow`. Testers uninstall an older debug APK once before installing it.
+
 ## Collect logs
 
 **On the phone:** shake it to open React Native's dev menu (debug builds only). Its tools that need a computer work when the phone is connected with `adb` as below.

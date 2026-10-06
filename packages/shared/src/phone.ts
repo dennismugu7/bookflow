@@ -21,3 +21,6 @@ export function formatKenyanPhone(e164: string): string {
   const match = /^\+254(\d{3})(\d{3})(\d{3})$/.exec(e164);
   return match ? `0${match[1]} ${match[2]} ${match[3]}` : e164;
 }
+
+/** The one message for a phone number that doesn't parse (release 1.0.0 part 2, E). */
+export const PHONE_ERROR = "Enter a valid phone number";

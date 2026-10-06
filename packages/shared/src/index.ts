@@ -3,7 +3,7 @@ export { compactKes, formatMinutes } from "./compact";
 export { formatUsualGap } from "./gap";
 export { initialsFor } from "./initials";
 export { areaLine, shortArea } from "./area";
-export { formatKenyanPhone, normalizeKenyanPhone } from "./phone";
+export { PHONE_ERROR, formatKenyanPhone, normalizeKenyanPhone } from "./phone";
 export { DELETE_ACCOUNT_URL, PRIVACY_URL, TERMS_URL, WEB_BASE_URL, bookingLink } from "./links";
 export {
   DELETION_COUNTER_FROM,
