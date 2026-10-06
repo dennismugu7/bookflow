@@ -1,7 +1,9 @@
+import Constants from "expo-constants";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
+import { debugApkLabel } from "../../build-info";
 import { AUTH_MESSAGES, isValidEmail, sendCodeErrorMessage } from "../../lib/auth-errors";
 import { googleMessage } from "../../lib/google-auth";
 import { signInWithGoogle } from "../../lib/google-sign-in";
@@ -14,6 +16,9 @@ import { Button, GoogleButton, OrDivider, SignInSheet, TextField } from "../../u
  * Sign in (owner-v5 01) or Create account (02): Google first, or a 6-digit email code. On success
  * the root layout routes to onboarding (no salon yet) or the tabs.
  */
+// The testers' debug APK shows Google's raw error code next to the message (release 1.0.0).
+const SHOW_GOOGLE_CODE = !!debugApkLabel(Constants.expoConfig?.extra);
+
 export default function SignInScreen() {
   const params = useLocalSearchParams<{ email?: string; mode?: string }>();
   const creating = params.mode === "create";
@@ -28,7 +33,7 @@ export default function SignInScreen() {
     setGoogleBusy(true);
     const result = await signInWithGoogle();
     setGoogleBusy(false);
-    setGoogleError(googleMessage(result));
+    setGoogleError(googleMessage(result, SHOW_GOOGLE_CODE));
   }
 
   async function sendCode() {
@@ -53,7 +58,7 @@ export default function SignInScreen() {
 
   return (
     <SignInSheet
-      title={creating ? "Create your Bookflow account" : "Sign in to Bookflow"}
+      title={creating ? "Create your account" : "Sign in to Bookflow"}
       onBack={() => (router.canGoBack() ? router.back() : router.replace("/welcome"))}
     >
       <GoogleButton onPress={() => void google()} busy={googleBusy} />

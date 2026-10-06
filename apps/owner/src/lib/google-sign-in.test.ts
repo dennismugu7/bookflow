@@ -29,33 +29,33 @@ beforeEach(() => {
 describe("signInWithGoogle", () => {
   it("turns Google's ID token into a Supabase session", async () => {
     google.signIn.mockResolvedValue({ type: "success", data: { idToken: "id-token" } });
-    expect(await signInWithGoogle()).toBe("signed-in");
+    expect(await signInWithGoogle()).toEqual({ outcome: "signed-in" });
     expect(google.configure).toHaveBeenCalledWith({ webClientId: "web-client.apps.googleusercontent.com" });
     expect(auth.signInWithIdToken).toHaveBeenCalledWith({ provider: "google", token: "id-token" });
   });
 
   it("stays quiet when the chooser is closed", async () => {
     google.signIn.mockResolvedValue({ type: "cancelled", data: null });
-    expect(await signInWithGoogle()).toBe("cancelled");
+    expect(await signInWithGoogle()).toEqual({ outcome: "cancelled" });
     expect(auth.signInWithIdToken).not.toHaveBeenCalled();
   });
 
   it("says not set up when Google rejects the build (DEVELOPER_ERROR)", async () => {
     google.signIn.mockRejectedValue(Object.assign(new Error("DEVELOPER_ERROR"), { code: "10" }));
-    expect(await signInWithGoogle()).toBe("not-set-up");
+    expect(await signInWithGoogle()).toEqual({ outcome: "not-set-up", code: "10" });
     expect(console.warn).toHaveBeenCalledWith("Google sign-in failed:", "10", expect.any(String));
   });
 
   it("is an error when Supabase refuses the token", async () => {
     google.signIn.mockResolvedValue({ type: "success", data: { idToken: "id-token" } });
     auth.signInWithIdToken.mockResolvedValue({ data: {}, error: { message: "Bad ID token" } });
-    expect(await signInWithGoogle()).toBe("error");
+    expect(await signInWithGoogle()).toEqual({ outcome: "error", code: "supabase: Bad ID token" });
   });
 });
 
 describe("idTokenToSession", () => {
   it("needs a token", async () => {
-    expect(await idTokenToSession(null)).toBe("error");
+    expect(await idTokenToSession(null)).toEqual({ outcome: "error", code: "no-id-token" });
     expect(auth.signInWithIdToken).not.toHaveBeenCalled();
   });
 });

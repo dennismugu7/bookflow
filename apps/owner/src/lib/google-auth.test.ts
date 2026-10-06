@@ -28,12 +28,23 @@ describe("googleErrorOutcome", () => {
 
 describe("googleMessage", () => {
   it("shows a message only when the user needs one", () => {
-    expect(googleMessage("not-set-up")).toBe(
+    expect(googleMessage({ outcome: "not-set-up", code: "10" })).toBe(
       "Google sign-in isn't set up on this build yet. Use your email.",
     );
-    expect(GOOGLE_NOT_SET_UP).toBe(googleMessage("not-set-up"));
-    expect(googleMessage("error")).toBe(GOOGLE_ERROR);
-    expect(googleMessage("cancelled")).toBeUndefined();
-    expect(googleMessage("signed-in")).toBeUndefined();
+    expect(GOOGLE_NOT_SET_UP).toBe(googleMessage({ outcome: "not-set-up" }));
+    expect(googleMessage({ outcome: "error", code: "7" })).toBe(GOOGLE_ERROR);
+    expect(googleMessage({ outcome: "cancelled" })).toBeUndefined();
+    expect(googleMessage({ outcome: "signed-in" })).toBeUndefined();
+  });
+
+  it("adds Google's raw code in debug builds only", () => {
+    expect(googleMessage({ outcome: "not-set-up", code: "10" }, true)).toBe(
+      "Google sign-in isn't set up on this build yet. Use your email. (code 10)",
+    );
+    expect(googleMessage({ outcome: "not-set-up", code: "no-client-id" }, true)).toMatch(
+      /\(code no-client-id\)$/,
+    );
+    expect(googleMessage({ outcome: "error" }, true)).toBe(GOOGLE_ERROR);
+    expect(googleMessage({ outcome: "cancelled", code: "12501" }, true)).toBeUndefined();
   });
 });

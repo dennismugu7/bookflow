@@ -6,7 +6,7 @@ import {
 } from "@react-native-google-signin/google-signin";
 
 import { getEnv } from "../env";
-import { googleErrorOutcome, type GoogleOutcome } from "./google-auth";
+import { googleErrorOutcome, type GoogleResult } from "./google-auth";
 import { getSupabase } from "./supabase";
 
 const CODES = {
@@ -31,38 +31,37 @@ function configureGoogle(): boolean {
  * Google's own account chooser over the app (release 1.0.0 part 2, A), then Supabase signs in with
  * the ID token. The root layout then routes to create your salon or the tabs, as after a code.
  */
-export async function signInWithGoogle(): Promise<GoogleOutcome> {
+export async function signInWithGoogle(): Promise<GoogleResult> {
   if (!configureGoogle()) {
     console.warn("Google sign-in: no EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID in this build");
-    return "not-set-up";
+    return { outcome: "not-set-up", code: "no-client-id" };
   }
   try {
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     const response = await GoogleSignin.signIn();
-    if (isCancelledResponse(response)) return "cancelled";
-    if (!isSuccessResponse(response)) return "error";
+    if (isCancelledResponse(response)) return { outcome: "cancelled" };
+    if (!isSuccessResponse(response)) return { outcome: "error", code: "no-success" };
     return await idTokenToSession(response.data.idToken);
   } catch (error) {
     const outcome = googleErrorOutcome(error, CODES);
-    if (outcome !== "cancelled") {
-      console.warn("Google sign-in failed:", (error as { code?: unknown })?.code, String(error));
-    }
-    return outcome;
+    const code = (error as { code?: unknown } | null)?.code;
+    if (outcome !== "cancelled") console.warn("Google sign-in failed:", code, String(error));
+    return { outcome, code: code === undefined ? undefined : String(code) };
   }
 }
 
 /** Google's ID token becomes a Supabase session (Supabase creates the user the first time). */
-export async function idTokenToSession(idToken: string | null): Promise<GoogleOutcome> {
+export async function idTokenToSession(idToken: string | null): Promise<GoogleResult> {
   if (!idToken) {
     console.warn("Google sign-in: no ID token (is the web client ID right?)");
-    return "error";
+    return { outcome: "error", code: "no-id-token" };
   }
   const { error } = await getSupabase().auth.signInWithIdToken({ provider: "google", token: idToken });
   if (error) {
     console.warn("Google sign-in: Supabase refused the token:", error.message);
-    return "error";
+    return { outcome: "error", code: `supabase: ${error.message}` };
   }
-  return "signed-in";
+  return { outcome: "signed-in" };
 }
 
 /** On Log out and after Delete account, so the next Google sign-in shows the chooser again. */

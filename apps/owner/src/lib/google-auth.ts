@@ -23,9 +23,19 @@ export function googleErrorOutcome(error: unknown, codes: Codes): Exclude<Google
   return "error";
 }
 
-/** The message under the Google button, or none (signed in, or a quiet cancel). */
-export function googleMessage(outcome: GoogleOutcome): string | undefined {
-  if (outcome === "not-set-up") return GOOGLE_NOT_SET_UP;
-  if (outcome === "error") return GOOGLE_ERROR;
-  return undefined;
+/** A sign-in result, with Google's raw error code when there was one (for debug builds). */
+export type GoogleResult = { outcome: GoogleOutcome; code?: string };
+
+/**
+ * The message under the Google button, or none (signed in, or a quiet cancel). Debug builds add
+ * Google's raw code, e.g. "(code 10)", so a setup problem can be told apart on the phone.
+ */
+export function googleMessage(result: GoogleResult, showCode = false): string | undefined {
+  const message =
+    result.outcome === "not-set-up"
+      ? GOOGLE_NOT_SET_UP
+      : result.outcome === "error"
+        ? GOOGLE_ERROR
+        : undefined;
+  return message && showCode && result.code ? `${message} (code ${result.code})` : message;
 }

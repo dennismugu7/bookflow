@@ -136,6 +136,13 @@ try {
   Copy-Item $Keystore (Join-Path $ownerDir 'android\app\debug.keystore') -Force
 
   # 3. Gradle ----------------------------------------------------------------------------------------
+  # Metro caches each file's transform with the EXPO_PUBLIC_* values inlined, and doesn't notice
+  # when only a value changes: a build without the Google client ID left it out of later builds too.
+  $metroCache = Join-Path ([IO.Path]::GetTempPath()) 'metro-cache'
+  if (Test-Path $metroCache) {
+    Step 'Clearing the Metro cache'
+    Remove-Item -Recurse -Force $metroCache
+  }
   Step 'gradlew assembleDebug'
   Push-Location (Join-Path $ownerDir 'android')
   try {
@@ -156,6 +163,23 @@ try {
   Write-Host "Size: $sizeMb MB"
   $sha1 = (& keytool -list -v -keystore $Keystore -alias androiddebugkey -storepass android 2>$null | Select-String 'SHA1:').ToString().Trim()
   Write-Host "Signing key $sha1 (register it on the Android OAuth client for com.mugulabs.bookflow)"
+
+  # The client ID is public, but only its start is printed: enough to tell which one is inside.
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  $zip = [IO.Compression.ZipFile]::OpenRead($target)
+  try {
+    $entry = $zip.GetEntry('assets/index.android.bundle')
+    $reader = New-Object IO.StreamReader($entry.Open(), [Text.Encoding]::GetEncoding('ISO-8859-1'))
+    try { $bundle = $reader.ReadToEnd() } finally { $reader.Dispose() }
+  } finally { $zip.Dispose() }
+  $found = [regex]::Match($bundle, '\d{6,}-[a-z0-9]+\.apps\.googleusercontent\.com')
+  if ($found.Success) {
+    Write-Host "Google web client ID in the bundle: $($found.Value.Substring(0, 17))..."
+  } elseif ($GoogleWebClientId) {
+    Fail 'The Google web client ID was passed in but is not in the bundle (stale Metro cache?).'
+  } else {
+    Write-Host 'Google web client ID in the bundle: none (Google sign-in will say it is not set up).' -ForegroundColor Yellow
+  }
 } finally {
   Pop-Location
   foreach ($name in $envNames) { [Environment]::SetEnvironmentVariable($name, $savedEnv[$name], 'Process') }
