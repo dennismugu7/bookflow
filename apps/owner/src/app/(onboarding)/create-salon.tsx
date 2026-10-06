@@ -132,7 +132,9 @@ export default function CreateSalonScreen() {
         onPress={leave}
         style={styles.logout}
       >
-        <Text style={styles.logoutText}>Not {session?.user.email}? Log out</Text>
+        <Text style={styles.logoutText}>
+          Not {session?.user.email}? <Text style={styles.logoutLink}>Log out</Text>
+        </Text>
       </Pressable>
     </AuthSheet>
   );
@@ -144,4 +146,6 @@ const styles = StyleSheet.create({
   formError: { ...type.caption, color: colors.danger },
   logout: { minHeight: minTouch, justifyContent: "center", alignSelf: "center" },
   logoutText: { fontFamily: fonts.semibold, fontSize: 14, color: colors.muted },
+  // The app blue, so "Log out" reads as the link (Dennis, 2026-10-06).
+  logoutLink: { color: colors.blue },
 });
