@@ -15,6 +15,7 @@ import { WEEKDAYS, describeDay, rowsToWeek, weekToRows, type Week } from "../../
 import { getSupabase } from "../../../lib/supabase";
 import { colors, fonts, minTouch, type } from "../../../theme";
 import { BottomSheet, Button, Page, TextField } from "../../../ui";
+import { showToast } from "../../../lib/toast";
 
 const dayName = (day: number) => WEEKDAYS.find((d) => d.day === day)?.name ?? "";
 
@@ -77,6 +78,7 @@ export default function HoursScreen() {
     }
     setWeek(rowsToWeek(rows));
     setEditing(undefined);
+    showToast();
   }
 
   const today = weekdayIn(timeZone);

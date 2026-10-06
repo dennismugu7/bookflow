@@ -16,6 +16,7 @@ import { askPhonePermission, getPhonePermission, registerThisPhone } from "../..
 import { getSupabase } from "../../lib/supabase";
 import { colors, fonts, type } from "../../theme";
 import { Button, Page } from "../../ui";
+import { showToast } from "../../lib/toast";
 
 /** Menu → Notifications (owner-v5 05): three switches, saved for this person straight away. */
 export default function NotificationsScreen() {
@@ -59,7 +60,9 @@ export default function NotificationsScreen() {
     if (saveError || !parsed.success) {
       setPrefs(before);
       setError(PREFS_SAVE_ERROR);
+      return;
     }
+    showToast();
   }
 
   async function turnOn() {

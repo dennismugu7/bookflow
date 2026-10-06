@@ -25,6 +25,7 @@ import { getSupabase } from "../../../lib/supabase";
 import { ceilToMinutes, zonedParts, zonedTime } from "../../../lib/time";
 import { colors, controlHeight, fonts, radius } from "../../../theme";
 import { BottomSheet, Chip, Page, TextField } from "../../../ui";
+import { BOOKING_SAVED, showToast } from "../../../lib/toast";
 
 type Found = { id: string; full_name: string; phone: string | null };
 
@@ -188,6 +189,7 @@ export default function NewBookingScreen() {
       setError({ field: "form", message: createBookingErrorMessage(saveError) });
       return;
     }
+    showToast(BOOKING_SAVED);
     router.back();
   }
 

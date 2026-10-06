@@ -8,6 +8,7 @@ import { diffIds, validateStaff, type StaffErrors, type StaffForm } from "../../
 import { getSupabase } from "../../../../lib/supabase";
 import { colors, fonts, minTouch, type } from "../../../../theme";
 import { Button, Chip, Page, SaveBar, TextField, UploadBox } from "../../../../ui";
+import { showToast } from "../../../../lib/toast";
 
 type ServiceOption = { id: string; name: string };
 
@@ -146,6 +147,7 @@ export default function TeamMemberScreen() {
         if (error) throw error;
         await reloadMembership();
       }
+      showToast();
       router.back();
     } catch {
       setErrors({ form: "Couldn't save. Check your connection and try again." });

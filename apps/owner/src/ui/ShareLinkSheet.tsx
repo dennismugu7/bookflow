@@ -8,6 +8,7 @@ import { getSupabase } from "../lib/supabase";
 import { colors, fonts } from "../theme";
 import { BottomSheet } from "./BottomSheet";
 import { Button } from "./Button";
+import { showToast } from "../lib/toast";
 
 type Props = {
   visible: boolean;
@@ -57,7 +58,10 @@ export function ShareLinkSheet({ visible, onClose, salon, canSave }: Props) {
         .from("salons")
         .update({ share_message: store })
         .eq("id", salon.id);
-      if (!error) setSaved(store);
+      if (!error) {
+        setSaved(store);
+        showToast();
+      }
     }
     await Share.share({ message: shareText(message, link, salon.name) });
   }
