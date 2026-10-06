@@ -1,20 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const google = vi.hoisted(() => ({
-  configure: vi.fn(),
-  hasPlayServices: vi.fn(async () => true),
+const credential = vi.hoisted(() => ({
+  createNonce: vi.fn(() => ({ raw: "raw-nonce", hashed: "hashed-nonce" })),
+  sha256Hex: vi.fn(),
   signIn: vi.fn(),
-  signOut: vi.fn(async () => null),
+  clearCredentialState: vi.fn(async () => undefined),
 }));
 const auth = vi.hoisted(() => ({ signInWithIdToken: vi.fn() }));
-const env = vi.hoisted(() => ({ EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: "web-client.apps.googleusercontent.com" as string | undefined }));
-
-vi.mock("@react-native-google-signin/google-signin", () => ({
-  GoogleSignin: google,
-  statusCodes: { SIGN_IN_CANCELLED: "12501", IN_PROGRESS: "IN_PROGRESS", PLAY_SERVICES_NOT_AVAILABLE: "PLAY" },
-  isSuccessResponse: (r: { type: string }) => r.type === "success",
-  isCancelledResponse: (r: { type: string }) => r.type === "cancelled",
+const env = vi.hoisted(() => ({
+  EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: "845533071467-web.apps.googleusercontent.com" as
+    | string
+    | undefined,
 }));
+
+vi.mock("../../modules/google-credential", () => ({ default: credential }));
 vi.mock("./supabase", () => ({ getSupabase: () => ({ auth }) }));
 vi.mock("../env", () => ({ getEnv: () => env }));
 
@@ -24,50 +23,80 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "warn").mockImplementation(() => undefined);
   auth.signInWithIdToken.mockResolvedValue({ data: {}, error: null });
+  env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID = "845533071467-web.apps.googleusercontent.com";
 });
 
 describe("signInWithGoogle", () => {
-  it("turns Google's ID token into a Supabase session", async () => {
-    google.signIn.mockResolvedValue({ type: "success", data: { idToken: "id-token" } });
-    expect(await signInWithGoogle()).toEqual({ outcome: "signed-in" });
-    expect(google.configure).toHaveBeenCalledWith({ webClientId: "web-client.apps.googleusercontent.com" });
-    expect(auth.signInWithIdToken).toHaveBeenCalledWith({ provider: "google", token: "id-token" });
+  it("gives Google the hashed nonce and Supabase the token with the raw nonce", async () => {
+    credential.signIn.mockResolvedValue({ idToken: "id-token" });
+    const onToken = vi.fn();
+    expect(await signInWithGoogle(onToken)).toEqual({ outcome: "signed-in" });
+    expect(credential.signIn).toHaveBeenCalledWith(
+      "845533071467-web.apps.googleusercontent.com",
+      "hashed-nonce",
+    );
+    expect(auth.signInWithIdToken).toHaveBeenCalledWith({
+      provider: "google",
+      token: "id-token",
+      nonce: "raw-nonce",
+    });
+    expect(onToken).toHaveBeenCalledTimes(1);
   });
 
-  it("stays quiet when the chooser is closed", async () => {
-    google.signIn.mockResolvedValue({ type: "cancelled", data: null });
-    expect(await signInWithGoogle()).toEqual({ outcome: "cancelled" });
+  it("uses a new nonce each attempt", async () => {
+    credential.signIn.mockResolvedValue({ idToken: "id-token" });
+    await signInWithGoogle();
+    await signInWithGoogle();
+    expect(credential.createNonce).toHaveBeenCalledTimes(2);
+  });
+
+  it("stays quiet when the chooser or the consent is cancelled", async () => {
+    credential.signIn.mockRejectedValue(Object.assign(new Error("closed"), { code: "CANCELLED" }));
+    const onToken = vi.fn();
+    expect(await signInWithGoogle(onToken)).toEqual({ outcome: "cancelled", code: "CANCELLED" });
+    expect(onToken).not.toHaveBeenCalled();
     expect(auth.signInWithIdToken).not.toHaveBeenCalled();
+    expect(console.warn).not.toHaveBeenCalled();
   });
 
-  it("says not set up when Google rejects the build (DEVELOPER_ERROR)", async () => {
-    google.signIn.mockRejectedValue(Object.assign(new Error("DEVELOPER_ERROR"), { code: "10" }));
-    expect(await signInWithGoogle()).toEqual({ outcome: "not-set-up", code: "10" });
-    expect(console.warn).toHaveBeenCalledWith("Google sign-in failed:", "10", expect.any(String));
+  it("reports a Credential Manager failure with its code", async () => {
+    credential.signIn.mockRejectedValue(
+      Object.assign(new Error("TYPE_UNKNOWN: boom"), { code: "CREDENTIAL_ERROR" }),
+    );
+    expect(await signInWithGoogle()).toEqual({ outcome: "error", code: "CREDENTIAL_ERROR" });
   });
 
   it("is an error when Supabase refuses the token", async () => {
-    google.signIn.mockResolvedValue({ type: "success", data: { idToken: "id-token" } });
-    auth.signInWithIdToken.mockResolvedValue({ data: {}, error: { message: "Bad ID token" } });
-    expect(await signInWithGoogle()).toEqual({ outcome: "error", code: "supabase: Bad ID token" });
+    credential.signIn.mockResolvedValue({ idToken: "id-token" });
+    auth.signInWithIdToken.mockResolvedValue({ data: {}, error: { message: "Nonces mismatch" } });
+    expect(await signInWithGoogle()).toEqual({
+      outcome: "error",
+      code: "supabase: Nonces mismatch",
+    });
+  });
+
+  it("says not set up without a web client ID, before opening Google", async () => {
+    env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID = undefined;
+    expect(await signInWithGoogle()).toEqual({ outcome: "not-set-up", code: "no-client-id" });
+    expect(credential.signIn).not.toHaveBeenCalled();
   });
 });
 
 describe("idTokenToSession", () => {
   it("needs a token", async () => {
-    expect(await idTokenToSession(null)).toEqual({ outcome: "error", code: "no-id-token" });
+    expect(await idTokenToSession(null, "raw")).toEqual({ outcome: "error", code: "no-id-token" });
     expect(auth.signInWithIdToken).not.toHaveBeenCalled();
   });
 });
 
 describe("signOutOfGoogle", () => {
-  it("forgets the Google account so the chooser shows next time", async () => {
+  it("clears Credential Manager's state so the chooser shows next time", async () => {
     await signOutOfGoogle();
-    expect(google.signOut).toHaveBeenCalled();
+    expect(credential.clearCredentialState).toHaveBeenCalled();
   });
 
   it("never throws", async () => {
-    google.signOut.mockRejectedValueOnce(new Error("offline"));
+    credential.clearCredentialState.mockRejectedValueOnce(new Error("no play services"));
     await expect(signOutOfGoogle()).resolves.toBeUndefined();
   });
 });

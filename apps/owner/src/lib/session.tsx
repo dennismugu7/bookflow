@@ -35,9 +35,12 @@ export function useSession(): SessionState {
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
-  const [membership, setMembership] = useState<Membership | null | undefined>(undefined);
+  // Which user the loaded membership belongs to (null: signed out). Right after a sign-in the old
+  // value must not count, or the app routes once on stale data and again when the salon loads.
+  const [loaded, setLoaded] = useState<{ owner: string | null; value: Membership | null }>();
   const [membershipError, setMembershipError] = useState(false);
   const userId = session?.user.id;
+  const membership = loaded && loaded.owner === (userId ?? null) ? loaded.value : undefined;
 
   useEffect(() => {
     void getSupabase()
@@ -50,7 +53,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const reloadMembership = useCallback(async () => {
     if (!userId) {
-      setMembership(null);
+      setLoaded({ owner: null, value: null });
       return;
     }
     setMembershipError(false);
@@ -66,8 +69,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setMembershipError(true);
       return;
     }
-    setMembership(
-      data?.salon
+    setLoaded({
+      owner: userId,
+      value: data?.salon
         ? {
             role: data.role,
             staffId: data.staff_id,
@@ -80,11 +84,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             },
           }
         : null,
-    );
+    });
   }, [userId]);
 
   useEffect(() => {
-    setMembership(undefined);
     void reloadMembership();
   }, [reloadMembership]);
 

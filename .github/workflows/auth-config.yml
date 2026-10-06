@@ -64,7 +64,7 @@ jobs:
               external_google_enabled: true,
               external_google_client_id: $google_client_id,
               external_google_secret: $google_secret,
-              external_google_skip_nonce_check: true,
+              external_google_skip_nonce_check: false,
               external_phone_enabled: false,
               mailer_otp_exp: 600,
               mailer_otp_length: 6

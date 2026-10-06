@@ -26,13 +26,18 @@ export default function SignInScreen() {
   const [error, setError] = useState<string>();
   const [googleError, setGoogleError] = useState<string>();
   const [sending, setSending] = useState(false);
-  const [googleBusy, setGoogleBusy] = useState(false);
+  // "choosing": Google's chooser or consent is up. "signing-in": Google answered; the session and
+  // the salon load while this sheet stays as it is, and the root layout then moves on once.
+  const [google, setGoogle] = useState<"idle" | "choosing" | "signing-in">("idle");
+  const googleBusy = google !== "idle";
 
-  async function google() {
+  async function continueWithGoogle() {
     setGoogleError(undefined);
-    setGoogleBusy(true);
-    const result = await signInWithGoogle();
-    setGoogleBusy(false);
+    setGoogle("choosing");
+    const result = await signInWithGoogle(() => setGoogle("signing-in"));
+    // Signed in: stay busy until the root layout shows Create your salon or Today.
+    if (result.outcome === "signed-in") return;
+    setGoogle("idle");
     setGoogleError(googleMessage(result, SHOW_GOOGLE_CODE));
   }
 
@@ -61,7 +66,12 @@ export default function SignInScreen() {
       title={creating ? "Create your account" : "Sign in to Bookflow"}
       onBack={() => (router.canGoBack() ? router.back() : router.replace("/welcome"))}
     >
-      <GoogleButton onPress={() => void google()} busy={googleBusy} />
+      <GoogleButton onPress={() => void continueWithGoogle()} busy={googleBusy} />
+      {google === "signing-in" ? (
+        <Text style={styles.signingIn} accessibilityLiveRegion="polite">
+          Signing you in…
+        </Text>
+      ) : null}
       {googleError ? (
         <Text style={styles.error} accessibilityLiveRegion="polite">
           {googleError}
@@ -86,6 +96,7 @@ export default function SignInScreen() {
         textContentType="emailAddress"
         returnKeyType="send"
         onSubmitEditing={() => void sendCode()}
+        editable={!googleBusy}
       />
       <View style={styles.send}>
         <Button
@@ -93,6 +104,7 @@ export default function SignInScreen() {
           variant="action"
           onPress={() => void sendCode()}
           loading={sending}
+          disabled={googleBusy}
         />
       </View>
       <Text style={styles.note}>We&apos;ll email you a 6-digit code. No password needed.</Text>
@@ -114,6 +126,15 @@ export default function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
+  // owner-v8 04: centred under the button, the same grey as the note.
+  signingIn: {
+    marginTop: 8,
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.subtle,
+    textAlign: "center",
+  },
   error: {
     marginTop: 8,
     fontFamily: fonts.medium,

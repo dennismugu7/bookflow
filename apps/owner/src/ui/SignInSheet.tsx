@@ -1,6 +1,7 @@
 import Feather from "@expo/vector-icons/Feather";
 import type { ReactNode } from "react";
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Pressable,
@@ -68,7 +69,10 @@ export function SignInSheet({ title, onBack, children }: Props) {
   );
 }
 
-/** Google's official sign-in button: #4285F4, the G in a white square, white text. */
+/**
+ * Google's official sign-in button: #4285F4, the G in a white square, white text. While busy, a
+ * white spinner replaces the G and the label at the same size and colour (owner-v8 01, 04).
+ */
 export function GoogleButton({ onPress, busy }: { onPress: () => void; busy?: boolean }) {
   return (
     <Pressable
@@ -77,12 +81,18 @@ export function GoogleButton({ onPress, busy }: { onPress: () => void; busy?: bo
       accessibilityState={{ busy: !!busy, disabled: !!busy }}
       disabled={busy}
       onPress={onPress}
-      style={({ pressed }) => [styles.google, (pressed || busy) && styles.pressed]}
+      style={({ pressed }) => [styles.google, pressed && !busy && styles.pressed]}
     >
-      <View style={styles.gBox}>
-        <Image source={googleG} accessible={false} style={styles.g} />
-      </View>
-      <Text style={styles.googleText}>Continue with Google</Text>
+      {busy ? (
+        <ActivityIndicator color={colors.white} />
+      ) : (
+        <>
+          <View style={styles.gBox}>
+            <Image source={googleG} accessible={false} style={styles.g} />
+          </View>
+          <Text style={styles.googleText}>Continue with Google</Text>
+        </>
+      )}
     </Pressable>
   );
 }

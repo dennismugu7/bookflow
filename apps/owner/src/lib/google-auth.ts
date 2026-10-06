@@ -1,25 +1,23 @@
-/** Native Google sign-in (release 1.0.0 part 2, A): what an outcome means to the user. */
+/** Google sign-in (release 1.0.0 parts 2 and 4): what an outcome means to the user. */
 
 export const GOOGLE_ERROR = "Google sign-in didn't finish. Try again or use your email.";
 
-/** The build's SHA-1 isn't registered with Google yet, or the phone has no Play Services. */
+/** The build's SHA-1 or client ID isn't registered with Google, or there's no Google provider. */
 export const GOOGLE_NOT_SET_UP = "Google sign-in isn't set up on this build yet. Use your email.";
 
 export type GoogleOutcome = "signed-in" | "cancelled" | "not-set-up" | "error";
 
-// Google Play Services' CommonStatusCodes.DEVELOPER_ERROR: the app's package and signing SHA-1
-// don't match an Android OAuth client.
-const DEVELOPER_ERROR = "10";
-
-type Codes = { cancelled: string; inProgress: string; noPlayServices: string };
-
-/** What a thrown sign-in error means: a quiet cancel, a build that isn't set up, or a failure. */
-export function googleErrorOutcome(error: unknown, codes: Codes): Exclude<GoogleOutcome, "signed-in"> {
-  const code = (error as { code?: unknown } | null)?.code;
+/**
+ * What a thrown sign-in error means (codes from modules/google-credential): a quiet cancel, a build
+ * Google doesn't recognise yet, or a failure. Credential Manager reports an unregistered SHA-1 or
+ * client ID as "[28444] Developer console is not set up correctly".
+ */
+export function googleErrorOutcome(error: unknown): Exclude<GoogleOutcome, "signed-in"> {
+  const code = String((error as { code?: unknown } | null)?.code ?? "");
   const message = String((error as { message?: unknown } | null)?.message ?? "");
-  if (code === codes.cancelled || code === codes.inProgress) return "cancelled";
-  if (code === codes.noPlayServices) return "not-set-up";
-  if (String(code) === DEVELOPER_ERROR || message.includes("DEVELOPER_ERROR")) return "not-set-up";
+  if (code === "CANCELLED") return "cancelled";
+  if (code === "NO_PROVIDER") return "not-set-up";
+  if (/28444|Developer console is not set up/i.test(message)) return "not-set-up";
   return "error";
 }
 

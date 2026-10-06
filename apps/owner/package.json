@@ -15,7 +15,6 @@
     "@bookflow/shared": "workspace:*",
     "@expo-google-fonts/urbanist": "^0.4.2",
     "@expo/vector-icons": "^15.1.1",
-    "@react-native-google-signin/google-signin": "^16.1.5",
     "@supabase/supabase-js": "^2.117.2",
     "expo": "~57.0.26",
     "expo-clipboard": "~57.0.2",

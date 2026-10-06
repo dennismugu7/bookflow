@@ -9,10 +9,10 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { getEnv } from "../env";
-import { appReady, screenGroup } from "../lib/launch";
+import { appReady, settledGroup } from "../lib/launch";
 import { setUpNotifications } from "../lib/push";
 import { SessionProvider, useSession } from "../lib/session";
 import { colors, space, type } from "../theme";
@@ -70,24 +70,25 @@ function RootNavigator() {
     setLaunched(true);
   }, [ready, launched]);
 
-  return (
-    <View style={styles.root}>
-      {ready ? (
-        <Routes />
-      ) : launched ? (
-        // Later gaps, e.g. while a new sign-in loads the salon: a plain wait, not a splash.
-        <View style={styles.waiting}>
-          <ActivityIndicator color={colors.brand} />
-        </View>
-      ) : null}
-    </View>
-  );
+  // Once launched the navigator stays mounted: during a sign-in the current screen stays as it is
+  // (owner-v8 04) and Routes moves on once. Unmounting it here for a spinner while the salon loaded
+  // was the blank flash, and the remount the jump, after Google sign-in (release 1.0.0 part 4).
+  return <View style={styles.root}>{ready || launched ? <Routes /> : null}</View>;
 }
 
 function Routes() {
   const { session, membership, membershipError, reloadMembership } = useSession();
   const signedIn = !!session;
-  const group = screenGroup({ signedIn, hasSalon: !!membership });
+  const state = {
+    sessionKnown: session !== undefined,
+    signedIn,
+    membershipKnown: membership !== undefined || membershipError,
+    hasSalon: !!membership,
+  };
+  // Derived during render (React's pattern for state that follows props): one move per change.
+  const [group, setGroup] = useState(() => settledGroup(undefined, state));
+  const next = settledGroup(group, state);
+  if (next !== group) setGroup(next);
 
   if (signedIn && membershipError) {
     return (
@@ -137,7 +138,6 @@ function ConfigError({ message }: { message: string }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.white },
-  waiting: { flex: 1, alignItems: "center", justifyContent: "center" },
   // System font: this screen can appear before Urbanist has loaded.
   plainTitle: { fontSize: 22, fontWeight: "700", color: colors.ink },
   plainBody: { fontSize: 15, color: colors.muted },
