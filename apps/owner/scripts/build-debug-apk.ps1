@@ -92,7 +92,8 @@ if ($missing.Count -gt 0) {
 }
 
 if (-not $GoogleWebClientId -and (Get-Command gh -ErrorAction SilentlyContinue)) {
-  $GoogleWebClientId = (& gh variable get GOOGLE_WEB_CLIENT_ID 2>$null)
+  # A missing variable is only a warning below; Windows PowerShell treats gh's stderr as an error.
+  try { $GoogleWebClientId = (& gh variable get GOOGLE_WEB_CLIENT_ID 2>$null) } catch { $GoogleWebClientId = $null }
 }
 if (-not $GoogleWebClientId) {
   Write-Host 'Note: no Google web client ID (-GoogleWebClientId or EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID); Google sign-in will say it is not set up.' -ForegroundColor Yellow
