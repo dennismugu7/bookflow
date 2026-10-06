@@ -2,7 +2,7 @@
 
 _Last updated: 6 October 2026_
 
-These terms apply when you use Bookflow: the booking website and the Bookflow Owner app, run by Mugu Labs ("we", "us"). By using Bookflow you agree to them.
+These terms apply when you use Bookflow: the booking website and the Bookflow app for salon owners, run by Mugu Labs ("we", "us"). By using Bookflow you agree to them.
 
 ## The service
 Bookflow lets salons publish a booking page, and lets clients book appointments with them. Bookflow is free during its early-access period. We'll give owners at least 30 days' notice before introducing any charges.
@@ -45,7 +45,7 @@ Nothing in these terms limits rights you have under Kenyan consumer law.
 ## Ending your use
 You can delete your account at any time:
 - **Owners:** in the app, under Menu → Settings → Delete account.
-- **Clients:** at bookflow-web-pearl.vercel.app/delete-account.
+- **Clients:** at bookflow.mugu-labs.com/delete-account.
 
 ## Changes to these terms
 We may update these terms. We'll change the date above, and tell owners in the app about significant changes. If you keep using Bookflow after a change, the new terms apply.

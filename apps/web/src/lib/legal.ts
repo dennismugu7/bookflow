@@ -20,8 +20,8 @@ export function slugify(text: string): string {
 }
 
 const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/;
-// Bookflow's own addresses written as plain text (e.g. bookflow-web-pearl.vercel.app/delete-account).
-const SITE = /\b(?:bookflow-web-pearl\.vercel\.app|odpc\.go\.ke)(?:\/[\w-]+)*/;
+// Bookflow's own addresses written as plain text (e.g. bookflow.mugu-labs.com/delete-account; the old vercel.app host still links).
+const SITE = /\b(?:bookflow\.mugu-labs\.com|bookflow-web-pearl\.vercel\.app|odpc\.go\.ke)(?:\/[\w-]+)*/;
 
 /** Turns e-mail addresses and known site addresses inside a run into links. */
 function linkify(run: Inline): Inline[] {

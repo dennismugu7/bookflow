@@ -1,6 +1,7 @@
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 
+import { signOutOfGoogle } from "./google-sign-in";
 import { forgetIntroShown, unregisterThisPhone } from "./push";
 import { forgetCalendarView } from "./view-pref";
 import { getSupabase } from "./supabase";
@@ -34,9 +35,12 @@ export function useSession(): SessionState {
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
-  const [membership, setMembership] = useState<Membership | null | undefined>(undefined);
+  // Which user the loaded membership belongs to (null: signed out). Right after a sign-in the old
+  // value must not count, or the app routes once on stale data and again when the salon loads.
+  const [loaded, setLoaded] = useState<{ owner: string | null; value: Membership | null }>();
   const [membershipError, setMembershipError] = useState(false);
   const userId = session?.user.id;
+  const membership = loaded && loaded.owner === (userId ?? null) ? loaded.value : undefined;
 
   useEffect(() => {
     void getSupabase()
@@ -49,7 +53,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const reloadMembership = useCallback(async () => {
     if (!userId) {
-      setMembership(null);
+      setLoaded({ owner: null, value: null });
       return;
     }
     setMembershipError(false);
@@ -65,8 +69,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setMembershipError(true);
       return;
     }
-    setMembership(
-      data?.salon
+    setLoaded({
+      owner: userId,
+      value: data?.salon
         ? {
             role: data.role,
             staffId: data.staff_id,
@@ -79,22 +84,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             },
           }
         : null,
-    );
+    });
   }, [userId]);
 
   useEffect(() => {
-    setMembership(undefined);
     void reloadMembership();
   }, [reloadMembership]);
 
   const signOut = useCallback(async () => {
     await unregisterThisPhone();
+    await signOutOfGoogle();
     await getSupabase().auth.signOut();
   }, []);
 
   const signOutDeleted = useCallback(async () => {
     await unregisterThisPhone();
-    await Promise.all([forgetIntroShown(), forgetCalendarView()]);
+    await Promise.all([forgetIntroShown(), forgetCalendarView(), signOutOfGoogle()]);
     // The user no longer exists on the server, so only the stored session is removed.
     await getSupabase().auth.signOut({ scope: "local" });
   }, []);

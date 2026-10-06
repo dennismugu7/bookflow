@@ -43,13 +43,15 @@ To pass options, run the script directly: `powershell -File apps/owner/scripts/b
 
 ## Install it (testers)
 
-1. **Uninstall every other Bookflow Owner build first** (Play Store, internal or preview APKs). This APK has a different signature, so Android won't install it over another one. Uninstalling signs you out, which is fine.
+1. **Uninstall every other Bookflow build first** (Play Store, internal or preview APKs). This APK has a different signature, so Android won't install it over another one. Uninstalling signs you out, which is fine.
 2. Download the `.apk` onto the phone, and open it from Files or Downloads.
 3. When Android asks, allow **Install unknown apps** for the app you opened it with (Chrome, Files or MEGA). Then tap **Install**.
 4. If Play Protect warns about an unknown app, choose **More details → Install anyway**.
-5. Open Bookflow Owner. It starts at Welcome without a computer attached. Sign in as usual, and allow notifications when asked.
+5. Open Bookflow. It starts at Welcome without a computer attached. Sign in as usual, and allow notifications when asked.
 
 To move to a newer debug APK, uninstall the old one first, then install the new one.
+
+From 1.0.0 the APK is signed with the builder's own debug key (`%USERPROFILE%\.android\debug.keystore`), not Expo's public one, so Google sign-in can recognise it. The script prints the key's SHA-1 at the end; it must be registered on the Android OAuth client for `com.mugulabs.bookflow`. Testers uninstall an older debug APK once before installing it.
 
 ## Collect logs
 

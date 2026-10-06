@@ -123,7 +123,7 @@ describe("buildIcs", () => {
       services: ["Braids", "Trim"],
       staffName: "Njeri",
       address: "Galana Plaza, Kilimani; 2nd floor",
-      url: "https://bookflow-web-pearl.vercel.app/b/f0000000-0000-4000-8000-000000000031",
+      url: "https://bookflow.mugu-labs.com/b/f0000000-0000-4000-8000-000000000031",
     },
     new Date("2026-10-03T12:00:00Z"),
   );

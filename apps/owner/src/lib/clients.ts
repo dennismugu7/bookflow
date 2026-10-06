@@ -1,4 +1,4 @@
-import { normalizeKenyanPhone } from "@bookflow/shared";
+import { PHONE_ERROR, normalizeKenyanPhone } from "@bookflow/shared";
 import { z } from "zod";
 
 import { bookingSchema, type AgendaBooking } from "./agenda";
@@ -159,7 +159,7 @@ export function clientFormResult(input: {
     return {
       ok: false,
       field: "phone",
-      message: "Enter a phone number like 0712 345 678, or leave it empty.",
+      message: PHONE_ERROR,
     };
   }
   return { ok: true, name, phone };

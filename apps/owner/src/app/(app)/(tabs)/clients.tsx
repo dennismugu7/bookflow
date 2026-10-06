@@ -28,7 +28,7 @@ import { clientHref } from "../../../lib/routes";
 import { useSession, type Membership } from "../../../lib/session";
 import { getSupabase } from "../../../lib/supabase";
 import { colors, fonts, minTouch } from "../../../theme";
-import { Badge, Chip } from "../../../ui";
+import { Badge, Chip, LoadError } from "../../../ui";
 import { SharePill } from "../../../ui/today/AgendaList";
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -65,7 +65,7 @@ function Clients({ membership }: { membership: Membership }) {
     });
     if (request !== latest.current) return;
     if (loadError || !data) {
-      setError("Couldn't load your clients. Pull down to try again.");
+      setError("Couldn't load your clients. Check your connection.");
       return;
     }
     try {
@@ -117,8 +117,9 @@ function Clients({ membership }: { membership: Membership }) {
           />
         }
       >
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        {!list ? null : empty ? (
+        {error ? (
+          <LoadError message={error} onRetry={() => void load()} />
+        ) : !list ? null : empty ? (
           <Empty slug={salon.slug} onAdd={isOwner ? add : undefined} />
         ) : (
           <>

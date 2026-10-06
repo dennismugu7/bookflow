@@ -33,6 +33,10 @@ describe("parseInline", () => {
       text: "bookflow-web-pearl.vercel.app/delete-account",
       href: "https://bookflow-web-pearl.vercel.app/delete-account",
     });
+    expect(parseInline("at bookflow.mugu-labs.com/delete-account.")[1]).toEqual({
+      text: "bookflow.mugu-labs.com/delete-account",
+      href: "https://bookflow.mugu-labs.com/delete-account",
+    });
   });
 });
 

@@ -17,6 +17,7 @@ import {
 import { getSupabase } from "../../../../lib/supabase";
 import { colors, fonts, minTouch, type } from "../../../../theme";
 import { Page, SaveBar, TextField } from "../../../../ui";
+import { showToast } from "../../../../lib/toast";
 
 const EMPTY: ServiceForm = { name: "", duration: "20", price: "", isBookable: true };
 
@@ -85,6 +86,7 @@ export default function ServiceEditScreen() {
       setErrors({ [mapped.field]: mapped.message });
       return;
     }
+    showToast();
     router.back();
   }
 

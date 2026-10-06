@@ -3,7 +3,7 @@
 // Push needs Firebase's google-services.json, which is never committed: EAS provides it as the
 // file environment variable GOOGLE_SERVICES_JSON. Without it the app builds and runs, minus push.
 // BOOKFLOW_DEBUG_APK=1 is the testers' local debug APK only (scripts/build-debug-apk.ps1, ops 03):
-// no dev client, the bundle embedded, no OTA updates, and "0.5.0-debug · <sha>" in Menu. Without
+// no dev client, the bundle embedded, no OTA updates, and "1.0.0-debug · <sha>" in Menu. Without
 // the flag the config is unchanged.
 module.exports = ({ config }) => {
   const googleServicesFile = process.env.GOOGLE_SERVICES_JSON;

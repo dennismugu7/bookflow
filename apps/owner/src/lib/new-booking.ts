@@ -1,4 +1,4 @@
-import { bookingErrorKind, normalizeKenyanPhone } from "@bookflow/shared";
+import { PHONE_ERROR, bookingErrorKind, normalizeKenyanPhone } from "@bookflow/shared";
 
 import { addDays, addMinutes, isoWeekday, shortDate, zonedParts, zonedTime } from "./time";
 
@@ -86,7 +86,7 @@ export function newBookingError(input: {
     if (client.phone.trim() && !normalizeKenyanPhone(client.phone)) {
       return {
         field: "phone",
-        message: "Enter a phone number like 0712 345 678, or leave it empty.",
+        message: PHONE_ERROR,
       };
     }
   }

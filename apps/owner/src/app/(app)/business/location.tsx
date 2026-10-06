@@ -8,6 +8,7 @@ import { useSession } from "../../../lib/session";
 import { getSupabase } from "../../../lib/supabase";
 import { colors, fonts, minTouch, type } from "../../../theme";
 import { Button, DrawnMap, LiveMap, Page, SaveBar, TextField } from "../../../ui";
+import { showToast } from "../../../lib/toast";
 
 type Saved = { address: string; mapsUrl: string | null; lat: number | null; lng: number | null };
 type Pin = Pick<Saved, "mapsUrl" | "lat" | "lng">;
@@ -147,6 +148,7 @@ export default function LocationScreen() {
     setLink("");
     setChangingPin(false);
     setRemovingPin(false);
+    showToast();
   }
 
   function cancelChange() {

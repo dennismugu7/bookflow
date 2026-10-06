@@ -34,6 +34,7 @@ import { getSupabase } from "../../../lib/supabase";
 import { colors, fonts, type } from "../../../theme";
 import { Page, SaveBar, TextField } from "../../../ui";
 import { SalonPhotos } from "../../../ui/SalonPhotos";
+import { showToast } from "../../../lib/toast";
 
 const sameBrand = (a: BrandForm, b: BrandForm) =>
   a.name.trim() === b.name.trim() &&
@@ -182,6 +183,7 @@ export default function BrandScreen() {
       setSavedPaths(paths);
     }
     setSaving(false);
+    showToast();
     await reloadMembership();
   }
 

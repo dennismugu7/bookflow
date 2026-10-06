@@ -67,7 +67,10 @@ describe("New booking", () => {
     const fresh = (name: string, phone: string): ClientChoice => ({ kind: "new", name, phone });
     const known: ClientChoice = { kind: "existing", id: "c", name: "A", phone: null };
     expect(newBookingError({ ...base, client: fresh(" ", "") })?.field).toBe("client");
-    expect(newBookingError({ ...base, client: fresh("Mary", "12") })?.field).toBe("phone");
+    expect(newBookingError({ ...base, client: fresh("Mary", "12") })).toEqual({
+      field: "phone",
+      message: "Enter a valid phone number",
+    });
     expect(newBookingError({ ...base, client: fresh("Mary", "") })).toBeUndefined();
     expect(newBookingError({ ...base, client: fresh("Mary", "0712 345 678") })).toBeUndefined();
     expect(newBookingError({ ...base, serviceIds: [], client: known })?.field).toBe("services");

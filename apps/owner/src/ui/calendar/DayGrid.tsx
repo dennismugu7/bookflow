@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, type ReactElement } from "react";
 import {
   Pressable,
   ScrollView,
@@ -6,6 +6,7 @@ import {
   Text,
   View,
   type GestureResponderHandlers,
+  type RefreshControlProps,
 } from "react-native";
 
 import { nextBookingId, type AgendaBooking } from "../../lib/agenda";
@@ -46,6 +47,8 @@ type Props = {
   /** Empty space: a new booking for that person at the nearest quarter hour. */
   onEmpty?: (staffId: string, time: string) => void;
   swipe: GestureResponderHandlers;
+  /** Pull to refresh (release 1.0.0 part 2), a backup to live updates. */
+  refreshControl?: ReactElement<RefreshControlProps>;
 };
 
 /** One column per active team member, with bookings, time off and the now-line (owner-v4 01). */
@@ -58,6 +61,7 @@ export function DayGrid({
   onOpenBooking,
   onEmpty,
   swipe,
+  refreshControl,
 }: Props) {
   const columns = columnsFor(staff);
   const scrolls = columns.length > 3;
@@ -118,7 +122,7 @@ export function DayGrid({
         )}
       </View>
       <View style={styles.headLine} />
-      <ScrollView style={styles.flex} {...swipe}>
+      <ScrollView style={styles.flex} refreshControl={refreshControl} {...swipe}>
         <View style={{ height: TOP + height + BOTTOM }}>
           {hourMarks(scale).map((mark, i) => (
             <View key={mark} style={[styles.hour, { top: TOP + i * HOUR }]}>

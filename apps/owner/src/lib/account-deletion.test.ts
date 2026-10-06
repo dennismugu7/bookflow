@@ -66,7 +66,7 @@ describe("requestAccountDeletion", () => {
 
 describe("webUrl", () => {
   it("defaults to production and trims a trailing slash", () => {
-    expect(webUrl()).toBe("https://bookflow-web-pearl.vercel.app");
+    expect(webUrl()).toBe("https://bookflow.mugu-labs.com");
     expect(webUrl("http://10.0.2.2:3000/")).toBe("http://10.0.2.2:3000");
   });
 });

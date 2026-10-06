@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Builds the testers' debug APK of Bookflow Owner on this laptop (docs/specs/ops-03-debug-apk.md).
+  Builds the testers' debug APK of Bookflow on this laptop (docs/specs/ops-03-debug-apk.md).
 
 .DESCRIPTION
   Debuggable, signed with the standard Android debug key, JS bundle embedded (opens without
@@ -11,6 +11,11 @@
   EXPO_PUBLIC_SUPABASE_URL/EXPO_PUBLIC_SUPABASE_ANON_KEY environment variables, else the GitHub
   repository variables SUPABASE_URL/SUPABASE_ANON_KEY (gh variable get). No .env file is read.
 
+  Signed with this laptop's Android debug key (-Keystore, default %USERPROFILE%\.android\debug.keystore),
+  not the public key in Expo's template, so Google can tell it apart (release 1.0.0 part 2). Its SHA-1
+  is printed at the end; register it on the Android OAuth client. Google sign-in needs the public web
+  client ID: -GoogleWebClientId, EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID or the GOOGLE_WEB_CLIENT_ID repository variable.
+
 .EXAMPLE
   pnpm --filter owner build:debug-apk
 .EXAMPLE
@@ -20,6 +25,8 @@ param(
   [string]$GoogleServices = $(if ($env:BOOKFLOW_GOOGLE_SERVICES_JSON) { $env:BOOKFLOW_GOOGLE_SERVICES_JSON } else { 'C:\Users\denni\secrets\google-services.json' }),
   [string]$SupabaseUrl = $env:EXPO_PUBLIC_SUPABASE_URL,
   [string]$SupabaseAnonKey = $env:EXPO_PUBLIC_SUPABASE_ANON_KEY,
+  [string]$GoogleWebClientId = $env:EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  [string]$Keystore = (Join-Path $env:USERPROFILE '.android\debug.keystore'),
   [string]$OutDir = $(if ($env:BOOKFLOW_BUILDS_DIR) { $env:BOOKFLOW_BUILDS_DIR } else { 'C:\Users\denni\builds' })
 )
 
@@ -73,21 +80,34 @@ if (-not $SupabaseUrl -or -not $SupabaseAnonKey) {
   }
 }
 
+if (-not (Test-Path $Keystore)) {
+  $missing += "Android debug keystore not found at $Keystore (pass -Keystore). Create one with: keytool -genkeypair -v -keystore `"$Keystore`" -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname `"CN=Android Debug,O=Android,C=US`""
+}
+if (-not (Get-Command keytool -ErrorAction SilentlyContinue)) { $missing += 'keytool is not on PATH (it comes with JDK 17).' }
+
 if ($missing.Count -gt 0) {
   Write-Host 'Missing prerequisites:' -ForegroundColor Red
   $missing | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
   exit 1
 }
 
+if (-not $GoogleWebClientId -and (Get-Command gh -ErrorAction SilentlyContinue)) {
+  # A missing variable is only a warning below; Windows PowerShell treats gh's stderr as an error.
+  try { $GoogleWebClientId = (& gh variable get GOOGLE_WEB_CLIENT_ID 2>$null) } catch { $GoogleWebClientId = $null }
+}
+if (-not $GoogleWebClientId) {
+  Write-Host 'Note: no Google web client ID (-GoogleWebClientId or EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID); Google sign-in will say it is not set up.' -ForegroundColor Yellow
+}
+
 $version = (Get-Content (Join-Path $ownerDir 'app.json') -Raw | ConvertFrom-Json).expo.version
 $sha = (& git -C $ownerDir rev-parse --short HEAD).Trim()
 $dirty = (& git -C $ownerDir status --porcelain -- .) -ne $null
 if ($dirty) { Write-Host 'Note: apps/owner has uncommitted changes; they are included in this build.' -ForegroundColor Yellow }
-Write-Host "Bookflow Owner $version-debug at $sha"
+Write-Host "Bookflow $version-debug at $sha"
 
 # 2. Prebuild with the debug-APK flag ---------------------------------------------------------------
 # Set for this build only; the previous values come back at the end.
-$envNames = 'BOOKFLOW_DEBUG_APK', 'BOOKFLOW_DEBUG_SHA', 'GOOGLE_SERVICES_JSON', 'EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY', 'CI'
+$envNames = 'BOOKFLOW_DEBUG_APK', 'BOOKFLOW_DEBUG_SHA', 'GOOGLE_SERVICES_JSON', 'EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY', 'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID', 'CI'
 $savedEnv = @{}
 foreach ($name in $envNames) { $savedEnv[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 $env:BOOKFLOW_DEBUG_APK = '1'
@@ -95,6 +115,7 @@ $env:BOOKFLOW_DEBUG_SHA = $sha
 $env:GOOGLE_SERVICES_JSON = (Resolve-Path $GoogleServices).Path
 $env:EXPO_PUBLIC_SUPABASE_URL = $SupabaseUrl
 $env:EXPO_PUBLIC_SUPABASE_ANON_KEY = $SupabaseAnonKey
+$env:EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID = $GoogleWebClientId
 $env:CI = '1'
 
 Push-Location $ownerDir
@@ -111,7 +132,17 @@ try {
   }
   if ($prebuildExit -ne 0) { Fail 'expo prebuild failed.' }
 
+  # The template signs debug builds with its public key; use this laptop's instead.
+  Copy-Item $Keystore (Join-Path $ownerDir 'android\app\debug.keystore') -Force
+
   # 3. Gradle ----------------------------------------------------------------------------------------
+  # Metro caches each file's transform with the EXPO_PUBLIC_* values inlined, and doesn't notice
+  # when only a value changes: a build without the Google client ID left it out of later builds too.
+  $metroCache = Join-Path ([IO.Path]::GetTempPath()) 'metro-cache'
+  if (Test-Path $metroCache) {
+    Step 'Clearing the Metro cache'
+    Remove-Item -Recurse -Force $metroCache
+  }
   Step 'gradlew assembleDebug'
   Push-Location (Join-Path $ownerDir 'android')
   try {
@@ -130,6 +161,25 @@ try {
   Step 'Done'
   Write-Host "APK:  $target"
   Write-Host "Size: $sizeMb MB"
+  $sha1 = (& keytool -list -v -keystore $Keystore -alias androiddebugkey -storepass android 2>$null | Select-String 'SHA1:').ToString().Trim()
+  Write-Host "Signing key $sha1 (register it on the Android OAuth client for com.mugulabs.bookflow)"
+
+  # The client ID is public, but only its start is printed: enough to tell which one is inside.
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  $zip = [IO.Compression.ZipFile]::OpenRead($target)
+  try {
+    $entry = $zip.GetEntry('assets/index.android.bundle')
+    $reader = New-Object IO.StreamReader($entry.Open(), [Text.Encoding]::GetEncoding('ISO-8859-1'))
+    try { $bundle = $reader.ReadToEnd() } finally { $reader.Dispose() }
+  } finally { $zip.Dispose() }
+  $found = [regex]::Match($bundle, '\d{6,}-[a-z0-9]+\.apps\.googleusercontent\.com')
+  if ($found.Success) {
+    Write-Host "Google web client ID in the bundle: $($found.Value.Substring(0, 17))..."
+  } elseif ($GoogleWebClientId) {
+    Fail 'The Google web client ID was passed in but is not in the bundle (stale Metro cache?).'
+  } else {
+    Write-Host 'Google web client ID in the bundle: none (Google sign-in will say it is not set up).' -ForegroundColor Yellow
+  }
 } finally {
   Pop-Location
   foreach ($name in $envNames) { [Environment]::SetEnvironmentVariable($name, $savedEnv[$name], 'Process') }

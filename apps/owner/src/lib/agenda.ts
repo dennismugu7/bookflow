@@ -1,7 +1,7 @@
 import { formatKenyanPhone } from "@bookflow/shared";
 import { z } from "zod";
 
-import { ceilToMinutes } from "./time";
+import { ceilToMinutes, clockTime, shortDate, zonedParts } from "./time";
 
 /** The shape returned by get_day_agenda (supabase/migrations/20261004150000_owner_today.sql). */
 export const bookingSchema = z.object({
@@ -35,6 +35,8 @@ const agendaSchema = z.object({
   stats: z.object({ booked: z.number(), expected_kes: z.number(), free_min: z.number() }),
   bookings: z.array(bookingSchema),
   gaps: z.array(gapSchema),
+  /** The first booking after the day (release 1.0.0); older servers leave it out. */
+  next: bookingSchema.nullable().optional(),
 });
 
 export type Agenda = z.infer<typeof agendaSchema>;
@@ -162,4 +164,21 @@ export function nextFreeSlot(gaps: Gap[], now: Date): Date {
     if (start.getTime() + 15 * 60_000 <= at(gap.ends_at)) return start;
   }
   return ceilToMinutes(now, 15);
+}
+
+/**
+ * The "Next booking" card on an empty Today (release 1.0.0 part 2): when, what and for whom, and
+ * the day to open in the Calendar.
+ */
+export function nextBookingSummary(
+  booking: AgendaBooking,
+  timeZone: string,
+): { date: string; when: string; what: string } {
+  const services = booking.services.map((s) => s.name).join(", ");
+  const who = booking.client?.full_name ?? "Walk-in";
+  return {
+    date: zonedParts(new Date(booking.starts_at), timeZone).date,
+    when: `${shortDate(booking.starts_at, timeZone)} · ${clockTime(booking.starts_at, timeZone)}`,
+    what: [services, who].filter(Boolean).join(" · "),
+  };
 }

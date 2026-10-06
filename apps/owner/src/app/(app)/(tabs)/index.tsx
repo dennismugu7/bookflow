@@ -3,7 +3,7 @@ import { router, useFocusEffect, useLocalSearchParams, type Href } from "expo-ro
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
-import { nextFreeSlot } from "../../../lib/agenda";
+import { nextBookingSummary, nextFreeSlot, type AgendaBooking } from "../../../lib/agenda";
 import { clientHref, newBookingHref } from "../../../lib/routes";
 import { useSession, type Membership } from "../../../lib/session";
 import { isSetupComplete, publishErrorMessage, type SetupStatus } from "../../../lib/setup";
@@ -11,7 +11,7 @@ import { getSupabase } from "../../../lib/supabase";
 import { zonedParts } from "../../../lib/time";
 import { useAgenda, useNow } from "../../../lib/use-agenda";
 import { colors, fonts, minTouch, space, type } from "../../../theme";
-import { Button, Card, FAB_SIZE, Fab, Illustration, Screen } from "../../../ui";
+import { Button, Card, FAB_SIZE, Fab, Illustration, LoadError, Screen } from "../../../ui";
 import { AgendaList, EmptyDayGaps, SharePill } from "../../../ui/today/AgendaList";
 import { useBookingActions } from "../../../ui/today/useBookingActions";
 
@@ -107,10 +107,11 @@ function Day({ membership }: { membership: Membership }) {
       >
         <View>
           <Header membership={membership} high={!!agenda && agenda.bookings.length > 0} />
-          {error ? <Text style={[styles.error, styles.loadError]}>{error}</Text> : null}
-          {!agenda ? null : agenda.bookings.length === 0 ? (
+          {error ? (
+            <LoadError message={error} onRetry={() => void reload()} />
+          ) : !agenda ? null : agenda.bookings.length === 0 ? (
             <>
-              <NoBookings slug={salon.slug} />
+              <NoBookings slug={salon.slug} next={agenda.next} timeZone={salon.timezone} />
               <EmptyDayGaps agenda={agenda} timeZone={salon.timezone} onFill={fill} />
             </>
           ) : (
@@ -223,21 +224,63 @@ function SetupCard({ salonId, isOwner }: { salonId: string; isOwner: boolean }) 
   );
 }
 
-/** Today with no bookings: option A of owner-v2 09 (calendar tick). */
-function NoBookings({ slug }: { slug: string }) {
+/**
+ * Today with no bookings: option A of owner-v2 09 (calendar tick). With a later booking it says
+ * "No bookings today" and shows that booking (release 1.0.0 part 2, Dennis 2026-10-06).
+ */
+function NoBookings({
+  slug,
+  next,
+  timeZone,
+}: {
+  slug: string;
+  next: AgendaBooking | null | undefined;
+  timeZone: string;
+}) {
   return (
     <View style={styles.empty}>
       <View style={styles.emptyArt}>
         <Illustration name="calendar-tick" />
       </View>
-      <Text style={styles.emptyTitle}>No bookings yet</Text>
-      <Text style={styles.emptyBody}>
-        Share your link on WhatsApp or Instagram. New bookings show up here.
-      </Text>
+      <Text style={styles.emptyTitle}>{next ? "No bookings today" : "No bookings yet"}</Text>
+      {next ? (
+        <NextBooking booking={next} timeZone={timeZone} />
+      ) : (
+        <Text style={styles.emptyBody}>
+          Share your link on WhatsApp or Instagram. New bookings show up here.
+        </Text>
+      )}
       <View style={styles.emptyShare}>
         <SharePill slug={slug} />
       </View>
     </View>
+  );
+}
+
+/** The next booking on a later day: opens the Calendar's Day view on it, with its sheet. */
+function NextBooking({ booking, timeZone }: { booking: AgendaBooking; timeZone: string }) {
+  const { date, when, what } = nextBookingSummary(booking, timeZone);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Next booking, ${when}, ${what}`}
+      onPress={() =>
+        router.navigate({
+          pathname: "/calendar",
+          params: { date, booking: booking.id, at: String(Date.now()) },
+        })
+      }
+      style={({ pressed }) => [styles.next, pressed && styles.nextPressed]}
+    >
+      <View style={styles.nextText}>
+        <Text style={[type.caption, { color: colors.muted }]}>Next booking</Text>
+        <Text style={type.bodyStrong}>{when}</Text>
+        <Text style={[type.caption, { color: colors.muted }]} numberOfLines={1}>
+          {what}
+        </Text>
+      </View>
+      <Feather name="chevron-right" size={20} color={colors.muted} />
+    </Pressable>
   );
 }
 
@@ -249,7 +292,21 @@ const styles = StyleSheet.create({
   date: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 22, color: colors.subtle },
   fab: { position: "absolute", right: 20, bottom: FAB_MARGIN },
   fabClearance: { height: FAB_SIZE + FAB_MARGIN },
-  loadError: { marginTop: 12 },
+  next: {
+    alignSelf: "stretch",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space(3),
+    marginTop: space(5),
+    padding: space(4),
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    minHeight: minTouch,
+  },
+  nextPressed: { opacity: 0.7 },
+  nextText: { flex: 1, gap: 2 },
   card: { alignItems: "stretch", padding: space(5), gap: space(3) },
   step: {
     flexDirection: "row",

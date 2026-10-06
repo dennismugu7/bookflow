@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import {
   Pressable,
   ScrollView,
@@ -5,6 +6,7 @@ import {
   Text,
   View,
   type GestureResponderHandlers,
+  type RefreshControlProps,
 } from "react-native";
 
 import { nextBookingId } from "../../lib/agenda";
@@ -39,10 +41,22 @@ type Props = {
   staffId: string | null;
   onOpenDay: (date: string) => void;
   swipe: GestureResponderHandlers;
+  /** Pull to refresh (release 1.0.0 part 2), a backup to live updates. */
+  refreshControl?: ReactElement<RefreshControlProps>;
 };
 
 /** Monday to Sunday side by side, closed days greyed (owner-v4 02). Tap a day to open it. */
-export function WeekGrid({ days, scale, timeZone, today, now, staffId, onOpenDay, swipe }: Props) {
+export function WeekGrid({
+  days,
+  scale,
+  timeZone,
+  today,
+  now,
+  staffId,
+  onOpenDay,
+  swipe,
+  refreshControl,
+}: Props) {
   const height = ((scale.end - scale.start) / 60) * HOUR;
   return (
     <View style={styles.flex}>
@@ -65,7 +79,7 @@ export function WeekGrid({ days, scale, timeZone, today, now, staffId, onOpenDay
         })}
       </View>
       <View style={styles.headLine} />
-      <ScrollView style={styles.flex} {...swipe}>
+      <ScrollView style={styles.flex} refreshControl={refreshControl} {...swipe}>
         <View style={{ height: TOP + height + BOTTOM }}>
           {hourMarks(scale).map((mark, i) => (
             <View key={mark} style={[styles.hour, { top: TOP + i * HOUR }]}>

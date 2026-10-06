@@ -10,6 +10,7 @@ import { getSupabase } from "../lib/supabase";
 import { colors, fonts } from "../theme";
 import { Page, SaveBar } from "./Page";
 import { TextField } from "./TextField";
+import { showToast } from "../lib/toast";
 
 type Duplicate = { id: string; full_name: string };
 
@@ -100,6 +101,7 @@ export function ClientForm({ clientId }: { clientId?: string }) {
       });
       return;
     }
+    showToast();
     if (clientId) router.back();
     else router.replace(clientHref(data.id));
   }

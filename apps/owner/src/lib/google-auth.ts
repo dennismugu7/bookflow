@@ -1,26 +1,39 @@
-/** Google sign-in through Supabase's PKCE flow in the system browser (owner-v5 01, 02). */
-
-export const GOOGLE_REDIRECT = "bookflow://auth/callback";
+/** Google sign-in (release 1.0.0 parts 2 and 4): what an outcome means to the user. */
 
 export const GOOGLE_ERROR = "Google sign-in didn't finish. Try again or use your email.";
 
-export type GoogleResult = { kind: "code"; code: string } | { kind: "cancel" } | { kind: "error" };
+/** The build's SHA-1 or client ID isn't registered with Google, or there's no Google provider. */
+export const GOOGLE_NOT_SET_UP = "Google sign-in isn't set up on this build yet. Use your email.";
 
-type BrowserResult = { type: string; url?: string };
+export type GoogleOutcome = "signed-in" | "cancelled" | "not-set-up" | "error";
 
 /**
- * What the browser handed back: a PKCE code, a cancel (closed browser or back) or an error.
- * Supabase puts `?code=` or `?error=` on the redirect; fragments are read too, to be safe.
+ * What a thrown sign-in error means (codes from modules/google-credential): a quiet cancel, a build
+ * Google doesn't recognise yet, or a failure. Credential Manager reports an unregistered SHA-1 or
+ * client ID as "[28444] Developer console is not set up correctly".
  */
-export function readGoogleResult(result: BrowserResult): GoogleResult {
-  if (result.type === "cancel" || result.type === "dismiss") return { kind: "cancel" };
-  if (result.type !== "success" || !result.url) return { kind: "error" };
-  const [beforeHash, hash = ""] = result.url.split("#");
-  const query = beforeHash?.split("?")[1] ?? "";
-  const params = new URLSearchParams(query);
-  for (const [key, value] of new URLSearchParams(hash))
-    if (!params.has(key)) params.set(key, value);
-  const code = params.get("code");
-  if (params.get("error") || !code) return { kind: "error" };
-  return { kind: "code", code };
+export function googleErrorOutcome(error: unknown): Exclude<GoogleOutcome, "signed-in"> {
+  const code = String((error as { code?: unknown } | null)?.code ?? "");
+  const message = String((error as { message?: unknown } | null)?.message ?? "");
+  if (code === "CANCELLED") return "cancelled";
+  if (code === "NO_PROVIDER") return "not-set-up";
+  if (/28444|Developer console is not set up/i.test(message)) return "not-set-up";
+  return "error";
+}
+
+/** A sign-in result, with Google's raw error code when there was one (for debug builds). */
+export type GoogleResult = { outcome: GoogleOutcome; code?: string };
+
+/**
+ * The message under the Google button, or none (signed in, or a quiet cancel). Debug builds add
+ * Google's raw code, e.g. "(code 10)", so a setup problem can be told apart on the phone.
+ */
+export function googleMessage(result: GoogleResult, showCode = false): string | undefined {
+  const message =
+    result.outcome === "not-set-up"
+      ? GOOGLE_NOT_SET_UP
+      : result.outcome === "error"
+        ? GOOGLE_ERROR
+        : undefined;
+  return message && showCode && result.code ? `${message} (code ${result.code})` : message;
 }

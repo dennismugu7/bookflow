@@ -27,7 +27,7 @@ describe("toSalonSlug", () => {
 
 describe("bookingLink", () => {
   it("builds the public booking link", () => {
-    expect(WEB_BASE_URL).toBe("https://bookflow-web-pearl.vercel.app");
-    expect(bookingLink("salome-salon")).toBe("https://bookflow-web-pearl.vercel.app/s/salome-salon");
+    expect(WEB_BASE_URL).toBe("https://bookflow.mugu-labs.com");
+    expect(bookingLink("salome-salon")).toBe("https://bookflow.mugu-labs.com/s/salome-salon");
   });
 });

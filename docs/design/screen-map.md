@@ -97,6 +97,8 @@ Files are numbered as Dennis made them (`NN-name.png`). The current app on Denni
 - Splash: only Android's system splash (the B on purple) shows, until the app knows the first screen; there's no second full-screen `01` stage (Dennis, 2026-10-04).
 - Location shows a real map from 0.4.0 (Dennis, 2026-10-04): Google's embed, with our drawn map while it loads or when offline; tapping it opens Google Maps.
 - Kept for existing behaviour (Dennis, 2026-10-04): the "Working alone? Add me as a team member" link on My team; Booking link (share, Live badge) and Unpublish salon under Account "General"; duration chips 20/30/45/60/90 + Custom as in `48` (15 min via Custom).
+- Today with no bookings today but a later one (release 1.0.0 part 2, Dennis 2026-10-06): the title reads "No bookings today" and a "Next booking" card (date, time, services and client) replaces the share line; tapping it opens that day in the Calendar. With no later booking, `09` option A is unchanged. A failed load shows its reason and **Try again** instead of the empty state.
+- Create your salon has a ← back arrow at top left (Dennis, 2026-10-06). The arrow, pulling the sheet handle down and the phone's Back button all sign out and return to Welcome; the "Not <email>? Log out" line stays.
 
 ### Approved redesigns (Dennis, 2026-10-04): these replace the originals
 Mockups in `docs/design/owner-v2/` (fake data). For these screens, copy the mockup, not the original image:

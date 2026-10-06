@@ -2,7 +2,7 @@
 
 _Last updated: 6 October 2026_
 
-Bookflow helps salons and barbershops in Kenya take bookings online. It has two parts: a website where clients book (bookflow-web-pearl.vercel.app) and an Android app for salon owners ("Bookflow Owner"). Bookflow is run by Mugu Labs ("we", "us"). This policy explains what we collect, why, who we share it with, and the choices you have.
+Bookflow helps salons and barbershops in Kenya take bookings online. It has two parts: a website where clients book (bookflow.mugu-labs.com) and an Android app for salon owners ("Bookflow"). Bookflow is run by Mugu Labs ("we", "us"). This policy explains what we collect, why, who we share it with, and the choices you have.
 
 ## What we collect
 
@@ -51,7 +51,7 @@ Some of these providers store data outside Kenya. We use providers that protect 
 ## Your rights
 Under Kenya's Data Protection Act, 2019, you can ask to see, correct or delete your personal data, and you can object to how it's used. Most of this you can do yourself:
 - **Owners:** in the app, under Menu → Settings → Delete account.
-- **Clients:** at bookflow-web-pearl.vercel.app/delete-account.
+- **Clients:** at bookflow.mugu-labs.com/delete-account.
 
 For anything else, email support@mugu-labs.com. If you're not happy with our answer, you can complain to the Office of the Data Protection Commissioner (odpc.go.ke).
 
