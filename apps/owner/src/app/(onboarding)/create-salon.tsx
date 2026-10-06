@@ -1,6 +1,7 @@
 import { WEB_BASE_URL } from "@bookflow/shared";
-import { useState } from "react";
-import { Pressable, StyleSheet, Text } from "react-native";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useRef, useState } from "react";
+import { BackHandler, Pressable, StyleSheet, Text } from "react-native";
 
 import {
   cleanSlugInput,
@@ -24,6 +25,26 @@ export default function CreateSalonScreen() {
   const [slugEdited, setSlugEdited] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; slug?: string; form?: string }>({});
   const [saving, setSaving] = useState(false);
+
+  // ←, pulling the handle down and the phone's Back all sign out to Welcome (release 1.0.0),
+  // instead of Back closing the app. Once, however many of them fire.
+  const leaving = useRef(false);
+  const leave = useCallback(() => {
+    if (leaving.current) return;
+    leaving.current = true;
+    void signOut().finally(() => {
+      leaving.current = false;
+    });
+  }, [signOut]);
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+        leave();
+        return true;
+      });
+      return () => subscription.remove();
+    }, [leave]),
+  );
 
   async function create() {
     const fieldErrors = validateSalonForm(name, slug);
@@ -49,6 +70,7 @@ export default function CreateSalonScreen() {
   return (
     <AuthSheet
       title="Create your salon"
+      onBack={leave}
       footer={
         <Button
           title="Create salon"
@@ -107,7 +129,7 @@ export default function CreateSalonScreen() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Log out"
-        onPress={() => void signOut()}
+        onPress={leave}
         style={styles.logout}
       >
         <Text style={styles.logoutText}>Not {session?.user.email}? Log out</Text>

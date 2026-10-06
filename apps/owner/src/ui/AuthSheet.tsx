@@ -1,8 +1,18 @@
 import Feather from "@expo/vector-icons/Feather";
-import type { ReactNode } from "react";
-import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useMemo, useRef, type ReactNode } from "react";
+import {
+  Animated,
+  KeyboardAvoidingView,
+  PanResponder,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { closesSheet, sheetOffset } from "../lib/sheet-drag";
 import { colors, fonts, minTouch, space } from "../theme";
 import { BrandBackdrop } from "./BrandBackdrop";
 
@@ -14,18 +24,24 @@ type Props = {
   footer?: ReactNode;
 };
 
-/** White sheet with a grabber over the brand gradient, as in designs 03–05. */
+/**
+ * White sheet with a grabber over the brand gradient, as in designs 03–05. With `onBack`, pulling
+ * the grabber (or the title strip) down far enough does the same as the back arrow; a short pull
+ * springs back (release 1.0.0).
+ */
 export function AuthSheet({ title, onBack, children, footer }: Props) {
   const insets = useSafeAreaInsets();
+  const drag = useHandleDrag(onBack);
   return (
     <BrandBackdrop style={styles.fill}>
       <KeyboardAvoidingView
         style={[styles.fill, styles.dim, { paddingTop: insets.top + 40 }]}
         behavior="height"
       >
-        <View style={styles.sheet}>
-          <View style={styles.grabber} />
-          <View style={styles.titleRow}>
+        <Animated.View style={[styles.sheet, drag.style]} onLayout={drag.onLayout}>
+          <View {...drag.handlers}>
+            <View style={styles.grabber} />
+            <View style={styles.titleRow}>
             {onBack ? (
               <Pressable
                 accessibilityRole="button"
@@ -37,9 +53,10 @@ export function AuthSheet({ title, onBack, children, footer }: Props) {
                 <Feather name="arrow-left" size={24} color="#9A9A9A" />
               </Pressable>
             ) : null}
-            <Text style={styles.title} accessibilityRole="header">
-              {title}
-            </Text>
+              <Text style={styles.title} accessibilityRole="header">
+                {title}
+              </Text>
+            </View>
           </View>
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             {children}
@@ -49,10 +66,42 @@ export function AuthSheet({ title, onBack, children, footer }: Props) {
               {footer}
             </View>
           ) : null}
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </BrandBackdrop>
   );
+}
+
+function useHandleDrag(onBack: (() => void) | undefined) {
+  const offset = useRef(new Animated.Value(0)).current;
+  const height = useRef(0);
+  const back = useRef(onBack);
+  back.current = onBack;
+  const enabled = !!onBack;
+
+  return useMemo(() => {
+    const springBack = () =>
+      Animated.spring(offset, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start();
+    const responder = PanResponder.create({
+      onStartShouldSetPanResponder: () => enabled,
+      onPanResponderMove: (_, g) => offset.setValue(sheetOffset(g.dy)),
+      onPanResponderRelease: (_, g) => {
+        if (!closesSheet(g.dy, g.vy, height.current)) return springBack();
+        // Back to rest straight away: leaving swaps the screen, it doesn't hide this one.
+        springBack();
+        back.current?.();
+      },
+      onPanResponderTerminate: springBack,
+      onPanResponderTerminationRequest: () => false,
+    });
+    return {
+      style: { transform: [{ translateY: offset }] },
+      onLayout: (e: { nativeEvent: { layout: { height: number } } }) => {
+        height.current = e.nativeEvent.layout.height;
+      },
+      handlers: enabled ? responder.panHandlers : {},
+    };
+  }, [offset, enabled]);
 }
 
 /** Centred, letter-spaced copy used for labels and notes on the sheet. */
