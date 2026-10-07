@@ -155,14 +155,14 @@ function Copy-Apk([string]$apk, [string]$outDir, [string]$name, [string]$Label =
 }
 
 # Stops when a Google web client ID was passed in but isn't in the APK's JS bundle. For an AAB,
-# pass -Entry 'base/assets/index.android.bundle'.
-function Assert-GoogleClientIdInBundle([string]$apk, [string]$GoogleWebClientId, [string]$Entry = 'assets/index.android.bundle') {
+# pass -EntryPath 'base/assets/index.android.bundle'.
+function Assert-GoogleClientIdInBundle([string]$apk, [string]$GoogleWebClientId, [string]$EntryPath = 'assets/index.android.bundle') {
   # The client ID is public, but only its start is printed: enough to tell which one is inside.
   Add-Type -AssemblyName System.IO.Compression.FileSystem
   $zip = [IO.Compression.ZipFile]::OpenRead($apk)
   try {
-    $entry = $zip.GetEntry($Entry)
-    if (-not $entry) { Fail "No embedded JS bundle ($Entry)." }
+    $entry = $zip.GetEntry($EntryPath)
+    if (-not $entry) { Fail "No embedded JS bundle ($EntryPath)." }
     $reader = New-Object IO.StreamReader($entry.Open(), [Text.Encoding]::GetEncoding('ISO-8859-1'))
     try { $bundle = $reader.ReadToEnd() } finally { $reader.Dispose() }
   } finally { $zip.Dispose() }

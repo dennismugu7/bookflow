@@ -251,7 +251,7 @@ try {
     if (-not ($manifest | Select-String -SimpleMatch $channelHeader)) { Fail "The AAB's update channel isn't $Channel." }
   }
 
-  Assert-GoogleClientIdInBundle $built $GoogleWebClientId -Entry $bundleEntry
+  Assert-GoogleClientIdInBundle $built $GoogleWebClientId -EntryPath $bundleEntry
 
   # 6. Copy out ----------------------------------------------------------------------------------------
   $stamp = Get-Date -Format 'yyyyMMdd-HHmm'
