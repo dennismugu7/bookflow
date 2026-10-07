@@ -32,155 +32,62 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $ownerDir = Split-Path -Parent $PSScriptRoot
-
-function Fail([string]$message) {
-  Write-Host "ERROR: $message" -ForegroundColor Red
-  exit 1
-}
-function Step([string]$message) { Write-Host "==> $message" -ForegroundColor Cyan }
+Import-Module (Join-Path $PSScriptRoot 'apk-common.psm1') -Force
 
 # 1. Prerequisites --------------------------------------------------------------------------------
 Step 'Checking prerequisites'
-$missing = @()
-
-$java = Get-Command java -ErrorAction SilentlyContinue
-if (-not $java) {
-  $missing += 'JDK 17: install Temurin 17 (https://adoptium.net) and put its bin folder on PATH.'
-} else {
-  # java -version writes to stderr.
-  $javaVersion = (& cmd /c 'java -version 2>&1' | Select-Object -First 1)
-  if ($javaVersion -notmatch '"17\.') {
-    $missing += "JDK 17 is needed, found: $javaVersion. Set JAVA_HOME and PATH to a JDK 17."
-  }
-}
-
-$sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { $env:ANDROID_SDK_ROOT }
-if (-not $sdk) {
-  $missing += 'ANDROID_HOME is not set: point it at the Android SDK folder (e.g. C:\Android).'
-} elseif (-not (Test-Path (Join-Path $sdk 'platforms'))) {
-  $missing += "ANDROID_HOME ($sdk) has no 'platforms' folder: install an Android SDK platform with sdkmanager or Android Studio."
-} elseif (-not (Test-Path (Join-Path $sdk 'build-tools'))) {
-  $missing += "ANDROID_HOME ($sdk) has no 'build-tools' folder: install Android SDK build-tools."
-}
-
-if (-not (Get-Command node -ErrorAction SilentlyContinue)) { $missing += 'Node.js is not on PATH.' }
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) { $missing += 'git is not on PATH.' }
-
-if (-not (Test-Path $GoogleServices)) {
-  $missing += "google-services.json not found at $GoogleServices (pass -GoogleServices or set BOOKFLOW_GOOGLE_SERVICES_JSON). Push won't work without it."
-}
-
-if (-not $SupabaseUrl -or -not $SupabaseAnonKey) {
-  if (Get-Command gh -ErrorAction SilentlyContinue) {
-    if (-not $SupabaseUrl) { $SupabaseUrl = (& gh variable get SUPABASE_URL 2>$null) }
-    if (-not $SupabaseAnonKey) { $SupabaseAnonKey = (& gh variable get SUPABASE_ANON_KEY 2>$null) }
-  }
-  if (-not $SupabaseUrl -or -not $SupabaseAnonKey) {
-    $missing += 'Supabase URL and anon key: pass -SupabaseUrl/-SupabaseAnonKey, set EXPO_PUBLIC_SUPABASE_URL/EXPO_PUBLIC_SUPABASE_ANON_KEY, or sign in to gh (gh auth login) to read the repository variables.'
-  }
-}
+$check = Test-ApkPrerequisites $GoogleServices $SupabaseUrl $SupabaseAnonKey
+$missing = $check.Missing
+$SupabaseUrl = $check.SupabaseUrl
+$SupabaseAnonKey = $check.SupabaseAnonKey
 
 if (-not (Test-Path $Keystore)) {
   $missing += "Android debug keystore not found at $Keystore (pass -Keystore). Create one with: keytool -genkeypair -v -keystore `"$Keystore`" -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname `"CN=Android Debug,O=Android,C=US`""
 }
 if (-not (Get-Command keytool -ErrorAction SilentlyContinue)) { $missing += 'keytool is not on PATH (it comes with JDK 17).' }
+Show-MissingAndExit $missing
 
-if ($missing.Count -gt 0) {
-  Write-Host 'Missing prerequisites:' -ForegroundColor Red
-  $missing | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
-  exit 1
-}
-
-if (-not $GoogleWebClientId -and (Get-Command gh -ErrorAction SilentlyContinue)) {
-  # A missing variable is only a warning below; Windows PowerShell treats gh's stderr as an error.
-  try { $GoogleWebClientId = (& gh variable get GOOGLE_WEB_CLIENT_ID 2>$null) } catch { $GoogleWebClientId = $null }
-}
+$GoogleWebClientId = Resolve-GoogleWebClientId $GoogleWebClientId
 if (-not $GoogleWebClientId) {
   Write-Host 'Note: no Google web client ID (-GoogleWebClientId or EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID); Google sign-in will say it is not set up.' -ForegroundColor Yellow
 }
 
 $version = (Get-Content (Join-Path $ownerDir 'app.json') -Raw | ConvertFrom-Json).expo.version
-$sha = (& git -C $ownerDir rev-parse --short HEAD).Trim()
-$dirty = (& git -C $ownerDir status --porcelain -- .) -ne $null
-if ($dirty) { Write-Host 'Note: apps/owner has uncommitted changes; they are included in this build.' -ForegroundColor Yellow }
+$sha = Get-BuildSha $ownerDir
 Write-Host "Bookflow $version-debug at $sha"
 
 # 2. Prebuild with the debug-APK flag ---------------------------------------------------------------
 # Set for this build only; the previous values come back at the end.
-$envNames = 'BOOKFLOW_DEBUG_APK', 'BOOKFLOW_DEBUG_SHA', 'GOOGLE_SERVICES_JSON', 'EXPO_PUBLIC_SUPABASE_URL', 'EXPO_PUBLIC_SUPABASE_ANON_KEY', 'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID', 'CI'
-$savedEnv = @{}
-foreach ($name in $envNames) { $savedEnv[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
-$env:BOOKFLOW_DEBUG_APK = '1'
-$env:BOOKFLOW_DEBUG_SHA = $sha
-$env:GOOGLE_SERVICES_JSON = (Resolve-Path $GoogleServices).Path
-$env:EXPO_PUBLIC_SUPABASE_URL = $SupabaseUrl
-$env:EXPO_PUBLIC_SUPABASE_ANON_KEY = $SupabaseAnonKey
-$env:EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID = $GoogleWebClientId
-$env:CI = '1'
+$savedEnv = Set-BuildEnv @{
+  BOOKFLOW_DEBUG_APK               = '1'
+  BOOKFLOW_DEBUG_SHA               = $sha
+  GOOGLE_SERVICES_JSON             = (Resolve-Path $GoogleServices).Path
+  EXPO_PUBLIC_SUPABASE_URL         = $SupabaseUrl
+  EXPO_PUBLIC_SUPABASE_ANON_KEY    = $SupabaseAnonKey
+  EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID = $GoogleWebClientId
+  CI                               = '1'
+}
 
 Push-Location $ownerDir
 try {
-  Step 'expo prebuild --platform android --clean'
-  # Prebuild rewrites package.json's "android" script; put the committed file back afterwards.
-  $packageJson = Join-Path $ownerDir 'package.json'
-  $packageJsonBefore = [IO.File]::ReadAllBytes($packageJson)
-  try {
-    & npx expo prebuild --platform android --clean --no-install
-    $prebuildExit = $LASTEXITCODE
-  } finally {
-    [IO.File]::WriteAllBytes($packageJson, $packageJsonBefore)
-  }
-  if ($prebuildExit -ne 0) { Fail 'expo prebuild failed.' }
+  Invoke-Prebuild $ownerDir
 
   # The template signs debug builds with its public key; use this laptop's instead.
   Copy-Item $Keystore (Join-Path $ownerDir 'android\app\debug.keystore') -Force
 
   # 3. Gradle ----------------------------------------------------------------------------------------
-  # Metro caches each file's transform with the EXPO_PUBLIC_* values inlined, and doesn't notice
-  # when only a value changes: a build without the Google client ID left it out of later builds too.
-  $metroCache = Join-Path ([IO.Path]::GetTempPath()) 'metro-cache'
-  if (Test-Path $metroCache) {
-    Step 'Clearing the Metro cache'
-    Remove-Item -Recurse -Force $metroCache
-  }
-  Step 'gradlew assembleDebug'
-  Push-Location (Join-Path $ownerDir 'android')
-  try {
-    & .\gradlew.bat assembleDebug --console=plain
-    if ($LASTEXITCODE -ne 0) { Fail 'gradlew assembleDebug failed.' }
-  } finally { Pop-Location }
+  Clear-MetroCache
+  Invoke-Gradle $ownerDir @('assembleDebug')
 
   # 4. Copy out --------------------------------------------------------------------------------------
   $apk = Join-Path $ownerDir 'android\app\build\outputs\apk\debug\app-debug.apk'
-  if (-not (Test-Path $apk)) { Fail "No APK at $apk." }
-  New-Item -ItemType Directory -Force $OutDir | Out-Null
   $stamp = Get-Date -Format 'yyyyMMdd-HHmm'
-  $target = Join-Path $OutDir "bookflow-owner-$version-debug-$stamp-$sha.apk"
-  Copy-Item $apk $target -Force
-  $sizeMb = [math]::Round((Get-Item $target).Length / 1MB, 1)
-  Step 'Done'
-  Write-Host "APK:  $target"
-  Write-Host "Size: $sizeMb MB"
+  $target = Copy-Apk $apk $OutDir "bookflow-owner-$version-debug-$stamp-$sha.apk"
   $sha1 = (& keytool -list -v -keystore $Keystore -alias androiddebugkey -storepass android 2>$null | Select-String 'SHA1:').ToString().Trim()
   Write-Host "Signing key $sha1 (register it on the Android OAuth client for com.mugulabs.bookflow)"
 
-  # The client ID is public, but only its start is printed: enough to tell which one is inside.
-  Add-Type -AssemblyName System.IO.Compression.FileSystem
-  $zip = [IO.Compression.ZipFile]::OpenRead($target)
-  try {
-    $entry = $zip.GetEntry('assets/index.android.bundle')
-    $reader = New-Object IO.StreamReader($entry.Open(), [Text.Encoding]::GetEncoding('ISO-8859-1'))
-    try { $bundle = $reader.ReadToEnd() } finally { $reader.Dispose() }
-  } finally { $zip.Dispose() }
-  $found = [regex]::Match($bundle, '\d{6,}-[a-z0-9]+\.apps\.googleusercontent\.com')
-  if ($found.Success) {
-    Write-Host "Google web client ID in the bundle: $($found.Value.Substring(0, 17))..."
-  } elseif ($GoogleWebClientId) {
-    Fail 'The Google web client ID was passed in but is not in the bundle (stale Metro cache?).'
-  } else {
-    Write-Host 'Google web client ID in the bundle: none (Google sign-in will say it is not set up).' -ForegroundColor Yellow
-  }
+  Assert-GoogleClientIdInBundle $target $GoogleWebClientId
 } finally {
   Pop-Location
-  foreach ($name in $envNames) { [Environment]::SetEnvironmentVariable($name, $savedEnv[$name], 'Process') }
+  Restore-BuildEnv $savedEnv
 }

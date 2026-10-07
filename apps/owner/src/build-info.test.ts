@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { debugApkLabel, formatBuildInfo } from "./build-info";
+import { debugApkLabel, formatBuildInfo, localApkLabel } from "./build-info";
 
 describe("formatBuildInfo", () => {
   it("shows channel and short update id for an OTA update", () => {
@@ -41,5 +41,27 @@ describe("debugApkLabel", () => {
     expect(debugApkLabel({ eas: { projectId: "x" } })).toBeNull();
     expect(debugApkLabel(undefined)).toBeNull();
     expect(debugApkLabel({ debugApk: {} })).toBeNull();
+  });
+
+  it("is null for the release APK, so it never shows Google's error codes", () => {
+    expect(debugApkLabel({ releaseApk: { label: "1.0.0" } })).toBeNull();
+  });
+});
+
+describe("localApkLabel", () => {
+  it("shows the release APK's plain version", () => {
+    expect(localApkLabel({ releaseApk: { label: "1.0.0" } })).toBe("1.0.0");
+  });
+
+  it("shows the debug APK's label", () => {
+    expect(localApkLabel({ debugApk: { label: "1.0.0-debug · 1a2b3c4" } })).toBe(
+      "1.0.0-debug · 1a2b3c4",
+    );
+  });
+
+  it("is null for EAS builds and OTA updates", () => {
+    expect(localApkLabel({ eas: { projectId: "x" } })).toBeNull();
+    expect(localApkLabel(undefined)).toBeNull();
+    expect(localApkLabel({ releaseApk: {} })).toBeNull();
   });
 });

@@ -18,3 +18,15 @@ export function debugApkLabel(extra: Record<string, unknown> | undefined | null)
   const debugApk = extra?.debugApk as { label?: unknown } | undefined;
   return typeof debugApk?.label === "string" ? debugApk.label : null;
 }
+
+/**
+ * Menu's version line for an APK built on the laptop: "0.5.0-debug · <sha>" for the debug APK
+ * (ops 03), plain "1.0.0" for the release APK (ops 04). Null for EAS builds, and for the release
+ * APK once it runs an OTA update (the update's config has no label), so Menu shows the update.
+ */
+export function localApkLabel(extra: Record<string, unknown> | undefined | null): string | null {
+  const releaseApk = extra?.releaseApk as { label?: unknown } | undefined;
+  return (
+    debugApkLabel(extra) ?? (typeof releaseApk?.label === "string" ? releaseApk.label : null)
+  );
+}
