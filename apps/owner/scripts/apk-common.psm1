@@ -1,6 +1,6 @@
 <#
   Shared steps of the laptop APK builds: build-debug-apk.ps1 (ops 03) and build-release-apk.ps1
-  (ops 04). No secrets pass through here: the release key's password stays in the release script.
+  (ops 04, and the Play bundle with -Bundle, ops 05). No secrets pass through here: the release key's password stays in the release script.
 #>
 
 function Fail([string]$message) {
@@ -140,27 +140,29 @@ function Invoke-Gradle([string]$ownerDir, [string[]]$arguments) {
   } finally { Pop-Location }
 }
 
-# Copies the APK to $outDir as $name and prints its path and size; returns the new path.
-function Copy-Apk([string]$apk, [string]$outDir, [string]$name) {
-  if (-not (Test-Path $apk)) { Fail "No APK at $apk." }
+# Copies the APK (or AAB, with -Label 'AAB') to $outDir as $name and prints its path and size;
+# returns the new path.
+function Copy-Apk([string]$apk, [string]$outDir, [string]$name, [string]$Label = 'APK') {
+  if (-not (Test-Path $apk)) { Fail "No $Label at $apk." }
   New-Item -ItemType Directory -Force $outDir | Out-Null
   $target = Join-Path $outDir $name
   Copy-Item $apk $target -Force
   $sizeMb = [math]::Round((Get-Item $target).Length / 1MB, 1)
   Step 'Done'
-  Write-Host "APK:  $target"
+  Write-Host "$($Label):  $target"
   Write-Host "Size: $sizeMb MB"
   $target
 }
 
-# Stops when a Google web client ID was passed in but isn't in the APK's JS bundle.
-function Assert-GoogleClientIdInBundle([string]$apk, [string]$GoogleWebClientId) {
+# Stops when a Google web client ID was passed in but isn't in the APK's JS bundle. For an AAB,
+# pass -Entry 'base/assets/index.android.bundle'.
+function Assert-GoogleClientIdInBundle([string]$apk, [string]$GoogleWebClientId, [string]$Entry = 'assets/index.android.bundle') {
   # The client ID is public, but only its start is printed: enough to tell which one is inside.
   Add-Type -AssemblyName System.IO.Compression.FileSystem
   $zip = [IO.Compression.ZipFile]::OpenRead($apk)
   try {
-    $entry = $zip.GetEntry('assets/index.android.bundle')
-    if (-not $entry) { Fail 'The APK has no embedded JS bundle (assets/index.android.bundle).' }
+    $entry = $zip.GetEntry($Entry)
+    if (-not $entry) { Fail "No embedded JS bundle ($Entry)." }
     $reader = New-Object IO.StreamReader($entry.Open(), [Text.Encoding]::GetEncoding('ISO-8859-1'))
     try { $bundle = $reader.ReadToEnd() } finally { $reader.Dispose() }
   } finally { $zip.Dispose() }

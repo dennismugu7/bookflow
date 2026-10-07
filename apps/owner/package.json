@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build:debug-apk": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-debug-apk.ps1",
-    "build:release-apk": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release-apk.ps1"
+    "build:release-apk": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release-apk.ps1",
+    "build:release-aab": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release-apk.ps1 -Bundle"
   },
   "dependencies": {
     "@bookflow/shared": "workspace:*",

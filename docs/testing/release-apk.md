@@ -51,3 +51,38 @@ If you lose either one, no APK can ever update installed copies of Bookflow agai
 Then: download the `.apk` onto the phone, open it from Files or Downloads, allow **Install unknown apps** when asked, and tap **Install**. If Play Protect warns, choose **More details → Install anyway**.
 
 Later release APKs (same key, higher versionCode) install over this one without uninstalling.
+
+## Google Play bundle
+
+For Google Play, the same script builds an **Android App Bundle** (`.aab`) instead, signed with the same laptop key. Spec: `docs/specs/ops-05-release-aab.md`. No Expo cloud build.
+
+**The APK and the AAB are separate builds.** The APK is for sharing directly (MEGA, WhatsApp); the AAB is only for uploading to Play Console. Build each one when you need it.
+
+From the repo root, in PowerShell:
+
+```powershell
+powershell -File apps/owner/scripts/build-release-apk.ps1 -Bundle -VersionCode 4
+```
+
+(or `pnpm --filter owner build:release-aab -VersionCode 4`). It asks for the keystore password like the APK build, and ends like this:
+
+```
+AAB:  C:\Users\denni\builds\bookflow-1.0.0-4-play-20261008-0930-1a2b3c4.aab
+Size: 60.1 MB
+versionCode: 4
+Channel: production
+Signed with SHA-1: F2:D1:7D:B2:41:BC:67:03:8C:F9:1B:40:5B:C4:59:F6:EA:8F:97:69 (verified)
+Recorded versionCode 4 in release-versions.json.
+```
+
+It stops with an error if the AAB isn't signed with that SHA-1 (checked with `jarsigner` and `keytool`), is debuggable, has the wrong package, versionCode or update channel, or is missing the Google web client ID.
+
+- Same app config as the release APK: `com.mugulabs.bookflow`, version `1.0.0`, not debuggable, JS bundle inside, push, Google sign-in.
+- **Over-the-air updates on the `production` channel** (runtime `1.0.0`), not `preview`. Play installs get **only** updates published to `production`; fixes published to `preview` reach the shared APK and EAS preview builds, not Play users.
+
+**The versionCode rule:** `-VersionCode` is required for an AAB, because Play rejects a number it has seen before. The script refuses a number lower than or equal to the highest in `apps/owner/release-versions.json` (EAS already used `3`, so the first AAB is `4`), and records the new number there after a successful build. Commit that file change through a PR so the number is never reused. Use the next free number every time, even if a build was never uploaded.
+
+**Play App Signing:** on the first upload Play keeps its own app-signing key, and the laptop key (`F2:D1:…:97:69`) becomes the **upload key**. Play re-signs what it installs on phones with its own key. So:
+- Play Console (**Test and release → App integrity → App signing**) shows an **app-signing key SHA-1**. That SHA-1 must be added in Google Cloud as an Android OAuth client for `com.mugulabs.bookflow`, or Google sign-in fails in apps installed from Play.
+- A Play install and a shared APK are signed with different keys: a phone with one must uninstall it before installing the other.
+- Keep backing up the laptop key: every future upload must be signed with it.
