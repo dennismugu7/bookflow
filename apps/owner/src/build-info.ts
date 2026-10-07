@@ -1,13 +1,22 @@
-type UpdatesInfo = {
-  channel: string | null;
-  updateId: string | null;
+type VersionInfo = {
+  version: string;
   isEmbeddedLaunch: boolean;
+  createdAt: Date | null;
 };
 
-/** One-line label so Dennis can tell which channel and EAS update the phone is running. */
-export function formatBuildInfo({ channel, updateId, isEmbeddedLaunch }: UpdatesInfo): string {
-  const update = isEmbeddedLaunch || !updateId ? "embedded" : updateId.slice(0, 8);
-  return `${channel ?? "dev"} · ${update}`;
+/**
+ * Menu's version line: "1.0.0" when running the bundle shipped in the APK, "1.0.0 · update 7 Oct"
+ * once an over-the-air update is running (the update's publish date).
+ */
+export function formatVersionLine(
+  { version, isEmbeddedLaunch, createdAt }: VersionInfo,
+  timeZone?: string,
+): string {
+  if (isEmbeddedLaunch || !createdAt) return version;
+  const parts = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone })
+    .formatToParts(createdAt);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value;
+  return `${version} · update ${part("day")} ${part("month")}`;
 }
 
 /**
@@ -17,16 +26,4 @@ export function formatBuildInfo({ channel, updateId, isEmbeddedLaunch }: Updates
 export function debugApkLabel(extra: Record<string, unknown> | undefined | null): string | null {
   const debugApk = extra?.debugApk as { label?: unknown } | undefined;
   return typeof debugApk?.label === "string" ? debugApk.label : null;
-}
-
-/**
- * Menu's version line for an APK built on the laptop: "0.5.0-debug · <sha>" for the debug APK
- * (ops 03), plain "1.0.0" for the release APK (ops 04). Null for EAS builds, and for the release
- * APK once it runs an OTA update (the update's config has no label), so Menu shows the update.
- */
-export function localApkLabel(extra: Record<string, unknown> | undefined | null): string | null {
-  const releaseApk = extra?.releaseApk as { label?: unknown } | undefined;
-  return (
-    debugApkLabel(extra) ?? (typeof releaseApk?.label === "string" ? releaseApk.label : null)
-  );
 }

@@ -8,14 +8,20 @@ import { useState, type ComponentProps } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { formatBuildInfo, localApkLabel } from "../../../build-info";
+import { debugApkLabel, formatVersionLine } from "../../../build-info";
 import { useSession } from "../../../lib/session";
 import { getSupabase } from "../../../lib/supabase";
 import { colors, fonts, type } from "../../../theme";
 import { BottomSheet, Button } from "../../../ui";
 import { ShareLinkSheet } from "../../../ui/ShareLinkSheet";
 
-const buildInfo = localApkLabel(Constants.expoConfig?.extra) ?? formatBuildInfo(Updates);
+const buildInfo =
+  debugApkLabel(Constants.expoConfig?.extra) ??
+  formatVersionLine({
+    version: Updates.runtimeVersion ?? Constants.expoConfig?.version ?? "",
+    isEmbeddedLaunch: Updates.isEmbeddedLaunch,
+    createdAt: Updates.createdAt,
+  });
 
 type Icon = ComponentProps<typeof Feather>["name"];
 

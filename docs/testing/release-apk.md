@@ -4,7 +4,7 @@ A **release** build of Bookflow Owner, built on Dennis's laptop without Expo's c
 
 - Not debuggable, minified, JS bundle inside. No dev client and no dev menu.
 - App `com.mugulabs.bookflow`, version `1.0.0`. Menu shows `Version 1.0.0`.
-- **Over-the-air updates on**: runtime `1.0.0`, channel `preview`, the same as the EAS preview APK. Fixes published to `preview` reach it without reinstalling. Once it runs one, Menu shows `preview · <update id>` instead of `1.0.0`.
+- **Over-the-air updates on**: runtime `1.0.0`, channel `preview`, the same as the EAS preview APK. Fixes published to `preview` reach it without reinstalling. Once it runs one, Menu shows `Version 1.0.0 · update 7 Oct` (the update's date) instead of `Version 1.0.0`.
 - It talks to the **real** (production) Supabase project.
 
 ## Build it (Dennis)
