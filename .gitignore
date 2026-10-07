@@ -16,6 +16,7 @@ web-build/
 /apps/owner/ios/
 /apps/owner/android/
 *.jks
+*.keystore
 *.p8
 *.p12
 *.key

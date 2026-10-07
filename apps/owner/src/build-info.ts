@@ -1,13 +1,22 @@
-type UpdatesInfo = {
-  channel: string | null;
-  updateId: string | null;
+type VersionInfo = {
+  version: string;
   isEmbeddedLaunch: boolean;
+  createdAt: Date | null;
 };
 
-/** One-line label so Dennis can tell which channel and EAS update the phone is running. */
-export function formatBuildInfo({ channel, updateId, isEmbeddedLaunch }: UpdatesInfo): string {
-  const update = isEmbeddedLaunch || !updateId ? "embedded" : updateId.slice(0, 8);
-  return `${channel ?? "dev"} · ${update}`;
+/**
+ * Menu's version line: "1.0.0" when running the bundle shipped in the APK, "1.0.0 · update 7 Oct"
+ * once an over-the-air update is running (the update's publish date).
+ */
+export function formatVersionLine(
+  { version, isEmbeddedLaunch, createdAt }: VersionInfo,
+  timeZone?: string,
+): string {
+  if (isEmbeddedLaunch || !createdAt) return version;
+  const parts = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone })
+    .formatToParts(createdAt);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value;
+  return `${version} · update ${part("day")} ${part("month")}`;
 }
 
 /**

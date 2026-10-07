@@ -1,6 +1,6 @@
 # Debug APK for testers
 
-A **debug** build of Bookflow Owner that testers can inspect (logs, the React Native dev menu, `adb`). It's built on Dennis's laptop, without Expo's cloud, into one `.apk` file you can share (for example on MEGA). Spec: `docs/specs/ops-03-debug-apk.md`.
+A **debug** build of Bookflow Owner that testers can inspect (logs, the React Native dev menu, `adb`). It's built on Dennis's laptop, without Expo's cloud, into one `.apk` file you can share (for example on MEGA). Spec: `docs/specs/ops-03-debug-apk.md`. For the signed release APK to share with real users, see `release-apk.md`.
 
 - It talks to the **real** (production) Supabase project. Use test accounts and fake data.
 - It gets **no over-the-air updates**. Each test round needs a fresh APK.
