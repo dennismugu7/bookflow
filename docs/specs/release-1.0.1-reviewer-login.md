@@ -37,12 +37,15 @@
 - **Messages** (red, under the Password field, as in mockup 02):
   - wrong password: "That password isn't right. Try again.";
   - too many tries (429): "Too many tries. Wait 15 minutes and try again.";
-  - network or other: the existing connection message.
+  - not configured (503): "Signing in is unavailable. Try again later.";
+  - 500 or any other unexpected status: "Something went wrong. Try again.";
+  - verifyOtp fails after a 200: "Couldn't finish signing in. Try again.";
+  - real network error (the request never gets an answer): the existing connection message.
 - The button shows a spinner while busy and can't be tapped twice.
 
 ### 2. Web: `POST /api/review-sign-in` (`apps/web`)
 - `runtime = "nodejs"`, `Cache-Control: no-store`.
-- **Not configured:** if `REVIEW_PASSWORD` is missing or shorter than 24 characters, return 503 and log "[review] not configured".
+- **Not configured:** if `REVIEW_PASSWORD` is missing or shorter than 24 characters, or `SUPABASE_SECRET_KEY` is missing, return 503 and log which check failed, never the value or its length: "[review] not configured: REVIEW_PASSWORD missing" / "[review] not configured: REVIEW_PASSWORD under 24 characters" / "[review] not configured: SUPABASE_SECRET_KEY missing".
 - **Checks:**
   - reject any email except `support@mugu-labs.com` with the same 401 "wrong" answer;
   - compare the password with `crypto.timingSafeEqual` on SHA-256 digests.

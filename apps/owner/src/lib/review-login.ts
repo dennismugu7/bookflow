@@ -9,6 +9,14 @@ export const REVIEW_EMAIL = "support@mugu-labs.com";
 export const REVIEW_MESSAGES = {
   wrongPassword: "That password isn't right. Try again.",
   tooMany: "Too many tries. Wait 15 minutes and try again.",
+  // The server isn't set up for the review login (503).
+  unavailable: "Signing in is unavailable. Try again later.",
+  // A 500 or any other unexpected answer.
+  unknown: AUTH_MESSAGES.unknown,
+  // The server answered with a token, but exchanging it for a session failed.
+  finishFailed: "Couldn't finish signing in. Try again.",
+  // Only when the request itself never got an answer.
+  offline: AUTH_MESSAGES.offline,
 } as const;
 
 export function isReviewEmail(email: string): boolean {
@@ -30,21 +38,39 @@ export async function requestReviewSignIn(
   baseUrl: string,
   fetchImpl: (url: string, init: RequestInit) => Promise<Response> = fetch,
 ): Promise<ReviewSignInResult> {
+  let response: Response;
   try {
-    const response = await fetchImpl(`${baseUrl}/api/review-sign-in`, {
+    response = await fetchImpl(`${baseUrl}/api/review-sign-in`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: input.email.trim().toLowerCase(), password: input.password }),
     });
-    if (response.status === 401) return { ok: false, message: REVIEW_MESSAGES.wrongPassword };
-    if (response.status === 429) return { ok: false, message: REVIEW_MESSAGES.tooMany };
-    if (!response.ok) return { ok: false, message: AUTH_MESSAGES.offline };
-    const body = (await response.json().catch(() => null)) as { token_hash?: unknown } | null;
-    if (typeof body?.token_hash !== "string" || !body.token_hash) {
-      return { ok: false, message: AUTH_MESSAGES.offline };
-    }
-    return { ok: true, tokenHash: body.token_hash };
   } catch {
-    return { ok: false, message: AUTH_MESSAGES.offline };
+    return { ok: false, message: REVIEW_MESSAGES.offline };
+  }
+  if (response.status === 401) return { ok: false, message: REVIEW_MESSAGES.wrongPassword };
+  if (response.status === 429) return { ok: false, message: REVIEW_MESSAGES.tooMany };
+  if (response.status === 503) return { ok: false, message: REVIEW_MESSAGES.unavailable };
+  if (!response.ok) return { ok: false, message: REVIEW_MESSAGES.unknown };
+  const body = (await response.json().catch(() => null)) as { token_hash?: unknown } | null;
+  if (typeof body?.token_hash !== "string" || !body.token_hash) {
+    return { ok: false, message: REVIEW_MESSAGES.unknown };
+  }
+  return { ok: true, tokenHash: body.token_hash };
+}
+
+/**
+ * Exchanges the server's token hash for a session. Returns the message to show, or null once
+ * signed in (the root layout then moves on to Today).
+ */
+export async function completeReviewSignIn(
+  tokenHash: string,
+  verifyOtp: (params: { token_hash: string; type: "magiclink" }) => Promise<{ error: unknown }>,
+): Promise<string | null> {
+  try {
+    const { error } = await verifyOtp({ token_hash: tokenHash, type: "magiclink" });
+    return error ? REVIEW_MESSAGES.finishFailed : null;
+  } catch {
+    return REVIEW_MESSAGES.finishFailed;
   }
 }
