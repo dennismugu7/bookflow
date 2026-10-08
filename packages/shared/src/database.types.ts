@@ -320,6 +320,9 @@ isOneToOne: false
 "delete_account_data":
 { Args: { "p_details": string,"p_reason": string,"p_user_id": string }; Returns: undefined
                            },
+"ensure_review_demo":
+{ Args: { "p_owner": string }; Returns: string
+                           },
 "get_account_deletion_summary":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
@@ -352,17 +355,26 @@ isOneToOne: false
 "get_range_agenda":
 { Args: { "p_from": string,"p_salon_id": string,"p_to": string }; Returns: Json
                            },
+"get_review_user_id":
+{ Args: Record<PropertyKey, never>; Returns: string
+                           },
 "owner_create_booking":
 { Args: { "p_client_id"?: string,"p_client_name"?: string,"p_client_phone"?: string,"p_salon_id": string,"p_service_ids": (string)[],"p_staff_id": string,"p_starts_at": string }; Returns: string
                            },
 "queue_morning_summaries":
 { Args: { "p_at"?: string }; Returns: number
                            },
+"record_review_sign_in_failure":
+{ Args: Record<PropertyKey, never>; Returns: undefined
+                           },
 "register_push_token":
 { Args: { "p_token": string }; Returns: undefined
                            },
 "release_hold":
 { Args: { "p_hold_token": string }; Returns: undefined
+                           },
+"review_sign_in_blocked":
+{ Args: Record<PropertyKey, never>; Returns: boolean
                            },
 "salon_setup_status":
 { Args: { "p_salon_id": string }; Returns: Json

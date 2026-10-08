@@ -187,3 +187,11 @@ Mockups in `docs/design/owner-v7/`. The app blue replaces the originals' black b
 | Account deleted (original 38) | `owner-v7/05-account-deleted.png` |
 | Web /delete-account | `owner-v7/06-web-delete-account.png` |
 | Web /privacy and /terms | `owner-v7/07-web-privacy.png` |
+
+### Release 1.0.1, the Google Play reviewer login (Dennis, 2026-10-08)
+Mockups in `docs/design/owner-v9/`. The one exception to "no password fields": only for the review email `support@mugu-labs.com`, a Password field appears under Email and "Send me a code" becomes "Sign in". Every other email looks exactly as in `owner-v5`.
+
+| Screen | Copy from |
+| --- | --- |
+| Sign in / Create account with the review email | `owner-v9/01-review-password.png` |
+| Wrong password (red line under the field) | `owner-v9/02-wrong-password.png` |

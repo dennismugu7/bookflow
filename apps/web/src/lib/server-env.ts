@@ -10,6 +10,7 @@ const schema = z.object({
   SUPABASE_SECRET_KEY: z.string().min(1).optional(),
   TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
+  REVIEW_PASSWORD: z.string().min(1).optional(),
 });
 
 type ServerEnv = z.infer<typeof schema>;
@@ -20,6 +21,7 @@ function read(): ServerEnv {
     SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY || undefined,
     TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY || undefined,
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || undefined,
+    REVIEW_PASSWORD: process.env.REVIEW_PASSWORD || undefined,
   });
 }
 
@@ -40,4 +42,10 @@ export function turnstileKeys(): { siteKey: string; secretKey: string } | null {
   }
   if (isProduction()) return null;
   return { siteKey: TURNSTILE_TEST_SITE_KEY, secretKey: TURNSTILE_TEST_SECRET_KEY };
+}
+
+/** The Google Play reviewer's password (release 1.0.1), or null when unset or under 24 characters. */
+export function reviewPassword(): string | null {
+  const password = read().REVIEW_PASSWORD;
+  return password && password.length >= 24 ? password : null;
 }
