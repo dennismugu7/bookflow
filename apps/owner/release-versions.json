@@ -5,6 +5,13 @@
       "versionCode": 3,
       "kind": "eas",
       "version": "1.0.0"
+    },
+    {
+      "versionCode": 4,
+      "kind": "play-aab",
+      "version": "1.0.0",
+      "commit": "9600202",
+      "date": "2026-10-08"
     }
   ]
 }
