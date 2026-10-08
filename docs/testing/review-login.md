@@ -20,8 +20,18 @@ and land in **Demo Salon**, which is full of fake data.
    instructions: the email above, the password, and "Type the email, then the password field
    appears. Tap Sign in."
 
-A missing password, or one under 24 characters, turns the login off: the app then shows the
-connection message, and the server logs `[review] not configured`.
+A missing password, or one under 24 characters, turns the login off. The app then shows
+"Signing in is unavailable. Try again later." and the server logs (Vercel → Logs) which check
+failed, never the value or its length:
+
+- `[review] not configured: REVIEW_PASSWORD missing`
+- `[review] not configured: REVIEW_PASSWORD under 24 characters`
+- `[review] not configured: SUPABASE_SECRET_KEY missing`
+
+Other messages on the phone: "Something went wrong. Try again." (a server error),
+"Couldn't finish signing in. Try again." (the server accepted the password but the session
+couldn't start) and "No connection. Check your internet and try again." (the request never got
+an answer).
 
 ## What the reviewers see
 

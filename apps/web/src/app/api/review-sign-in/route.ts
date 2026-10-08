@@ -29,10 +29,19 @@ function passwordMatches(given: string, expected: string): boolean {
  * across server instances. Neither the password nor the token is ever logged.
  */
 export async function POST(request: Request) {
-  const expected = reviewPassword();
+  const review = reviewPassword();
+  if ("problem" in review) {
+    console.error(
+      review.problem === "missing"
+        ? "[review] not configured: REVIEW_PASSWORD missing"
+        : "[review] not configured: REVIEW_PASSWORD under 24 characters",
+    );
+    return json(503, UNAVAILABLE);
+  }
+  const expected = review.password;
   const admin = createAdminClient();
-  if (!expected || !admin) {
-    console.error("[review] not configured");
+  if (!admin) {
+    console.error("[review] not configured: SUPABASE_SECRET_KEY missing");
     return json(503, UNAVAILABLE);
   }
 

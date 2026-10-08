@@ -10,7 +10,12 @@ import { AUTH_MESSAGES, isValidEmail, sendCodeErrorMessage } from "../../lib/aut
 import { googleMessage } from "../../lib/google-auth";
 import { signInWithGoogle } from "../../lib/google-sign-in";
 import { openLegal } from "../../lib/legal";
-import { isReviewEmail, requestReviewSignIn, signInButtonLabel } from "../../lib/review-login";
+import {
+  completeReviewSignIn,
+  isReviewEmail,
+  requestReviewSignIn,
+  signInButtonLabel,
+} from "../../lib/review-login";
 import { getSupabase } from "../../lib/supabase";
 import { colors, controlHeight, fonts, space } from "../../theme";
 import { Button, GoogleButton, OrDivider, SignInSheet, TextField } from "../../ui";
@@ -62,14 +67,14 @@ export default function SignInScreen() {
       setPasswordError(result.message);
       return;
     }
-    const { error: verifyError } = await getSupabase().auth.verifyOtp({
-      token_hash: result.tokenHash,
-      type: "magiclink",
-    });
+    const auth = getSupabase().auth;
+    const message = await completeReviewSignIn(result.tokenHash, (params) =>
+      auth.verifyOtp(params),
+    );
     // Signed in: stay busy until the root layout shows Today.
-    if (!verifyError) return;
+    if (!message) return;
     setSending(false);
-    setPasswordError(AUTH_MESSAGES.offline);
+    setPasswordError(message);
   }
 
   async function sendCode() {

@@ -44,8 +44,13 @@ export function turnstileKeys(): { siteKey: string; secretKey: string } | null {
   return { siteKey: TURNSTILE_TEST_SITE_KEY, secretKey: TURNSTILE_TEST_SECRET_KEY };
 }
 
-/** The Google Play reviewer's password (release 1.0.1), or null when unset or under 24 characters. */
-export function reviewPassword(): string | null {
+/**
+ * The Google Play reviewer's password (release 1.0.1), or why it can't be used: unset, or under
+ * 24 characters. Callers log only the reason, never the value or its length.
+ */
+export function reviewPassword(): { password: string } | { problem: "missing" | "short" } {
   const password = read().REVIEW_PASSWORD;
-  return password && password.length >= 24 ? password : null;
+  if (!password) return { problem: "missing" };
+  if (password.length < 24) return { problem: "short" };
+  return { password };
 }

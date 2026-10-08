@@ -81,14 +81,16 @@ describe("POST /api/review-sign-in", () => {
     vi.stubEnv("REVIEW_PASSWORD", "");
     const response = await POST(request({ email: REVIEW_EMAIL, password: FAKE_PASSWORD }));
     expect(response.status).toBe(503);
-    expect(console.error).toHaveBeenCalledWith("[review] not configured");
+    expect(console.error).toHaveBeenCalledWith("[review] not configured: REVIEW_PASSWORD missing");
   });
 
   it("returns 503 when REVIEW_PASSWORD is shorter than 24 characters", async () => {
     vi.stubEnv("REVIEW_PASSWORD", "short-fake-password");
     const response = await POST(request({ email: REVIEW_EMAIL, password: "short-fake-password" }));
     expect(response.status).toBe(503);
-    expect(console.error).toHaveBeenCalledWith("[review] not configured");
+    expect(console.error).toHaveBeenCalledWith(
+      "[review] not configured: REVIEW_PASSWORD under 24 characters",
+    );
   });
 
   it("returns 401 for a wrong password", async () => {

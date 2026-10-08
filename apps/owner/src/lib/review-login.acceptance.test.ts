@@ -45,7 +45,7 @@ describe("review login", () => {
     });
     expect(await requestReviewSignIn(input, base, respond(503, {}))).toEqual({
       ok: false,
-      message: AUTH_MESSAGES.offline,
+      message: "Signing in is unavailable. Try again later.",
     });
     expect(
       await requestReviewSignIn(input, base, async () => {
