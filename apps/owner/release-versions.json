@@ -1,0 +1,17 @@
+{
+  "note": "Android versionCodes already used. build-release-apk.ps1 -Bundle refuses a number <= the highest here and records each Play bundle it builds (docs/specs/ops-05-release-aab.md).",
+  "builds": [
+    {
+      "versionCode": 3,
+      "kind": "eas",
+      "version": "1.0.0"
+    },
+    {
+      "versionCode": 4,
+      "kind": "play-aab",
+      "version": "1.0.0",
+      "commit": "9600202",
+      "date": "2026-10-08"
+    }
+  ]
+}
