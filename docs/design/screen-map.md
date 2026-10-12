@@ -1,6 +1,6 @@
 # Screen map: which design each screen copies
 
-The images are in `design-ref/` (git-ignored; ask Dennis if missing). **For layout, spacing, sizes, type and copy, the image wins** (ADR 0009). Only the deviations listed below are allowed.
+The images are in `design-ref/` (git-ignored, never committed). The master copy is in Dennis's private Google Drive; after a fresh clone, download the whole `design-ref` folder into the repo root before any UI work, or ask Dennis for it. **For layout, spacing, sizes, type and copy, the image wins** (ADR 0009). Only the deviations listed below are allowed.
 
 ## Client web (`apps/web`), images in `design-ref/original-client/`
 

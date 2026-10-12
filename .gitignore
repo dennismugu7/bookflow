@@ -67,3 +67,6 @@ supabase/.branches/
 
 # Firebase config for push (EAS file variable GOOGLE_SERVICES_JSON; never commit)
 google-services.json
+
+# Local Claude screenshots and scratch output (may contain real data)
+/Claude outputs/
