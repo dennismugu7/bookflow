@@ -95,3 +95,10 @@ element's own bounding box.
 - [ ] Reduced-motion setting results in a simple fade
 - [ ] The final frame holds if loading takes longer than the animation
 - [ ] Smooth on a low-end Android device
+
+## Release
+
+> Version **1.0.1** (Dennis, 2026-10-13). `react-native-svg` is a new native module, and
+> `runtimeVersion` follows the app version, so 1.0.0 builds (Play bundles 4–6, the shared release
+> APK) never receive an over-the-air update that needs it. Ship it as a new Play bundle (7 or
+> later) built from `main` after this merges; bundle 6 was built as 1.0.0 and doesn't go to Play.
