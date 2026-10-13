@@ -1,5 +1,5 @@
-// Android's system splash (the B on purple, app.json) is the only splash: it stays up until fonts
-// and the session are known, then the first screen shows (Dennis, 2026-10-04).
+// The animated splash (docs/specs/splash-animation.md) holds its final frame until fonts and the
+// session are known, then fades to the first screen (Dennis, 2026-10-13).
 
 /** Whether we know enough to show the first screen: fonts settled and, when signed in, the salon. */
 export function appReady({
