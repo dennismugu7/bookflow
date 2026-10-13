@@ -102,6 +102,7 @@ Files are numbered as Dennis made them (`NN-name.png`). The current app on Denni
 - Loading (QA 8663, Dennis 2026-10-13): lists show grey placeholder rows or cards (`ListSkeleton`) while their first load is in flight, and detail pages a small spinner. No design.
 - Calendar Day and Week, My services, My team, Opening hours and a team member's profile show the same small spinner while loading (QA 8663, Dennis 2026-10-13).
 - Booking link sheet has a "Preview your page" link under the link row (QA 8663, Dennis 2026-10-13).
+- Reschedule (QA 8663, Dennis 2026-10-13): the opened booking card has a Reschedule button and a Reschedule sheet built from New booking's When picker. No design.
 
 ### Approved redesigns (Dennis, 2026-10-04): these replace the originals
 Mockups in `docs/design/owner-v2/` (fake data). For these screens, copy the mockup, not the original image:

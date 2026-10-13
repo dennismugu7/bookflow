@@ -67,6 +67,21 @@ export function timeOptions(): string[] {
   return out;
 }
 
+/**
+ * The time chips of the When picker: timeOptions, plus `time` in order when it's off the grid.
+ * With `future` (Reschedule), times at or before `future.after` on `future.date` are left out.
+ */
+export function whenTimes(
+  time: string,
+  future?: { date: string; timeZone: string; after: Date },
+): string[] {
+  const times = timeOptions();
+  if (!times.includes(time)) times.push(time);
+  times.sort();
+  if (!future) return times;
+  return times.filter((t) => zonedTime(future.date, t, future.timeZone) > future.after);
+}
+
 /** The client step: a picked client, or a new name with an optional phone. */
 export type ClientChoice =
   | { kind: "existing"; id: string; name: string; phone: string | null }

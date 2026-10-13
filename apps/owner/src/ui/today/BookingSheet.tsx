@@ -1,6 +1,7 @@
 import { StyleSheet, View } from "react-native";
 
 import { actionsFor, type AgendaBooking } from "../../lib/agenda";
+import { canReschedule } from "../../lib/reschedule";
 import { BottomSheet } from "../BottomSheet";
 import { BookingCard } from "./BookingCard";
 import type { useBookingActions } from "./useBookingActions";
@@ -50,6 +51,14 @@ export function BookingSheet({
               onClose();
               actions.cancel(booking);
             }}
+            onReschedule={
+              canReschedule(booking, viewer)
+                ? () => {
+                    onClose();
+                    actions.reschedule(booking);
+                  }
+                : undefined
+            }
             onOpenClient={
               onOpenClient &&
               ((id) => {

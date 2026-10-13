@@ -373,6 +373,9 @@ isOneToOne: false
 "release_hold":
 { Args: { "p_hold_token": string }; Returns: undefined
                            },
+"reschedule_booking":
+{ Args: { "p_booking_id": string,"p_starts_at": string }; Returns: undefined
+                           },
 "review_sign_in_blocked":
 { Args: Record<PropertyKey, never>; Returns: boolean
                            },
