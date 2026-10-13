@@ -1,7 +1,18 @@
 import { SHARE_MESSAGE_MAX, bookingLink, defaultShareMessage, shareText } from "@bookflow/shared";
+import Feather from "@expo/vector-icons/Feather";
 import * as Clipboard from "expo-clipboard";
+import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
-import { Pressable, Share, StyleSheet, Text, TextInput, ToastAndroid, View } from "react-native";
+import {
+  Linking,
+  Pressable,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  ToastAndroid,
+  View,
+} from "react-native";
 
 import { initialShareMessage, shareMessageToStore } from "../lib/share-message";
 import { getSupabase } from "../lib/supabase";
@@ -13,7 +24,7 @@ import { showToast } from "../lib/toast";
 type Props = {
   visible: boolean;
   onClose: () => void;
-  salon: { id: string; name: string; slug: string };
+  salon: { id: string; name: string; slug: string; isPublished: boolean };
   /** Only owners can save the message; staff share it as it is. */
   canSave: boolean;
 };
@@ -48,6 +59,18 @@ export function ShareLinkSheet({ visible, onClose, salon, canSave }: Props) {
   async function copy() {
     await Clipboard.setStringAsync(link);
     ToastAndroid.show("Link copied", ToastAndroid.SHORT);
+  }
+
+  // The public page in an in-app browser tab, so closing it comes back here (QA 8663, S-04).
+  async function preview() {
+    try {
+      await WebBrowser.openBrowserAsync(link, {
+        toolbarColor: colors.white,
+        controlsColor: colors.action,
+      });
+    } catch {
+      await Linking.openURL(link).catch(() => undefined);
+    }
   }
 
   async function share() {
@@ -87,6 +110,23 @@ export function ShareLinkSheet({ visible, onClose, salon, canSave }: Props) {
           <Text style={styles.copyText}>Copy</Text>
         </Pressable>
       </View>
+
+      {salon.isPublished ? (
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel="Preview your page"
+          hitSlop={13}
+          onPress={() => void preview()}
+          style={({ pressed }) => [styles.preview, pressed && styles.pressed]}
+        >
+          <Text style={styles.previewText}>Preview your page</Text>
+          <Feather name="arrow-up-right" size={13} color={colors.action} />
+        </Pressable>
+      ) : (
+        <Text style={[styles.preview, styles.unpublished]}>
+          Publish your salon to preview the page.
+        </Text>
+      )}
 
       <Text style={styles.label}>Message</Text>
       <TextInput
@@ -148,6 +188,16 @@ const styles = StyleSheet.create({
   },
   copyText: { fontFamily: fonts.medium, fontSize: 16, color: colors.ink },
   pressed: { opacity: 0.8 },
+  // 8 + an 18 pt line: the sheet grows by 26. hitSlop makes the touch area 44 tall.
+  preview: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  previewText: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 18, color: colors.action },
+  unpublished: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 18, color: colors.subtle },
   label: { marginTop: 16, fontFamily: fonts.medium, fontSize: 15, color: colors.ink },
   message: {
     marginTop: 8,

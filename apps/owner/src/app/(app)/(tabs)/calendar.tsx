@@ -13,13 +13,14 @@ import {
   type CalendarDay,
   type CalendarView,
 } from "../../../lib/calendar";
+import { listPhase } from "../../../lib/list-phase";
 import { clientHref, newBookingHref } from "../../../lib/routes";
 import { useSession, type Membership } from "../../../lib/session";
 import { ceilToMinutes, zonedParts, zonedTime } from "../../../lib/time";
 import { useAgenda, useNow, useRangeAgenda } from "../../../lib/use-agenda";
 import { useCalendarView } from "../../../lib/view-pref";
 import { colors, fonts } from "../../../theme";
-import { Chip, Fab, LoadError } from "../../../ui";
+import { Chip, Fab, ListSkeleton, LoadError, LoadingSpinner } from "../../../ui";
 import { DatePickerSheet } from "../../../ui/calendar/DatePickerSheet";
 import { DayGrid } from "../../../ui/calendar/DayGrid";
 import { CalendarHeader, ViewSwitch } from "../../../ui/calendar/parts";
@@ -106,6 +107,9 @@ function Calendar({ membership }: { membership: Membership }) {
   };
 
   const error = view === "list" ? list.error : grid.error;
+  // The List view shows only the day asked for; another day's agenda still on screen is loading.
+  const dayAgenda = list.agenda?.date === date ? list.agenda : undefined;
+  const listState = listPhase(dayAgenda, list.error, (a) => a.bookings.length === 0);
   const gridRefresh = (
     <RefreshControl refreshing={grid.refreshing} onRefresh={() => void grid.refresh()} />
   );
@@ -157,11 +161,13 @@ function Calendar({ membership }: { membership: Membership }) {
           }
           {...swipe}
         >
-          {!list.agenda || list.agenda.date !== date ? null : list.agenda.bookings.length === 0 ? (
+          {listState === "loading" ? (
+            <ListSkeleton variant="cards" label="Loading bookings" />
+          ) : !dayAgenda ? null : listState === "empty" ? (
             <>
               <Text style={styles.none}>No bookings on this day.</Text>
               <EmptyDayGaps
-                agenda={list.agenda}
+                agenda={dayAgenda}
                 timeZone={timeZone}
                 onFill={
                   isOwner
@@ -172,7 +178,7 @@ function Calendar({ membership }: { membership: Membership }) {
             </>
           ) : (
             <AgendaList
-              agenda={list.agenda}
+              agenda={dayAgenda}
               timeZone={timeZone}
               now={now}
               viewer={viewer}
@@ -213,7 +219,7 @@ function Calendar({ membership }: { membership: Membership }) {
             refreshControl={gridRefresh}
           />
         ) : (
-          <View style={styles.flex} />
+          <GridLoading />
         )
       ) : (
         <>
@@ -257,7 +263,7 @@ function Calendar({ membership }: { membership: Membership }) {
               refreshControl={gridRefresh}
             />
           ) : (
-            <View style={styles.flex} />
+            <GridLoading />
           )}
         </>
       )}
@@ -294,9 +300,20 @@ function Calendar({ membership }: { membership: Membership }) {
   );
 }
 
+/** Until the day or week asked for arrives, a small spinner where the grid goes (QA 8663, M-01). */
+function GridLoading() {
+  return (
+    <View style={[styles.flex, styles.center]}>
+      <LoadingSpinner label="Loading bookings" style={styles.gridSpinner} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.white },
   flex: { flex: 1 },
+  center: { justifyContent: "center" },
+  gridSpinner: { marginTop: 0 },
   error: {
     marginHorizontal: 20,
     marginTop: 12,

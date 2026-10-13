@@ -24,11 +24,12 @@ import {
   type ClientList,
   type Segment,
 } from "../../../lib/clients";
+import { listPhase } from "../../../lib/list-phase";
 import { clientHref } from "../../../lib/routes";
 import { useSession, type Membership } from "../../../lib/session";
 import { getSupabase } from "../../../lib/supabase";
 import { colors, fonts, minTouch } from "../../../theme";
-import { Badge, Chip, LoadError } from "../../../ui";
+import { Badge, Chip, ListSkeleton, LoadError } from "../../../ui";
 import { SharePill } from "../../../ui/today/AgendaList";
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -83,7 +84,7 @@ function Clients({ membership }: { membership: Membership }) {
   );
 
   const add = () => router.push("/clients/new");
-  const empty = list && list.counts.all === 0;
+  const phase = listPhase(list, error, (l) => l.counts.all === 0);
 
   return (
     <SafeAreaView style={styles.page} edges={["top"]}>
@@ -119,9 +120,12 @@ function Clients({ membership }: { membership: Membership }) {
       >
         {error ? (
           <LoadError message={error} onRetry={() => void load()} />
-        ) : !list ? null : empty ? (
+        ) : phase === "loading" ? (
+          // Never a blank page while the first load is in flight (QA 8663, M-01).
+          <ListSkeleton variant="rows" label="Loading clients" />
+        ) : phase === "empty" ? (
           <Empty slug={salon.slug} onAdd={isOwner ? add : undefined} />
-        ) : (
+        ) : list ? (
           <>
             <View style={styles.search}>
               <Feather name="search" size={12} color={colors.faint} />
@@ -157,7 +161,7 @@ function Clients({ membership }: { membership: Membership }) {
               ) : null}
             </View>
           </>
-        )}
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

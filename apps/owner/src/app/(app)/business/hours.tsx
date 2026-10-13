@@ -14,7 +14,7 @@ import { useSession } from "../../../lib/session";
 import { WEEKDAYS, describeDay, rowsToWeek, weekToRows, type Week } from "../../../lib/setup";
 import { getSupabase } from "../../../lib/supabase";
 import { colors, fonts, minTouch, type } from "../../../theme";
-import { BottomSheet, Button, Page, TextField } from "../../../ui";
+import { BottomSheet, Button, LoadingSpinner, Page, TextField } from "../../../ui";
 import { showToast } from "../../../lib/toast";
 
 const dayName = (day: number) => WEEKDAYS.find((d) => d.day === day)?.name ?? "";
@@ -113,7 +113,7 @@ export default function HoursScreen() {
               </Pressable>
             );
           })
-        : null}
+        : !loadError && <LoadingSpinner label="Loading opening hours" />}
       {loadError ? <Text style={styles.error}>{loadError}</Text> : null}
 
       <BottomSheet visible={!!editing} onClose={() => setEditing(undefined)}>

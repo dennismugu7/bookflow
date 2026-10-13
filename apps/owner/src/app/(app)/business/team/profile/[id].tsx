@@ -8,7 +8,7 @@ import { avatarTint } from "../../../../../lib/display";
 import { publicMediaUrl } from "../../../../../lib/media";
 import { getSupabase } from "../../../../../lib/supabase";
 import { colors, fonts, type } from "../../../../../theme";
-import { Badge, Page } from "../../../../../ui";
+import { Badge, LoadingSpinner, Page } from "../../../../../ui";
 
 type Profile = {
   name: string;
@@ -118,6 +118,8 @@ export default function TeamProfileScreen() {
             </View>
           ) : null}
         </>
+      ) : !error ? (
+        <LoadingSpinner label="Loading team member" />
       ) : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </Page>

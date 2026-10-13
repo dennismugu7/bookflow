@@ -9,6 +9,9 @@ import { ShareLinkSheet } from "../ShareLinkSheet";
 import { BookingCard } from "./BookingCard";
 import { GapRow } from "./GapRow";
 import { StatTiles } from "./StatTiles";
+
+/** Where the tiles start and the space between cards, shared with the loading placeholder. */
+export const AGENDA_SPACING = { top: 17, cardGap: 9 };
 import type { useBookingActions } from "./useBookingActions";
 
 type Props = {
@@ -131,7 +134,7 @@ export function SharePill({ slug, variant = "pill" }: { slug: string; variant?: 
 }
 
 const styles = StyleSheet.create({
-  tiles: { marginTop: 17 },
+  tiles: { marginTop: AGENDA_SPACING.top },
   nextUp: {
     marginTop: 21,
     fontFamily: fonts.medium,
@@ -139,7 +142,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: colors.subtle,
   },
-  list: { marginTop: 11, gap: 9 },
+  list: { marginTop: 11, gap: AGENDA_SPACING.cardGap },
   emptyGaps: { marginTop: 32 },
   sharePill: { alignItems: "center", marginTop: 24, marginBottom: 96 },
   share: {

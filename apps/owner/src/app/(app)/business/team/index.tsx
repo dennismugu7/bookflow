@@ -9,7 +9,7 @@ import { publicMediaUrl } from "../../../../lib/media";
 import { useSession } from "../../../../lib/session";
 import { getSupabase } from "../../../../lib/supabase";
 import { colors, fonts, minTouch, type } from "../../../../theme";
-import { Badge, Fab, Illustration, Page } from "../../../../ui";
+import { Badge, Fab, Illustration, LoadingSpinner, Page } from "../../../../ui";
 
 type Member = {
   id: string;
@@ -80,6 +80,7 @@ export default function TeamScreen() {
       gap={12}
       fab={<Fab label="Add a team member" onPress={() => editMember("new")} />}
     >
+      {!team && !error ? <LoadingSpinner label="Loading team" /> : null}
       {team?.length === 0 ? (
         <View style={styles.empty}>
           <Illustration name="planets" />
