@@ -1,6 +1,10 @@
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { inflateSync } from "node:zlib";
 
 import { afterEach, describe, expect, it } from "vitest";
+
+import { SPLASH_COLORS } from "./lib/splash-motion";
 
 const require = createRequire(import.meta.url);
 type Config = Record<string, unknown> & {
@@ -79,5 +83,26 @@ describe("app.config.js", () => {
 
   it("refuses a release build without a versionCode", () => {
     expect(() => build({ BOOKFLOW_RELEASE_APK: "1" })).toThrow(/BOOKFLOW_VERSION_CODE/);
+  });
+});
+
+describe("native splash (docs/specs/splash-animation.md)", () => {
+  const splash = (appJson.expo.plugins as unknown[]).find(
+    (plugin) => Array.isArray(plugin) && plugin[0] === "expo-splash-screen",
+  ) as [string, { backgroundColor: string; image: string }];
+
+  it("is the animated splash's background, so the hand-off can't flash", () => {
+    expect(splash[1].backgroundColor).toBe(SPLASH_COLORS.background);
+  });
+
+  it("shows no logo: its image is fully transparent", () => {
+    const png = readFileSync(new URL(`../${splash[1].image}`, import.meta.url));
+    // Colour type 6 (RGBA), and every pixel byte zero.
+    expect(png[25]).toBe(6);
+    const idat = png.indexOf("IDAT");
+    const length = png.readUInt32BE(idat - 4);
+    expect(inflateSync(png.subarray(idat + 4, idat + 4 + length)).every((byte) => byte === 0)).toBe(
+      true,
+    );
   });
 });

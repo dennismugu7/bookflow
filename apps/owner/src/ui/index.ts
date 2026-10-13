@@ -1,3 +1,4 @@
+export { AnimatedSplash } from "./AnimatedSplash";
 export { AuthSheet, SheetText } from "./AuthSheet";
 export { Badge, type BadgeVariant } from "./Badge";
 export { BottomSheet } from "./BottomSheet";
