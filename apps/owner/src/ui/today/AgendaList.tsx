@@ -9,10 +9,10 @@ import { ShareLinkSheet } from "../ShareLinkSheet";
 import { BookingCard } from "./BookingCard";
 import { GapRow } from "./GapRow";
 import { StatTiles } from "./StatTiles";
+import type { useBookingActions } from "./useBookingActions";
 
 /** Where the tiles start and the space between cards, shared with the loading placeholder. */
 export const AGENDA_SPACING = { top: 17, cardGap: 9 };
-import type { useBookingActions } from "./useBookingActions";
 
 type Props = {
   agenda: Agenda;
