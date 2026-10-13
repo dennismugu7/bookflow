@@ -94,7 +94,7 @@ Files are numbered as Dennis made them (`NN-name.png`). The current app on Denni
 - Calendar and Clients stay "Coming soon" until Phase 4.
 - The "By proceeding, you agree to the Terms of Service and Privacy Policy" line on `03` is left out until those pages exist (release phase) (Dennis, 2026-10-04).
 - Account shows the signed-in email as the name, and its initials in the avatar, until Profile stores an owner name (Dennis, 2026-10-04).
-- Splash: only Android's system splash (the B on purple) shows, until the app knows the first screen; there's no second full-screen `01` stage (Dennis, 2026-10-04).
+- Splash: Android's system splash is plain `#2B2183`, then the animated B from `docs/design/brand/splash-animation.html` plays and holds until the app knows the first screen ([spec](../specs/splash-animation.md); Dennis, 2026-10-13). This replaces `01`.
 - Location shows a real map from 0.4.0 (Dennis, 2026-10-04): Google's embed, with our drawn map while it loads or when offline; tapping it opens Google Maps.
 - Kept for existing behaviour (Dennis, 2026-10-04): the "Working alone? Add me as a team member" link on My team; Booking link (share, Live badge) and Unpublish salon under Account "General"; duration chips 20/30/45/60/90 + Custom as in `48` (15 min via Custom).
 - Today with no bookings today but a later one (release 1.0.0 part 2, Dennis 2026-10-06): the title reads "No bookings today" and a "Next booking" card (date, time, services and client) replaces the share line; tapping it opens that day in the Calendar. With no later booking, `09` option A is unchanged. A failed load shows its reason and **Try again** instead of the empty state.

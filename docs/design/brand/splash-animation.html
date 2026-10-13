@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B splash animation</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #2B2183; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: system-ui, sans-serif; }
+  .stage { width: min(80vw, 420px); aspect-ratio: 1; }
+  svg { width: 100%; height: 100%; overflow: visible; }
+
+  .halo { transform-box: fill-box; transform-origin: 50% 50%; opacity: 0; }
+  .stem { transform-box: fill-box; transform-origin: 50% 100%; opacity: 0; }
+  .top  { transform-box: fill-box; transform-origin: 0% 50%;   opacity: 0; }
+  .bot  { transform-box: fill-box; transform-origin: 0% 100%;  opacity: 0; }
+  .mark { transform-box: fill-box; transform-origin: 50% 50%; }
+
+  .run .halo { animation: halo 2.6s ease-out 0s both; }
+  .run .stem { animation: stem .55s cubic-bezier(.2,.8,.2,1) .25s both; }
+  .run .top  { animation: top  .60s cubic-bezier(.34,1.56,.64,1) .65s both; }
+  .run .bot  { animation: bot  .70s cubic-bezier(.34,1.56,.64,1) 1.0s both; }
+  .run .mark { animation: beat .60s ease-in-out 1.75s both; }
+
+  @keyframes halo { 0% { opacity: 0; transform: scale(.4); } 60% { opacity: .35; transform: scale(1); } 100% { opacity: .18; transform: scale(1.15); } }
+  @keyframes stem { from { opacity: 0; transform: scaleY(0); } to { opacity: 1; transform: scaleY(1); } }
+  @keyframes top  { from { opacity: 0; transform: scaleX(0); } to { opacity: 1; transform: scaleX(1); } }
+  @keyframes bot  { from { opacity: 0; transform: rotate(-35deg) scale(.6); } to { opacity: 1; transform: rotate(0) scale(1); } }
+  @keyframes beat { 0%, 100% { transform: scale(1); } 45% { transform: scale(1.06); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .run .halo, .run .stem, .run .top, .run .bot, .run .mark { animation: fade .4s ease-out both; }
+    .run .halo { animation: fadeHalo .4s ease-out both; }
+    @keyframes fade { from { opacity: 0; } to { opacity: 1; transform: none; } }
+    @keyframes fadeHalo { from { opacity: 0; } to { opacity: .18; } }
+  }
+
+  button { margin-top: 24px; background: transparent; color: #E8FBF8; border: 1px solid rgba(232,251,248,.4); border-radius: 8px; padding: 8px 16px; font-size: 14px; cursor: pointer; }
+</style>
+</head>
+<body>
+  <div class="stage" id="stage">
+    <svg viewBox="212 212 600 600" role="img" aria-label="App logo">
+      <circle class="halo" cx="512" cy="512" r="250" fill="#3D2FA8"/>
+      <g class="mark">
+        <rect class="stem" x="343" y="278" width="87" height="467" fill="#E8FBF8"/>
+        <path class="top" fill="#E8FBF8" d="M430 278H530C600 278 652 330 652 400C652 455 610 500 560 522C530 536 500 546 465 550V470H520C550 470 568 448 568 418C568 388 548 365 520 365H430Z"/>
+        <g class="bot" fill="#A6F2E8">
+          <path d="M430 745H545C620 745 682 690 682 620C682 575 664 540 640 515L583 553C594 572 598 588 598 605C598 638 572 658 540 658H430Z"/>
+          <path d="M343 745L430 658V745Z"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+  <button onclick="play()">Replay</button>
+<script>
+  function play() {
+    const s = document.getElementById('stage');
+    s.classList.remove('run'); void s.offsetWidth; s.classList.add('run');
+  }
+  play();
+</script>
+</body>
+</html>

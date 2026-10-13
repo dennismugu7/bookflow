@@ -8,7 +8,7 @@ import {
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { getEnv } from "../env";
@@ -16,9 +16,12 @@ import { appReady, settledGroup } from "../lib/launch";
 import { setUpNotifications } from "../lib/push";
 import { SessionProvider, useSession } from "../lib/session";
 import { colors, space, type } from "../theme";
-import { Button } from "../ui";
+import { AnimatedSplash, Button } from "../ui";
 
 void SplashScreen.preventAutoHideAsync();
+// The system splash is the same plain purple as the animated splash's first frame: swap them
+// instantly rather than fading over the start of the animation.
+SplashScreen.setOptions({ duration: 0, fade: false });
 setUpNotifications();
 
 /** The env error message, or null when the Supabase values were bundled. */
@@ -44,8 +47,9 @@ export default function RootLayout() {
 
 /**
  * Signed-out users only see (auth); signed-in users without a salon only see (onboarding);
- * everyone else only sees (app). Android's system splash stays up until we know which, then the
- * first screen shows straight away (no second splash; Dennis, 2026-10-04).
+ * everyone else only sees (app). Android's plain purple system splash hands over to the animated
+ * splash, which plays once and holds until we know which, then fades to the first screen
+ * (docs/specs/splash-animation.md; Dennis, 2026-10-13).
  */
 function RootNavigator() {
   const [fontsLoaded, fontError] = useFonts({
@@ -56,6 +60,8 @@ function RootNavigator() {
   });
   const { session, membership, membershipError } = useSession();
   const [launched, setLaunched] = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
+  const endSplash = useCallback(() => setSplashDone(true), []);
 
   const ready = appReady({
     fontsSettled: fontsLoaded || !!fontError,
@@ -66,14 +72,19 @@ function RootNavigator() {
 
   useEffect(() => {
     if (!ready || launched) return;
-    SplashScreen.hide();
     setLaunched(true);
   }, [ready, launched]);
 
   // Once launched the navigator stays mounted: during a sign-in the current screen stays as it is
   // (owner-v8 04) and Routes moves on once. Unmounting it here for a spinner while the salon loaded
   // was the blank flash, and the remount the jump, after Google sign-in (release 1.0.0 part 4).
-  return <View style={styles.root}>{ready || launched ? <Routes /> : null}</View>;
+  // The first screen renders under the splash, so the exit cross-fades onto it.
+  return (
+    <View style={styles.root}>
+      {ready || launched ? <Routes /> : null}
+      {splashDone ? null : <AnimatedSplash ready={ready || launched} onDone={endSplash} />}
+    </View>
+  );
 }
 
 function Routes() {

@@ -19,6 +19,13 @@
       "version": "1.0.0",
       "commit": "b4952e0",
       "date": "2026-10-08"
+    },
+    {
+      "versionCode": 6,
+      "kind": "play-aab",
+      "version": "1.0.0",
+      "commit": "d8657c7",
+      "date": "2026-10-13"
     }
   ]
 }
