@@ -99,6 +99,9 @@ Files are numbered as Dennis made them (`NN-name.png`). The current app on Denni
 - Kept for existing behaviour (Dennis, 2026-10-04): the "Working alone? Add me as a team member" link on My team; Booking link (share, Live badge) and Unpublish salon under Account "General"; duration chips 20/30/45/60/90 + Custom as in `48` (15 min via Custom).
 - Today with no bookings today but a later one (release 1.0.0 part 2, Dennis 2026-10-06): the title reads "No bookings today" and a "Next booking" card (date, time, services and client) replaces the share line; tapping it opens that day in the Calendar. With no later booking, `09` option A is unchanged. A failed load shows its reason and **Try again** instead of the empty state.
 - Create your salon has a ← back arrow at top left (Dennis, 2026-10-06). The arrow, pulling the sheet handle down and the phone's Back button all sign out and return to Welcome; the "Not <email>? Log out" line stays.
+- Loading (QA 8663, Dennis 2026-10-13): lists show grey placeholder rows or cards (`ListSkeleton`) while their first load is in flight, and detail pages a small spinner. No design.
+- Calendar Day and Week, My services, My team, Opening hours and a team member's profile show the same small spinner while loading (QA 8663, Dennis 2026-10-13).
+- Booking link sheet has a "Preview your page" link under the link row (QA 8663, Dennis 2026-10-13).
 
 ### Approved redesigns (Dennis, 2026-10-04): these replace the originals
 Mockups in `docs/design/owner-v2/` (fake data). For these screens, copy the mockup, not the original image:

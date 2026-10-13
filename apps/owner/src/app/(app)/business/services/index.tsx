@@ -8,7 +8,7 @@ import { minutesLabel } from "../../../../lib/display";
 import { useSession } from "../../../../lib/session";
 import { getSupabase } from "../../../../lib/supabase";
 import { colors, fonts, type } from "../../../../theme";
-import { Badge, Fab, Illustration, Page } from "../../../../ui";
+import { Badge, Fab, Illustration, LoadingSpinner, Page } from "../../../../ui";
 
 type Service = {
   id: string;
@@ -50,6 +50,7 @@ export default function ServicesScreen() {
       gap={12}
       fab={<Fab label="Add a service" onPress={() => openService("new")} />}
     >
+      {!services && !error ? <LoadingSpinner label="Loading services" /> : null}
       {services?.length === 0 ? (
         <View style={styles.empty}>
           <Illustration name="screens" />

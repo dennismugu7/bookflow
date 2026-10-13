@@ -31,6 +31,18 @@ const BADGES: Record<CardBadge, { label: string; variant: BadgeVariant }> = {
 
 const BAR = { done: colors.success, next: colors.attention, idle: colors.borderStrong };
 
+// A closed card without badges: border, padding, then the name and service lines.
+const CARD_BORDER = 1;
+const CARD_PADDING_V = 11;
+const NAME_LINE = 21;
+const SUB_LINE = 19;
+
+/** A closed card's outer shape, for the loading placeholder (ListSkeleton). */
+export const CLOSED_CARD = {
+  height: 2 * CARD_BORDER + 2 * CARD_PADDING_V + NAME_LINE + SUB_LINE,
+  borderRadius: 14,
+};
+
 type Actions = { markDone: boolean; noShow: boolean; cancel: boolean };
 
 type Props = {
@@ -239,12 +251,12 @@ function Outline({ label, icon, hideLabel, disabled, onPress, style, tall }: Out
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: 1,
+    borderWidth: CARD_BORDER,
     borderColor: colors.cardLine,
-    borderRadius: 14,
+    borderRadius: CLOSED_CARD.borderRadius,
     backgroundColor: colors.white,
     paddingHorizontal: 15,
-    paddingVertical: 11,
+    paddingVertical: CARD_PADDING_V,
   },
   open: {
     borderColor: colors.borderStrong,
@@ -264,9 +276,9 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   nameLink: { flex: 1 },
-  name: { flex: 1, fontFamily: fonts.bold, fontSize: 16, lineHeight: 21, color: colors.ink },
+  name: { flex: 1, fontFamily: fonts.bold, fontSize: 16, lineHeight: NAME_LINE, color: colors.ink },
   price: { fontFamily: fonts.bold, fontSize: 16, lineHeight: 21, color: colors.ink },
-  sub: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 19, color: colors.subtle },
+  sub: { fontFamily: fonts.regular, fontSize: 13, lineHeight: SUB_LINE, color: colors.subtle },
   badges: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 4 },
   details: { marginTop: 11 },
   contact: { flexDirection: "row", gap: 10 },

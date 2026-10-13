@@ -28,7 +28,7 @@ import { getSupabase } from "../../../lib/supabase";
 import { ceilToMinutes } from "../../../lib/time";
 import { useNow } from "../../../lib/use-agenda";
 import { colors, fonts } from "../../../theme";
-import { Badge, BottomSheet, Page } from "../../../ui";
+import { Badge, BottomSheet, LoadingSpinner, Page } from "../../../ui";
 import { BookingSheet } from "../../../ui/today/BookingSheet";
 import { useBookingActions } from "../../../ui/today/useBookingActions";
 
@@ -199,6 +199,8 @@ export default function ClientProfileScreen() {
             </>
           ) : null}
         </>
+      ) : !error ? (
+        <LoadingSpinner label="Loading client" />
       ) : null}
 
       <BookingSheet

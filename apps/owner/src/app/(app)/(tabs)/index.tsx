@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
 
 import { nextBookingSummary, nextFreeSlot, type AgendaBooking } from "../../../lib/agenda";
+import { listPhase } from "../../../lib/list-phase";
 import { clientHref, newBookingHref } from "../../../lib/routes";
 import { useSession, type Membership } from "../../../lib/session";
 import { isSetupComplete, publishErrorMessage, type SetupStatus } from "../../../lib/setup";
@@ -11,7 +12,16 @@ import { getSupabase } from "../../../lib/supabase";
 import { zonedParts } from "../../../lib/time";
 import { useAgenda, useNow } from "../../../lib/use-agenda";
 import { colors, fonts, minTouch, space, type } from "../../../theme";
-import { Button, Card, FAB_SIZE, Fab, Illustration, LoadError, Screen } from "../../../ui";
+import {
+  Button,
+  Card,
+  FAB_SIZE,
+  Fab,
+  Illustration,
+  ListSkeleton,
+  LoadError,
+  Screen,
+} from "../../../ui";
 import { AgendaList, EmptyDayGaps, SharePill } from "../../../ui/today/AgendaList";
 import { useBookingActions } from "../../../ui/today/useBookingActions";
 
@@ -79,6 +89,7 @@ function Day({ membership }: { membership: Membership }) {
   const now = useNow();
   const date = zonedParts(now, salon.timezone).date;
   const { agenda, error, refreshing, refresh, reload } = useAgenda(salon.id, date);
+  const phase = listPhase(agenda, error, (a) => a.bookings.length === 0);
   const [openId, setOpenId] = useState<string>();
   const actions = useBookingActions(salon.timezone, reload, () => setOpenId(undefined));
 
@@ -109,7 +120,9 @@ function Day({ membership }: { membership: Membership }) {
           <Header membership={membership} high={!!agenda && agenda.bookings.length > 0} />
           {error ? (
             <LoadError message={error} onRetry={() => void reload()} />
-          ) : !agenda ? null : agenda.bookings.length === 0 ? (
+          ) : phase === "loading" ? (
+            <ListSkeleton variant="cards" label="Loading bookings" />
+          ) : !agenda ? null : phase === "empty" ? (
             <>
               <NoBookings slug={salon.slug} next={agenda.next} timeZone={salon.timezone} />
               <EmptyDayGaps agenda={agenda} timeZone={salon.timezone} onFill={fill} />
