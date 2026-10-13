@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Pressable, Share, StyleSheet, Text, View } from "react-native";
 
 import { actionsFor, nextBookingId, timeline, type Agenda } from "../../lib/agenda";
+import { canReschedule } from "../../lib/reschedule";
 import { useSession } from "../../lib/session";
 import { colors, fonts } from "../../theme";
 import { ShareLinkSheet } from "../ShareLinkSheet";
@@ -63,6 +64,11 @@ export function AgendaList(props: Props) {
               onMarkDone={() => actions.markDone(row.booking)}
               onNoShow={() => actions.noShow(row.booking)}
               onCancel={() => actions.cancel(row.booking)}
+              onReschedule={
+                canReschedule(row.booking, viewer)
+                  ? () => actions.reschedule(row.booking)
+                  : undefined
+              }
               onOpenClient={props.onOpenClient}
             />
           ),

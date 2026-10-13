@@ -1,17 +1,15 @@
 import { formatKenyanPhone, formatKes } from "@bookflow/shared";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   clientSearchFilter,
   createBookingErrorMessage,
-  dayOptions,
   eligibleStaff,
   newBookingError,
   serviceChipLabel,
-  timeOptions,
   totals,
   whenLabel,
   withinOpeningHours,
@@ -24,7 +22,7 @@ import { useSession } from "../../../lib/session";
 import { getSupabase } from "../../../lib/supabase";
 import { ceilToMinutes, zonedParts, zonedTime } from "../../../lib/time";
 import { colors, controlHeight, fonts, radius } from "../../../theme";
-import { BottomSheet, Chip, Page, TextField } from "../../../ui";
+import { BottomSheet, Chip, Page, TextField, WhenChips } from "../../../ui";
 import { BOOKING_SAVED, showToast } from "../../../lib/toast";
 
 type Found = { id: string; full_name: string; phone: string | null };
@@ -423,43 +421,12 @@ function WhenPicker({
   onClose: () => void;
   onPick: (date: string, time: string) => void;
 }) {
-  const days = dayOptions(new Date(), timeZone);
-  const times = timeOptions();
-  if (!times.includes(time)) times.push(time);
-  times.sort();
   return (
     <BottomSheet visible={visible} onClose={onClose} variant="handle">
       <Text style={styles.sheetTitle} accessibilityRole="header">
         When
       </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.days}>
-        <View style={styles.dayRow}>
-          {days.map((d) => (
-            <Chip
-              key={d.date}
-              label={d.label}
-              role="radio"
-              compact
-              selected={d.date === date}
-              onPress={() => onPick(d.date, time)}
-            />
-          ))}
-        </View>
-      </ScrollView>
-      <ScrollView style={styles.times}>
-        <View style={styles.chips}>
-          {times.map((t) => (
-            <Chip
-              key={t}
-              label={t}
-              role="radio"
-              compact
-              selected={t === time}
-              onPress={() => onPick(date, t)}
-            />
-          ))}
-        </View>
-      </ScrollView>
+      <WhenChips timeZone={timeZone} date={date} time={time} onPick={onPick} />
       <View style={styles.sheetButtons}>
         <SheetButton label="Done" dark onPress={onClose} />
       </View>
@@ -566,7 +533,4 @@ const styles = StyleSheet.create({
   },
   sheetButtonDark: { backgroundColor: colors.primary, borderColor: colors.primary },
   sheetButtonText: { fontFamily: fonts.medium, fontSize: 16, color: colors.ink },
-  days: { marginTop: 14, flexGrow: 0 },
-  dayRow: { flexDirection: "row", gap: 9 },
-  times: { marginTop: 14, maxHeight: 220 },
 });

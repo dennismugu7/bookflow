@@ -13,6 +13,7 @@ export { DrawnMap } from "./DrawnMap";
 export { LiveMap } from "./LiveMap";
 export { Page, SaveBar } from "./Page";
 export { Screen } from "./Screen";
+export { WhenChips } from "./WhenChips";
 export { TopBar, goBack, titleStyle, type BarAction } from "./TopBar";
 export { TextField } from "./TextField";
 export { ToastHost } from "./Toast";

@@ -4,6 +4,7 @@ export type ToastMessage = { id: number; text: string };
 
 export const CHANGES_SAVED = "Changes saved";
 export const BOOKING_SAVED = "Booking saved";
+export const BOOKING_MOVED = "Booking moved";
 
 let current: ToastMessage | null = null;
 let nextId = 1;

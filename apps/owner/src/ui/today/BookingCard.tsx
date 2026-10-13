@@ -55,6 +55,8 @@ type Props = {
   onMarkDone: () => void;
   onNoShow: () => void;
   onCancel: () => void;
+  /** Owners move confirmed bookings (canReschedule); no button without it. */
+  onReschedule?: () => void;
   /** Mark done is saving. */
   busy?: boolean;
   error?: string;
@@ -125,7 +127,8 @@ export function BookingCard(props: Props) {
   );
 }
 
-function Details({ booking, actions, onMarkDone, onNoShow, onCancel, busy, error }: Props) {
+function Details(props: Props) {
+  const { booking, actions, onMarkDone, onNoShow, onCancel, onReschedule, busy, error } = props;
   const phone = booking.client?.phone ?? null;
   const started = actions.markDone || actions.noShow;
 
@@ -203,8 +206,20 @@ function Details({ booking, actions, onMarkDone, onNoShow, onCancel, busy, error
               ) : null}
             </>
           ) : (
-            <Outline label="Cancel booking" onPress={onCancel} style={styles.flex} tall />
+            <>
+              {/* Before the start: Reschedule and Cancel side by side (QA 8663). */}
+              {onReschedule ? (
+                <Outline label="Reschedule" onPress={onReschedule} style={styles.flex} tall />
+              ) : null}
+              <Outline label="Cancel booking" onPress={onCancel} style={styles.flex} tall />
+            </>
           )}
+        </View>
+      ) : null}
+      {/* Once started, Reschedule gets its own row under the actions (QA 8663). */}
+      {started && onReschedule ? (
+        <View style={styles.rescheduleRow}>
+          <Outline label="Reschedule" onPress={onReschedule} style={styles.flex} tall />
         </View>
       ) : null}
       {error ? (
@@ -318,6 +333,7 @@ const styles = StyleSheet.create({
   visitLeft: { flexDirection: "row", alignItems: "center", gap: 7 },
   meta: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18, color: colors.subtle },
   actions: { flexDirection: "row", gap: 10, marginTop: 13 },
+  rescheduleRow: { flexDirection: "row", marginTop: 10 },
   noShow: { flex: 105 },
   markDone: {
     flex: 146,

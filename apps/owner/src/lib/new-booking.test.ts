@@ -10,6 +10,7 @@ import {
   timeOptions,
   totals,
   whenLabel,
+  whenTimes,
   withinOpeningHours,
   type ClientChoice,
 } from "./new-booking";
@@ -91,5 +92,37 @@ describe("New booking", () => {
     expect(clientSearchFilter("Mary")).toBe("full_name.ilike.*Mary*");
     expect(clientSearchFilter("0712 34")).toBe("full_name.ilike.*0712 34*,phone.like.*71234*");
     expect(clientSearchFilter("a,b(c)")).toBe("full_name.ilike.*a b c*");
+  });
+});
+
+describe("whenTimes", () => {
+  it("is New booking's grid, with an off-grid time slotted in order", () => {
+    expect(whenTimes("09:00")).toEqual(timeOptions());
+    const times = whenTimes("09:05");
+    expect(times).toHaveLength(timeOptions().length + 1);
+    expect(times.slice(times.indexOf("09:00"), times.indexOf("09:00") + 3)).toEqual([
+      "09:00",
+      "09:05",
+      "09:15",
+    ]);
+  });
+
+  it("leaves out times already past today when moving a booking", () => {
+    // 14:10 in Nairobi.
+    const after = new Date("2026-10-13T11:10:00Z");
+    const today = whenTimes("16:00", { date: "2026-10-13", timeZone: TZ, after });
+    expect(today[0]).toBe("14:15");
+    expect(today).toContain("16:00");
+    expect(today).not.toContain("14:00");
+  });
+
+  it("keeps every time on a later day", () => {
+    const after = new Date("2026-10-13T11:10:00Z");
+    expect(whenTimes("09:00", { date: "2026-10-14", timeZone: TZ, after })).toEqual(timeOptions());
+  });
+
+  it("drops the current time too when it has passed (a booking that has started)", () => {
+    const after = new Date("2026-10-13T11:10:00Z");
+    expect(whenTimes("13:05", { date: "2026-10-13", timeZone: TZ, after })).not.toContain("13:05");
   });
 });
